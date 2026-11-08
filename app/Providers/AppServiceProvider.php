@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Customer;
 use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
 use App\Modules\Core\Policies\UserPolicy;
+use App\Modules\Customers\Policies\CustomerPolicy;
 use App\Modules\Flats\Policies\FlatPolicy;
 use App\Modules\Projects\Policies\ProjectPolicy;
 use App\Support\Branding;
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Flat::class, FlatPolicy::class);
+        Gate::policy(Customer::class, CustomerPolicy::class);
 
         if ($proxies = config('keyone.trusted_proxies')) {
             TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));

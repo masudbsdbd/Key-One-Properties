@@ -53,6 +53,7 @@ class ActivityPresenter
 
     private static function format(string $field, mixed $value): string
     {
+        // Values of these fields are never shown, only whether they changed.
         if (in_array(Str::snake($field), self::REDACTED, true)) {
             return $value === null ? '—' : '••••••';
         }

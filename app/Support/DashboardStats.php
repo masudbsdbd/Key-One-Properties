@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Customer;
 use App\Models\Department;
 use App\Models\Flat;
 use App\Models\Project;
@@ -30,6 +31,10 @@ class DashboardStats
             $flats = Flat::query()->visibleTo($user);
             $cards[] = ['label' => 'Units', 'value' => number_format((clone $flats)->count()), 'icon' => 'door', 'href' => route('flats.index')];
             $cards[] = ['label' => 'Available Units', 'value' => number_format((clone $flats)->where('status', 'available')->count()), 'icon' => 'check-square', 'href' => route('flats.index')];
+        }
+
+        if ($user->canAny(['customers.view', 'customers.view_all'])) {
+            $cards[] = ['label' => 'Customers', 'value' => number_format(Customer::query()->visibleTo($user)->count()), 'icon' => 'users', 'href' => route('customers.index')];
         }
 
         if ($user->can('users.view')) {

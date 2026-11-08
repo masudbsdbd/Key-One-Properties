@@ -19,7 +19,7 @@ class Navigation
                     ['label' => 'Dashboard', 'icon' => 'home', 'route' => 'dashboard', 'active' => 'dashboard'],
                     ['label' => 'Projects', 'icon' => 'building', 'route' => 'projects.index', 'active' => 'projects.*', 'can' => ['projects.view', 'projects.view_all']],
                     ['label' => 'Units (Flats)', 'icon' => 'door', 'route' => 'flats.index', 'active' => 'flats.*', 'can' => 'flats.view'],
-                    ['label' => 'Customers', 'icon' => 'users', 'route' => 'customers.index', 'active' => 'customers.*', 'can' => 'customers.view'],
+                    ['label' => 'Customers', 'icon' => 'users', 'route' => 'customers.index', 'active' => 'customers.*', 'can' => ['customers.view', 'customers.view_all']],
                 ],
             ],
             [

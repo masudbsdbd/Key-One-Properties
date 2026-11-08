@@ -22,6 +22,7 @@ import { initSettingsPage } from './pages/settings';
 import { initPartials, reloadPartials } from './components/partials';
 import { initProjectPages } from './pages/projects';
 import { initFlatPages } from './pages/flats';
+import { initCustomerPages } from './pages/customers';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
 
@@ -40,6 +41,7 @@ $(() => {
     initPartials();
     initProjectPages();
     initFlatPages();
+    initCustomerPages();
 
     const params = new URLSearchParams(window.location.search);
     const autoCreate = document.querySelector('[data-auto-create]');

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
 use App\Notifications\ResetPasswordNotification;
+use App\Support\Phone;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -124,25 +125,8 @@ class User extends Authenticatable
         return $mobile ? static::query()->where('mobile', $mobile)->first() : null;
     }
 
-    /**
-     * Normalise Bangladeshi mobile numbers to 01XXXXXXXXX; other numbers keep their digits with a leading +.
-     */
     public static function normalizeMobile(?string $value): ?string
     {
-        if ($value === null || trim($value) === '') {
-            return null;
-        }
-
-        $digits = preg_replace('/\D+/', '', $value);
-
-        if (str_starts_with($digits, '880') && strlen($digits) === 13) {
-            return '0'.substr($digits, 3);
-        }
-
-        if (strlen($digits) === 10 && str_starts_with($digits, '1')) {
-            return '0'.$digits;
-        }
-
-        return str_starts_with(trim($value), '+') ? '+'.$digits : $digits;
+        return Phone::normalize($value);
     }
 }
