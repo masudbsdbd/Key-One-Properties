@@ -10,10 +10,12 @@
         ['label' => '', 'class' => 'w-16'],
     ]">
         <x-slot:filters>
-            <select name="module" class="form-control w-40" data-table-filter aria-label="Module">
-                <option value="">All modules</option>
+            <div class="w-44">
+            <select name="module" class="form-control" data-table-filter data-select data-placeholder="All modules" aria-label="Module">
+                <option value=""></option>
                 @foreach ($modules as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
             </select>
+            </div>
             @can('users.view')
                 <div class="w-56">
                     <select name="user" data-table-filter data-select data-select-url="{{ route('options.users') }}" data-placeholder="All users" class="form-control" aria-label="User"><option value=""></option></select>

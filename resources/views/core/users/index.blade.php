@@ -17,10 +17,12 @@
         ['label' => '', 'class' => 'w-24'],
     ]">
         <x-slot:filters>
-            <select name="role" class="form-control w-44" data-table-filter aria-label="Role">
-                <option value="">All roles</option>
-                @foreach ($roles as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach
-            </select>
+            <div class="w-48">
+                <select name="role" class="form-control" data-table-filter data-select data-placeholder="All roles" aria-label="Role">
+                    <option value=""></option>
+                    @foreach ($roles as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach
+                </select>
+            </div>
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status">
                 <option value="">All statuses</option>
                 @foreach ($statuses as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach

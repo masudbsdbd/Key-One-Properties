@@ -2,7 +2,7 @@
 @forelse ($flats as $flat)
     <tr>
         <td><a href="{{ route('flats.show', $flat) }}" class="font-semibold text-ink-900 hover:text-accent-700">{{ $flat->flat_no }}</a></td>
-        @if ($showProject)<td class="text-ink-600">{{ $flat->project->name }}</td>@endif
+        @if ($showProject)<td class="whitespace-nowrap text-ink-600">{{ $flat->project->name }}</td>@endif
         <td class="whitespace-nowrap text-ink-600">{{ $flat->building->code }} · {{ $flat->floor->label }}</td>
         <td class="text-ink-600">{{ $flat->flat_type ?: '—' }}@if ($flat->bedrooms !== null)<span class="text-ink-400"> · {{ $flat->bedrooms }}B/{{ $flat->bathrooms ?? 0 }}T</span>@endif</td>
         <td class="whitespace-nowrap text-right tabular-nums">{{ number_format((float) $flat->saleable_area, 0) }} {{ $flat->area_unit }}</td>
