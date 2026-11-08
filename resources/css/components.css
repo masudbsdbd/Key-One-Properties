@@ -51,7 +51,7 @@
     .form-control[aria-invalid='true'] { @apply border-danger-500 focus:ring-danger-50; }
     .form-hint { @apply mt-1.5 text-[13px] text-ink-500; }
     .form-error { @apply mt-1.5 text-[13px] text-danger-600; }
-    .form-check { @apply h-4 w-4 rounded border-line-strong text-accent-500 focus:ring-accent-500; }
+    .form-check { @apply h-4 w-4 rounded border-line-strong; accent-color: var(--color-accent-600); }
 
     /* Badges */
     .badge { @apply inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-medium; }

@@ -17,6 +17,7 @@ import { initAuthPages } from './pages/auth';
 import { initProfilePage } from './pages/profile';
 import { initRemoteModal, openRemoteModal } from './components/remote-modal';
 import { initActions } from './components/actions';
+import { initPermissionForms } from './pages/permissions';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal };
 
@@ -30,6 +31,7 @@ $(() => {
     initProfilePage();
     initRemoteModal();
     initActions();
+    initPermissionForms();
 
     const params = new URLSearchParams(window.location.search);
     const autoCreate = document.querySelector('[data-auto-create]');
