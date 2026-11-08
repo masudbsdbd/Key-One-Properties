@@ -28,4 +28,53 @@
     [hidden] {
         display: none !important;
     }
+
+    /* Everything clickable shows a pointer; disabled controls show not-allowed. */
+    a[href],
+    button,
+    [role='button'],
+    [role='tab'],
+    summary,
+    label[for],
+    select,
+    input[type='checkbox'],
+    input[type='radio'],
+    input[type='file'],
+    input[type='color'],
+    input[type='date']::-webkit-calendar-picker-indicator,
+    input[type='file']::file-selector-button,
+    .select2-selection,
+    .select2-results__option--selectable,
+    .select2-selection__choice__remove,
+    .select2-selection__clear,
+    [data-remote-modal],
+    [data-modal-open],
+    [data-modal-close],
+    [data-action],
+    [data-row-action],
+    [data-sort],
+    [data-toggle-row],
+    [data-menu-button],
+    [data-nav-group],
+    [data-view-toggle],
+    [data-line-add],
+    [data-line-remove] {
+        cursor: pointer;
+    }
+
+    button:disabled,
+    [aria-disabled='true'],
+    select:disabled,
+    input:disabled,
+    .select2-container--disabled .select2-selection {
+        cursor: not-allowed;
+    }
+
+    [data-drag-handle] {
+        cursor: grab;
+    }
+
+    [data-drag-handle]:active {
+        cursor: grabbing;
+    }
 }

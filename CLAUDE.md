@@ -46,6 +46,8 @@ Follow these rules in every session on this repository.
   Empty states get a short title and an action, no tutorial paragraphs.
 - Field hints only when a format is truly required (e.g. "JPG or PNG, max 5 MB").
 - Code comments only where the logic is not obvious; no narrating comments.
+- Every clickable element shows `cursor: pointer` (global rule in `resources/css/app.css`);
+  disabled controls show `not-allowed`. New clickable patterns must be added to that rule.
 
 ## Security rules
 
