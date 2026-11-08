@@ -10,6 +10,7 @@ export function clearErrors(form) {
         el.hidden = true;
     });
     form.querySelector('[data-form-error]')?.setAttribute('hidden', '');
+    form.querySelectorAll('[data-field-error]').forEach((el) => el.setAttribute('hidden', ''));
 }
 
 export function showErrors(form, errors) {
@@ -17,6 +18,12 @@ export function showErrors(form, errors) {
     Object.entries(errors).forEach(([name, list]) => {
         const field = fieldFor(form, name);
         const message = Array.isArray(list) ? list[0] : list;
+        const named = form.querySelector(`[data-field-error="${name}"]`);
+        if (!field && named) {
+            named.textContent = message;
+            named.hidden = false;
+            return;
+        }
         if (!field) {
             const box = form.querySelector('[data-form-error]');
             if (box) {

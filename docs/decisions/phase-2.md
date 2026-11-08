@@ -132,6 +132,13 @@ No double counting:
 
 Reuse `financial_events`. New types: `material.received`, `material.consumed`, `stock.adjusted`, `purchase.returned`, `supplier.bill_approved`, `labour.approved`, `contractor.retention_released`, `expense.approved`, `expense.paid`, plus the existing Phase 2 types. Reversals record a new event with `reversal_of_id`.
 
+### Access
+
+- Project-scoped Phase 2 actions need the module permission **and** visibility of the project,
+  which (as in Phase 1) means `projects.view` plus team membership, or `projects.view_all`.
+- Company warehouses (no project) are visible to anyone with `materials.view`.
+- Super Admin passes every permission check and is exempt from the self-approval rule.
+
 ### Other
 
 - Document numbers: `PREFIX-YYYY-NNNNN` from `document_sequences` (row-locked).

@@ -4,14 +4,20 @@ namespace Database\Seeders;
 
 use App\Models\Customer;
 use App\Models\Department;
+use App\Models\Material;
+use App\Models\MaterialCategory;
+use App\Models\MaterialUnit;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Modules\Customers\Services\CustomerService;
 use App\Modules\Flats\Controllers\BuildingController;
 use App\Modules\Flats\Services\FlatService;
+use App\Modules\Inventory\Services\InventoryService;
 use App\Modules\Projects\Services\ProjectService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * Non-sensitive sample data for local development only. Safe to run more than once.
@@ -76,6 +82,8 @@ class SampleDataSeeder extends Seeder
             $flats->bulkCreate($plan, ['flat_type' => '3 Bed', 'bedrooms' => 3, 'bathrooms' => 3, 'saleable_area' => 1450, 'area_unit' => 'sqft'], (string) ($budget / 30), $admin);
         }
 
+        $this->inventory($admin);
+
         $customers = app(CustomerService::class);
         foreach ([
             ['Md. Arif Hossain', '01712345678', 'referral', 'Banani'],
@@ -92,5 +100,48 @@ class SampleDataSeeder extends Seeder
                 'address_line' => 'House '.(10 + $i).', Road '.(3 + $i), 'city' => $area, 'district' => 'Dhaka',
             ], $staff[$i % $staff->count()]);
         }
+    }
+
+    private function inventory(User $admin): void
+    {
+        if (Material::query()->exists()) {
+            return;
+        }
+
+        $units = collect(['BAG' => 'Bag', 'KG' => 'Kilogram', 'PCS' => 'Piece', 'CFT' => 'Cubic Feet', 'M' => 'Metre'])
+            ->map(fn ($name, $code) => MaterialUnit::query()->create(['code' => $code, 'name' => $name]));
+        $categories = collect(['CEM' => 'Cement', 'STL' => 'Steel', 'BRK' => 'Bricks', 'AGG' => 'Sand & Aggregate', 'ELC' => 'Electrical'])
+            ->map(fn ($name, $code) => MaterialCategory::query()->create(['code' => $code, 'name' => $name]));
+
+        $materials = collect([
+            ['CEM-OPC-50', 'Portland Cement 50kg', 'CEM', 'BAG', 200, 520],
+            ['STL-ROD-12', 'MS Rod 12mm', 'STL', 'KG', 2000, 96],
+            ['STL-ROD-16', 'MS Rod 16mm', 'STL', 'KG', 2000, 95],
+            ['BRK-1ST', 'First Class Brick', 'BRK', 'PCS', 10000, 12],
+            ['AGG-SAND', 'Sylhet Sand', 'AGG', 'CFT', 500, 55],
+            ['AGG-STONE', 'Stone Chips 3/4"', 'AGG', 'CFT', 500, 210],
+            ['ELC-WIRE-2', 'Copper Wire 2.5mm', 'ELC', 'M', 1000, 38],
+        ])->map(function ($row) use ($units, $categories) {
+            $m = new Material(['sku' => $row[0], 'name' => $row[1], 'reorder_level' => $row[4], 'is_active' => true]);
+            $m->category_id = $categories[$row[2]]->id;
+            $m->unit_id = $units[$row[3]]->id;
+            $m->save();
+
+            return [$m, (string) $row[5]];
+        });
+
+        $central = new Warehouse(['code' => 'WH-CEN', 'name' => 'Central Store', 'is_active' => true]);
+        $central->save();
+        $service = app(InventoryService::class);
+        $service->receive($central, $materials->map(fn ($p) => ['material' => $p[0], 'quantity' => '3000', 'unit_cost' => $p[1]])->all(),
+            ['received_at' => now()->toDateString(), 'source' => 'opening'], $admin, (string) Str::uuid());
+
+        Project::query()->get()->each(function (Project $project, int $i) use ($materials, $service, $admin) {
+            $wh = new Warehouse(['code' => 'WH-'.substr($project->code, -4), 'name' => $project->name.' Site Store', 'is_active' => true]);
+            $wh->project_id = $project->id;
+            $wh->save();
+            $service->receive($wh, $materials->take(4)->map(fn ($p) => ['material' => $p[0], 'quantity' => (string) (500 + $i * 100), 'unit_cost' => $p[1]])->all(),
+                ['received_at' => now()->toDateString(), 'source' => 'opening'], $admin, (string) Str::uuid());
+        });
     }
 }
