@@ -8,7 +8,7 @@
 {{--
     columns: [['label' => 'Name', 'sort' => 'name', 'class' => '']] ; a column without 'sort' is static.
 --}}
-<div {{ $attributes->merge(['class' => 'card overflow-hidden']) }} data-ajax-table data-url="{{ $url }}" @if ($sort) data-sort="{{ $sort }}" data-dir="{{ $dir }}" @endif>
+<div {{ $attributes->merge(['class' => 'card overflow-hidden']) }} data-ajax-table data-url="{{ $url }}" @if ($sort) data-default-sort="{{ $sort }}" data-default-dir="{{ $dir }}" @endif>
     <div class="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-center">
         @if ($search !== false)
             <label class="relative block md:w-72">

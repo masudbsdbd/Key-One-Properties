@@ -23,7 +23,7 @@ export function initAjaxTables(root = document) {
 
 function setup(table) {
     if (table._ajaxTable) return;
-    const state = { page: 1, sort: table.dataset.sort || '', dir: table.dataset.dir || 'asc', controller: null };
+    const state = { page: 1, sort: table.dataset.defaultSort || '', dir: table.dataset.defaultDir || 'asc', controller: null };
     table._ajaxTable = state;
 
     const body = table.querySelector('[data-table-body]');
@@ -112,6 +112,17 @@ function setup(table) {
                 el.closest('th')?.setAttribute('aria-sort', el === sorter ? (state.dir === 'asc' ? 'ascending' : 'descending') : 'none'),
             );
             load();
+            return;
+        }
+
+        const toggle = event.target.closest('[data-toggle-row]');
+        if (toggle && table.contains(toggle)) {
+            const detail = toggle.closest('tr').nextElementSibling;
+            if (detail?.matches('[data-detail-row]')) {
+                detail.hidden = !detail.hidden;
+                toggle.setAttribute('aria-expanded', String(!detail.hidden));
+                toggle.querySelector('svg')?.classList.toggle('rotate-180', !detail.hidden);
+            }
             return;
         }
 
