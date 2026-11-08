@@ -8,19 +8,24 @@ use App\Models\Flat;
 use App\Models\FlatProfitCalculation;
 use App\Models\FlatSale;
 use App\Models\Investor;
+use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorPayout;
 use App\Models\InvestorProfitDistribution;
 use App\Models\Project;
 use App\Models\User;
+use App\Modules\Collections\Services\PaymentService;
 use App\Modules\Investors\Services\CostAllocationService;
 use App\Modules\Investors\Services\DistributionService;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Investors\Services\ProfitService;
 use App\Modules\Sales\Services\SalesService;
+use App\Support\ApprovalQueue;
 use App\Support\Costing\CostAttribution;
+use App\Support\Reconciliation\SubledgerReconciler;
 use App\Support\Settings;
 use Database\Factories\FlatFactory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -255,5 +260,56 @@ class ProfitTest extends TestCase
         $this->actingAs($outsider)->get(route('distributions.show', $d))->assertForbidden();
         $this->assertStringNotContainsString($karim->name, (string) $this->actingAs($outsider)->ajax()->get(route('distributions.payables'))->json('data.html'));
         $this->actingAs($outsider)->ajax()->post(route('distributions.store'), $input)->assertStatus(422)->assertJsonValidationErrors('flat');
+    }
+
+    public function test_customer_statement_and_investor_ledger_reconcile(): void
+    {
+        $uuid = fn () => (string) Str::uuid();
+        $payments = app(PaymentService::class);
+        $p1 = $payments->collect(null, $this->sale->fresh(), ['payment_date' => now()->toDateString(), 'amount' => '500000', 'method' => 'cash'], $this->maker, $uuid());
+        $payments->post($p1, $this->checker);
+        $p2 = $payments->collect(null, $this->sale->fresh(), ['payment_date' => now()->toDateString(), 'amount' => '1000', 'method' => 'cash'], $this->maker, $uuid());
+        $payments->post($p2, $this->checker);
+        $payments->reverse($p2, 'Duplicate', $this->checker);
+
+        $inv = app(InvestorService::class);
+        $agreement = InvestorFlatAgreement::query()->where('investor_id', $this->investors[0]->id)->firstOrFail();
+        $c = $inv->recordCapital($agreement, 'contribution', ['amount' => '700000', 'transaction_date' => now()->toDateString()], $this->maker, $uuid());
+        $inv->postCapital($c, $this->checker);
+        $r = $inv->recordCapital($agreement, 'capital_return', ['amount' => '100000', 'transaction_date' => now()->toDateString()], $this->maker, $uuid());
+        $inv->postCapital($r, $this->checker);
+        $inv->reverseCapital($r, 'Wrong', $this->checker);
+
+        $this->configure();
+        $this->profit->approve($this->calc(), $this->checker);
+        $dist = app(DistributionService::class);
+        $d = $dist->request($this->investors[1], $this->flat, '100000', $this->maker, $uuid());
+        $dist->approve($d, $this->checker);
+        $paid = $dist->pay($d, ['paid_at' => now()->toDateString(), 'payment_method' => 'cash'], $this->maker, $uuid());
+        $d2 = $dist->request($this->investors[1], $this->flat, '5000', $this->maker, $uuid());
+        $dist->approve($d2, $this->checker);
+        $dist->reversePayout($dist->pay($d2, ['paid_at' => now()->toDateString(), 'payment_method' => 'cash'], $this->maker, $uuid()), 'Bounced', $this->checker);
+
+        $reconciler = app(SubledgerReconciler::class);
+        $phase3 = fn () => collect($reconciler->differences())->whereIn('check', ['Customer statement', 'Investor ledger'])->values();
+        $this->assertSame([], $phase3()->all());
+
+        DB::table('customer_statement_entries')->where('source_id', $p1->id)->where('source_type', $p1->getMorphClass())->update(['credit_amount' => 499000]);
+        DB::table('investor_ledger_entries')->where('source_id', $paid->id)->where('source_type', $paid->getMorphClass())->update(['amount' => 90000]);
+        $diffs = $phase3();
+        $this->assertSame(['Customer statement', 'Investor ledger'], $diffs->pluck('check')->unique()->values()->all());
+        $this->assertStringContainsString($paid->payout_no, $diffs->firstWhere('check', 'Investor ledger')['document']);
+    }
+
+    public function test_approval_queue_lists_phase_three_documents_by_scope(): void
+    {
+        $this->calc();
+        $approver = $this->userWith(['projects.view', 'investor.profit.approve', 'investor.cost.approve']);
+        $outsider = $this->userWith(['projects.view', 'investor.profit.approve']);
+        $this->project->members()->attach($approver->id);
+        $queue = collect(app(ApprovalQueue::class)->for($approver));
+        $this->assertSame(1, $queue->firstWhere('label', 'Flat profit')['count']);
+        $this->assertStringContainsString('status=submitted', $queue->firstWhere('label', 'Flat profit')['href']);
+        $this->assertNull(collect(app(ApprovalQueue::class)->for($outsider))->firstWhere('label', 'Flat profit'));
     }
 }

@@ -5,8 +5,17 @@ namespace App\Support\Reconciliation;
 use App\Models\ContractorBill;
 use App\Models\ContractorLedgerEntry;
 use App\Models\ContractorPayment;
+use App\Models\CustomerPayment;
+use App\Models\CustomerRefund;
+use App\Models\CustomerStatementEntry;
 use App\Models\Expense;
+use App\Models\FlatSale;
+use App\Models\InvestorCapitalTransaction;
+use App\Models\InvestorLedgerEntry;
+use App\Models\InvestorPayout;
+use App\Models\InvestorProfitAllocation;
 use App\Models\LabourEntry;
+use App\Models\LateFeeAssessment;
 use App\Models\ProjectCostAllocation;
 use App\Models\PurchaseReturn;
 use App\Models\StockIssue;
@@ -33,6 +42,8 @@ class SubledgerReconciler
             ...$this->supplierLedger(),
             ...$this->contractorLedger(),
             ...$this->projectCost(),
+            ...$this->customerStatement(),
+            ...$this->investorLedger(),
         ];
     }
 
@@ -73,6 +84,37 @@ class SubledgerReconciler
         return $this->compare('Project cost', $expected, $actual);
     }
 
+    /** Customer statement: sale charge, payments, refunds and late fees net per source. */
+    private function customerStatement(): array
+    {
+        $actual = CustomerStatementEntry::query()->selectRaw('source_type, source_id, SUM(charge_amount - credit_amount) AS net')->groupBy('source_type', 'source_id')->get()
+            ->mapWithKeys(fn ($r) => [$r->source_type.'#'.$r->source_id => Money::amount((string) $r->net)]);
+        $expected = collect();
+        FlatSale::query()->whereIn('status', FlatSale::ACTIVE)->each(fn ($s) => $expected->put($this->key($s), Money::amount($s->net_contract_value)));
+        CustomerPayment::query()->where('status', 'posted')->each(fn ($p) => $expected->put($this->key($p), Money::neg(Money::amount($p->amount))));
+        CustomerRefund::query()->where('status', 'paid')->each(fn ($r) => $expected->put($this->key($r), Money::amount($r->amount)));
+        LateFeeAssessment::query()->where('status', 'posted')->each(fn ($a) => $expected->put($this->key($a), Money::amount($a->amount)));
+
+        return $this->compare('Customer statement', $expected, $actual);
+    }
+
+    /** Investor ledger: capital in/out, profit payable and paid per source. */
+    private function investorLedger(): array
+    {
+        $kind = 'COALESCE(o.entry_kind, e.entry_kind)';
+        $actual = InvestorLedgerEntry::query()->from('investor_ledger_entries as e')->leftJoin('investor_ledger_entries as o', 'o.id', '=', 'e.reversal_of_id')
+            ->selectRaw("e.source_type, e.source_id, SUM(CASE WHEN {$kind} IN ('capital_out', 'profit_paid') THEN -e.amount ELSE e.amount END) AS net")
+            ->groupBy('e.source_type', 'e.source_id')->get()
+            ->mapWithKeys(fn ($r) => [$r->source_type.'#'.$r->source_id => Money::amount((string) $r->net)]);
+        $expected = collect();
+        InvestorCapitalTransaction::query()->where('status', 'posted')->each(fn ($t) => $expected->put($this->key($t),
+            $t->transaction_type === 'contribution' ? Money::amount($t->amount) : Money::neg(Money::amount($t->amount))));
+        InvestorProfitAllocation::query()->where('status', 'approved')->each(fn ($a) => $expected->put($this->key($a), Money::amount($a->payable_change)));
+        InvestorPayout::query()->where('status', 'posted')->each(fn ($p) => $expected->put($this->key($p), Money::neg(Money::amount($p->amount))));
+
+        return $this->compare('Investor ledger', $expected->reject(fn ($v) => Money::cmp($v, '0') === 0), $actual);
+    }
+
     /** Net (charge − payment) per source document. */
     private function net($query): Collection
     {
@@ -106,7 +148,7 @@ class SubledgerReconciler
     {
         [$type, $id] = explode('#', $key);
         $model = class_exists($type) ? $type::query()->find($id) : null;
-        $number = $model ? ($model->bill_no ?? $model->payment_no ?? $model->return_no ?? $model->issue_no ?? $model->expense_no ?? $model->supplier_code ?? $model->entry_no ?? null) : null;
+        $number = $model ? ($model->bill_no ?? $model->payment_no ?? $model->sale_no ?? $model->refund_no ?? $model->transaction_no ?? $model->payout_no ?? $model->return_no ?? $model->issue_no ?? $model->expense_no ?? $model->supplier_code ?? $model->entry_no ?? null) : null;
 
         return class_basename($type).' '.($number ?? '#'.$id);
     }

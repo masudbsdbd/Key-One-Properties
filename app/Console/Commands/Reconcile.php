@@ -18,7 +18,7 @@ class Reconcile extends Command
         $this->line($stockDiffs ? '<error>Stock: '.count($stockDiffs).' difference(s). Run keyone:reconcile-stock for details.</error>' : '<info>Stock balances match the movement ledger.</info>');
 
         $diffs = $subledgers->differences();
-        foreach (['Supplier ledger', 'Contractor ledger', 'Project cost'] as $check) {
+        foreach (['Supplier ledger', 'Contractor ledger', 'Project cost', 'Customer statement', 'Investor ledger'] as $check) {
             $count = count(array_filter($diffs, fn ($d) => $d['check'] === $check));
             $this->line($count ? "<error>{$check}: {$count} difference(s).</error>" : "<info>{$check} matches its source documents.</info>");
         }
