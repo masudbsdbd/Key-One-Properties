@@ -8,6 +8,7 @@ use App\Models\ContractorBill;
 use App\Models\ContractorWorkOrder;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,6 +48,13 @@ class ContractorBillController extends Controller
             ->columns(['Bill No' => 'text', 'Date' => 'date', 'Contractor' => 'text', 'Work Order' => 'text', 'Gross' => 'money', 'Advance' => 'money', 'Retention' => 'money', 'Other' => 'money', 'Net Payable' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorBill $b) => [$b->bill_no, $b->bill_date, $b->contractor->name, $b->workOrder->wo_no, $b->gross_amount, $b->advance_adjustment, $b->retention_amount, $b->other_deductions, $b->net_payable, ContractorBill::STATUSES[$b->status]]))
             ->respond($request);
+    }
+
+    public function document(Request $request, ContractorBill $bill): Response
+    {
+        Gate::authorize('cbill:view', $bill);
+
+        return Documents::contractorBill($bill)->respond($request);
     }
 
     private function listing(Request $request): Builder

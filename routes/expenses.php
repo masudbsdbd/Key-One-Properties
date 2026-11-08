@@ -22,6 +22,7 @@ Route::prefix('expenses')->name('expenses.')->controller(ExpenseController::clas
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{expense}', 'show')->name('show');
+    Route::get('{expense}/document', 'document')->name('document');
     Route::get('{expense}/edit', 'edit')->name('edit');
     Route::put('{expense}', 'update')->name('update');
     Route::post('{expense}/submit', 'submit')->name('submit');

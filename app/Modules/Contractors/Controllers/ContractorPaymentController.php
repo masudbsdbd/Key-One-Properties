@@ -9,6 +9,7 @@ use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,6 +50,13 @@ class ContractorPaymentController extends Controller
             ->columns(['Payment No' => 'text', 'Date' => 'date', 'Contractor' => 'text', 'Work Order' => 'text', 'Against' => 'text', 'Method' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorPayment $p) => [$p->payment_no, $p->payment_date, $p->contractor->name, $p->workOrder->wo_no, $p->bill?->bill_no ?? 'Advance', ContractorPayment::METHODS[$p->payment_method], $p->amount, ContractorPayment::STATUSES[$p->status]]))
             ->respond($request);
+    }
+
+    public function document(Request $request, ContractorPayment $payment): Response
+    {
+        Gate::authorize('cpay:view', $payment);
+
+        return Documents::contractorPayment($payment)->respond($request);
     }
 
     private function listing(Request $request): Builder

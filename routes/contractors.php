@@ -34,6 +34,7 @@ Route::prefix('work-orders')->name('work-orders.')->group(function () {
         Route::post('/', 'store')->name('store');
         Route::get('export', 'export')->name('export');
         Route::get('{order}', 'show')->name('show');
+        Route::get('{order}/document', 'document')->name('document');
         Route::get('{order}/edit', 'edit')->name('edit');
         Route::put('{order}', 'update')->name('update');
         Route::post('{order}/approve', 'approve')->name('approve');
@@ -55,6 +56,7 @@ Route::prefix('contractor-bills')->name('contractor-bills.')->controller(Contrac
     Route::get('table', 'table')->name('table');
     Route::get('export', 'export')->name('export');
     Route::get('{bill}', 'show')->name('show');
+    Route::get('{bill}/document', 'document')->name('document');
     Route::post('{bill}/approve', 'approve')->name('approve');
     Route::post('{bill}/cancel', 'cancel')->name('cancel');
     Route::get('{bill}/reverse', 'reverseForm')->name('reverse.form');
@@ -68,6 +70,7 @@ Route::prefix('contractor-payments')->name('contractor-payments.')->controller(C
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{payment}', 'show')->name('show');
+    Route::get('{payment}/document', 'document')->name('document');
     Route::post('{payment}/approve', 'approve')->name('approve');
     Route::get('{payment}/action/{action}', 'reasonForm')->whereIn('action', ['reject', 'reverse'])->name('reason');
     Route::post('{payment}/reject', 'reject')->name('reject');

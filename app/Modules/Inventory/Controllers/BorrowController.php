@@ -11,6 +11,7 @@ use App\Modules\Inventory\Policies\InventoryAccess;
 use App\Modules\Inventory\Services\BorrowService;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\LineKeys;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class BorrowController extends Controller
 {
@@ -172,5 +174,12 @@ class BorrowController extends Controller
         $this->service->cancel($borrow, $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'], $request->user());
 
         return Ajax::success('Borrow cancelled.');
+    }
+
+    public function document(Request $request, MaterialBorrow $borrow): Response
+    {
+        abort_unless(InventoryAccess::borrow($request->user(), $borrow, 'view'), 403);
+
+        return Documents::borrow($borrow)->respond($request);
     }
 }

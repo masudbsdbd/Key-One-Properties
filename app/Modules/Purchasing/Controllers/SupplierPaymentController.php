@@ -8,6 +8,7 @@ use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\Money;
 use App\Support\TableQuery;
@@ -49,6 +50,13 @@ class SupplierPaymentController extends Controller
             ->columns(['Payment No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Method' => 'text', 'Reference' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (SupplierPayment $p) => [$p->payment_no, $p->payment_date, $p->supplier->name, SupplierPayment::METHODS[$p->payment_method], $p->payment_reference, $p->amount, SupplierPayment::STATUSES[$p->status]]))
             ->respond($request);
+    }
+
+    public function document(Request $request, SupplierPayment $payment): Response
+    {
+        abort_unless($request->user()->can('purchases.view'), 403);
+
+        return Documents::supplierPayment($payment)->respond($request);
     }
 
     private function listing(Request $request): Builder

@@ -13,6 +13,7 @@
 <x-layouts.app :title="$expense->expense_no">
     <x-page-header :title="$expense->expense_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Expenses' => route('expenses.index'), $expense->expense_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('expenses.document', $expense)" />
             @if (in_array($s, App\Models\Expense::EDITABLE, true) && $canEdit)
                 <x-button icon="arrow-right" data-action="post" data-url="{{ route('expenses.submit', $expense) }}" data-reload data-confirm="Submit {{ $expense->expense_no }} for approval?" data-confirm-text="Submit" data-tone="primary">Submit</x-button>
                 <x-button variant="secondary" icon="edit" data-remote-modal="{{ route('expenses.edit', $expense) }}" data-size="max-w-3xl">Edit</x-button>

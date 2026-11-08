@@ -11,6 +11,7 @@
 <x-layouts.app :title="$bill->bill_no">
     <x-page-header :title="$bill->bill_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Supplier Bills' => route('supplier-bills.index'), $bill->bill_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('supplier-bills.document', $bill)" />
             @if ($bill->status === 'draft')
                 @can('purchases.bill.approve')<x-button icon="check" data-action="post" data-url="{{ route('supplier-bills.approve', $bill) }}" data-reload data-confirm="Approve {{ $bill->bill_no }}?" data-confirm-message="{{ App\Support\Format::money($bill->total_amount) }} will be added to {{ $bill->supplier->name }}'s payable." data-confirm-text="Approve" data-tone="primary">Approve</x-button>@endcan
                 @can('purchases.bill.manage')<x-button variant="ghost" icon="trash" data-action="post" data-url="{{ route('supplier-bills.cancel', $bill) }}" data-reload data-confirm="Discard draft {{ $bill->bill_no }}?" data-confirm-text="Discard" aria-label="Discard draft" />@endcan

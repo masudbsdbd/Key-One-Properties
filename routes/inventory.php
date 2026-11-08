@@ -67,6 +67,7 @@ Route::prefix('borrows')->name('borrows.')->controller(BorrowController::class)-
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{borrow}', 'show')->name('show');
+    Route::get('{borrow}/document', 'document')->name('document');
     Route::get('{borrow}/approve', 'approveForm')->name('approve.form');
     Route::post('{borrow}/approve', 'approve')->name('approve');
     Route::post('{borrow}/issue', 'issue')->name('issue');
@@ -84,6 +85,7 @@ Route::prefix('transfers')->name('transfers.')->controller(TransferController::c
     Route::post('preview', 'preview')->name('preview');
     Route::post('/', 'store')->name('store');
     Route::get('{transfer}', 'show')->name('show');
+    Route::get('{transfer}/document', 'document')->name('document');
     Route::post('{transfer}/approve', 'approve')->name('approve');
     Route::post('{transfer}/post', 'post')->name('post');
     Route::get('{transfer}/action/{action}', 'reasonForm')->whereIn('action', ['reject', 'cancel', 'reverse'])->name('reason');

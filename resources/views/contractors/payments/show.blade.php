@@ -8,16 +8,17 @@
 @endphp
 <x-layouts.app :title="$payment->payment_no">
     <x-page-header :title="$payment->payment_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Contractor Payments' => route('contractor-payments.index'), $payment->payment_no => null]">
-        @can('cpay:approve', $payment)
-            <x-slot:actions>
+        <x-slot:actions>
+            <x-document-menu :url="route('contractor-payments.document', $payment)" />
+            @can('cpay:approve', $payment)
                 @if ($payment->status === 'pending')
                     <x-button icon="check" data-action="post" data-url="{{ route('contractor-payments.approve', $payment) }}" data-reload data-confirm="Approve {{ $payment->payment_no }}?" data-confirm-message="{{ App\Support\Format::money($payment->amount) }} to {{ $payment->contractor->name }}." data-confirm-text="Approve" data-tone="primary">Approve</x-button>
                     <x-button variant="ghost" data-remote-modal="{{ route('contractor-payments.reason', [$payment, 'reject']) }}" data-size="max-w-md">Reject</x-button>
                 @elseif ($payment->status === 'approved')
                     <x-button variant="ghost" icon="restore" data-remote-modal="{{ route('contractor-payments.reason', [$payment, 'reverse']) }}" data-size="max-w-md">Reverse</x-button>
                 @endif
-            </x-slot:actions>
-        @endcan
+            @endcan
+        </x-slot:actions>
     </x-page-header>
 
     <div class="grid gap-6 xl:grid-cols-3">

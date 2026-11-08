@@ -17,6 +17,7 @@
 <x-layouts.app :title="$order->wo_no">
     <x-page-header :title="$order->wo_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Work Orders' => route('work-orders.index'), $order->wo_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('work-orders.document', $order)" />
             @if ($s === 'draft')
                 @can('wo:approve', $order)<x-button icon="check" data-action="post" data-url="{{ route('work-orders.approve', $order) }}" data-reload data-confirm="Approve {{ $order->wo_no }}?" data-confirm-message="Contract {{ App\Support\Format::money($order->contract_amount) }} with {{ $order->contractor->name }}." data-confirm-text="Approve" data-tone="primary">Approve</x-button>@endcan
                 @can('wo:edit', $order)<x-button variant="secondary" icon="edit" data-remote-modal="{{ route('work-orders.edit', $order) }}" data-size="max-w-3xl">Edit</x-button>@endcan

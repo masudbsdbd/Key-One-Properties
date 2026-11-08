@@ -16,6 +16,7 @@
 <x-layouts.app :title="$borrow->borrow_no">
     <x-page-header :title="$borrow->borrow_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Borrows' => route('borrows.index'), $borrow->borrow_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('borrows.document', $borrow)" />
             @if ($borrow->status === 'submitted' && $can('approve'))
                 <x-button icon="check" data-remote-modal="{{ route('borrows.approve.form', $borrow) }}" data-size="max-w-2xl">Approve</x-button>
                 <x-button variant="ghost" data-remote-modal="{{ route('borrows.reason', [$borrow, 'reject']) }}" data-size="max-w-md">Reject</x-button>

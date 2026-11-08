@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Expenses\Services\ExpenseService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -61,6 +62,13 @@ class ExpenseController extends Controller
     }
 
     /** @return array<string, string> */
+    public function document(Request $request, Expense $expense): Response
+    {
+        abort_unless($expense->isVisibleTo($request->user()), 403);
+
+        return Documents::expense($expense)->respond($request);
+    }
+
     private function filterSummary(Request $request): array
     {
         return [

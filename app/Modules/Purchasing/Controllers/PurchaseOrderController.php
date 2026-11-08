@@ -13,6 +13,7 @@ use App\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\LineKeys;
 use App\Support\TableQuery;
@@ -53,6 +54,29 @@ class PurchaseOrderController extends Controller
             ->columns(['PO No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Warehouse' => 'text', 'Project' => 'text', 'Expected' => 'date', 'Total' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (PurchaseOrder $o) => [$o->po_no, $o->order_date, $o->supplier->name, $o->warehouse->code, $o->project?->code ?? 'Company', $o->expected_date, $o->total_amount, PurchaseOrder::STATUSES[$o->status]]))
             ->respond($request);
+    }
+
+    public function document(Request $request, PurchaseOrder $order): Response
+    {
+        Gate::authorize('po:view', $order);
+
+        return Documents::purchaseOrder($order)->respond($request);
+    }
+
+    public function receiptDocument(Request $request, PurchaseOrder $order, GoodsReceipt $receipt): Response
+    {
+        Gate::authorize('po:view', $order);
+        abort_unless($receipt->purchase_order_id === $order->id, 404);
+
+        return Documents::goodsReceipt($receipt)->respond($request);
+    }
+
+    public function returnDocument(Request $request, PurchaseOrder $order, PurchaseReturn $purchaseReturn): Response
+    {
+        Gate::authorize('po:view', $order);
+        abort_unless($purchaseReturn->receipt->purchase_order_id === $order->id, 404);
+
+        return Documents::purchaseReturn($purchaseReturn)->respond($request);
     }
 
     private function listing(Request $request): Builder

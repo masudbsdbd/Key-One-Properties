@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\Money;
 use App\Support\TableQuery;
@@ -50,6 +51,13 @@ class WorkOrderController extends Controller
             ->columns(['WO No' => 'text', 'Title' => 'text', 'Contractor' => 'text', 'Project' => 'text', 'Contract' => 'money', 'Measured' => 'money', 'Retention %' => 'number', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorWorkOrder $w) => [$w->wo_no, $w->title, $w->contractor->name, $w->project->code, $w->contract_amount, $w->measured ?? '0', $w->retention_percent, ContractorWorkOrder::STATUSES[$w->status]]))
             ->respond($request);
+    }
+
+    public function document(Request $request, ContractorWorkOrder $order): Response
+    {
+        Gate::authorize('wo:view', $order);
+
+        return Documents::workOrder($order)->respond($request);
     }
 
     private function listing(Request $request): Builder

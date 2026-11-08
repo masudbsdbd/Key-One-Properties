@@ -5,6 +5,7 @@
 <x-layouts.app :title="$transfer->transfer_no">
     <x-page-header :title="$transfer->transfer_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Transfers' => route('transfers.index'), $transfer->transfer_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('transfers.document', $transfer)" />
             @if ($transfer->status === 'submitted' && $can('approve'))
                 <x-button icon="check" data-action="post" data-url="{{ route('transfers.approve', $transfer) }}" data-reload data-confirm="Approve {{ $transfer->transfer_no }}?" data-tone="primary" data-confirm-text="Approve">Approve</x-button>
                 <x-button variant="ghost" data-remote-modal="{{ route('transfers.reason', [$transfer, 'reject']) }}" data-size="max-w-md">Reject</x-button>

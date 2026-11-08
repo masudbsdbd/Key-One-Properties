@@ -18,6 +18,7 @@
 <x-layouts.app :title="$order->po_no">
     <x-page-header :title="$order->po_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Purchase Orders' => route('purchase-orders.index'), $order->po_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('purchase-orders.document', $order)" />
             @if ($receivable && Gate::allows('po:receive', $order))
                 <x-button icon="download" data-remote-modal="{{ route('purchase-orders.receive.form', $order) }}" data-size="max-w-4xl">Receive Goods</x-button>
             @endif
@@ -86,9 +87,12 @@
                     <div class="border-b border-line px-5 py-4 last:border-0">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div><p class="font-semibold text-ink-900">{{ $receipt->grn_no }}</p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($receipt->received_at) }} · {{ $receipt->receiver->name }}@if ($receipt->supplier_challan_no) · Challan {{ $receipt->supplier_challan_no }}@endif</p></div>
+                            <div class="flex items-center gap-2">
+                            <x-document-menu compact :url="route('purchase-orders.receipt.document', [$order, $receipt])" />
                             @if (Gate::allows('po:return', $order) && $receipt->lines->contains(fn ($l) => App\Support\Money::isPositive($l->returnable())))
                                 <x-button size="sm" variant="secondary" icon="restore" data-remote-modal="{{ route('purchase-orders.return.form', [$order, $receipt]) }}" data-size="max-w-3xl">Return</x-button>
                             @endif
+                            </div>
                         </div>
                         <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                             @foreach ($receipt->lines as $line)
@@ -107,6 +111,21 @@
                     <x-empty-state icon="download" title="Nothing received yet" />
                 @endforelse
             </x-card>
+
+            @if ($returns->isNotEmpty())
+                <x-card title="Returns" :padded="false">
+                    <ul class="divide-y divide-line">
+                        @foreach ($returns as $return)
+                            <li class="flex items-center justify-between gap-3 px-5 py-3">
+                                <span class="font-medium text-ink-900">{{ $return->return_no }}</span>
+                                <span class="min-w-0 flex-1 truncate text-sm text-ink-600">{{ $return->reason }}</span>
+                                <x-money :value="$return->total_amount" />
+                                <x-document-menu compact :url="route('purchase-orders.return.document', [$order, $return])" />
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-card>
+            @endif
 
             @if ($bills->isNotEmpty())
                 <x-card title="Bills" :padded="false">

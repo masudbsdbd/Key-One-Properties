@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\LineKeys;
 use App\Support\Money;
@@ -48,6 +49,13 @@ class SupplierBillController extends Controller
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (SupplierBill $b) => [$b->bill_no, $b->invoice_date, $b->supplier->name, $b->supplier_invoice_no, $b->due_date, $b->total_amount,
                 in_array($b->status, ['approved', 'paid'], true) ? Money::sub((string) $b->total_amount, (string) ($b->allocated ?? '0')) : null, SupplierBill::STATUSES[$b->status]]))
             ->respond($request);
+    }
+
+    public function document(Request $request, SupplierBill $bill): Response
+    {
+        $this->authorizeView($request, $bill);
+
+        return Documents::supplierBill($bill)->respond($request);
     }
 
     private function listing(Request $request): Builder
