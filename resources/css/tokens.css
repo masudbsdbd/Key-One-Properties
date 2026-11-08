@@ -1,17 +1,18 @@
-/* Brand colour is overridden at runtime from Branding settings; accent shades derive from it. */
+/* Brand colours are overridden at runtime from Branding settings; every shade derives from them. */
 :root {
-    --brand-primary: #0f6b52;
+    --brand-primary: #b8862b;
+    --brand-sidebar: #13254b;
 }
 
 @theme {
     --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
     /* Surfaces */
-    --color-canvas: #f5f7f6;
+    --color-canvas: #f6f6f4;
     --color-surface: #ffffff;
-    --color-surface-muted: #f8faf9;
-    --color-line: #e6eae8;
-    --color-line-strong: #d4dad7;
+    --color-surface-muted: #fafaf8;
+    --color-line: #e8e8e4;
+    --color-line-strong: #d6d7d2;
 
     /* Ink (deep navy typography) */
     --color-ink-900: #0b1630;
@@ -32,9 +33,11 @@
     --color-accent-700: color-mix(in oklab, var(--brand-primary) 72%, black);
     --color-accent-900: color-mix(in oklab, var(--brand-primary) 45%, black);
 
-    /* Sidebar: a deep shade of the brand colour */
-    --color-sidebar: color-mix(in oklab, var(--brand-primary) 62%, #03110d);
-    --color-sidebar-active: color-mix(in oklab, var(--brand-primary) 22%, #e9fbef);
+    /* Sidebar */
+    --color-sidebar: var(--brand-sidebar);
+    --color-sidebar-deep: color-mix(in oklab, var(--brand-sidebar) 70%, black);
+    --color-sidebar-active-from: color-mix(in oklab, var(--brand-primary) 28%, white);
+    --color-sidebar-active-to: color-mix(in oklab, var(--brand-primary) 58%, white);
 
     /* Feedback */
     --color-success-50: #e9f8ef;

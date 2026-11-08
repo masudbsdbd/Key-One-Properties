@@ -61,6 +61,13 @@ export function setPending(button, pending) {
  *    data-redirect follows body.data.redirect when present.
  */
 export function initAjaxForms(root = document) {
+    const disableNativeValidation = (scope) =>
+        scope.querySelectorAll?.('form[data-ajax-form]').forEach((form) => (form.noValidate = true));
+    disableNativeValidation(root);
+    new MutationObserver((records) =>
+        records.forEach((r) => r.addedNodes.forEach((node) => node.nodeType === 1 && disableNativeValidation(node.parentNode || node))),
+    ).observe(document.body, { childList: true, subtree: true });
+
     $(root).on('submit', 'form[data-ajax-form]', async function (event) {
         event.preventDefault();
         const form = this;
