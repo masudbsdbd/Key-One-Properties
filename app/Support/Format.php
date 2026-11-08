@@ -27,6 +27,17 @@ class Format
         return ($negative ? '-' : '').$symbol.' '.$grouped.($decimals ? '.'.$fraction : '');
     }
 
+    /** Quantity without trailing zeros, e.g. 12.500 -> 12.5. */
+    public static function qty(string|float|int|null $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+        $formatted = rtrim(rtrim(number_format((float) $value, 3, '.', ','), '0'), '.');
+
+        return $formatted === '-0' ? '0' : $formatted;
+    }
+
     public static function date(?CarbonInterface $date): string
     {
         return $date ? $date->format('d M Y') : '—';

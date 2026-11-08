@@ -12,6 +12,7 @@ use App\Modules\Core\Policies\UserPolicy;
 use App\Modules\Customers\Policies\CustomerPolicy;
 use App\Modules\Flats\Policies\FlatPolicy;
 use App\Modules\Projects\Policies\ProjectPolicy;
+use App\Modules\Purchasing\Policies\PurchasingAccess;
 use App\Support\Attachments\AttachableRegistry;
 use App\Support\Branding;
 use App\Support\Settings;
@@ -38,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Flat::class, FlatPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         ConstructionAccess::register();
+        PurchasingAccess::register();
 
         // Progress evidence: visible with the project; changeable by the submitter or an approver while still submitted.
         AttachableRegistry::register('construction-progress', ConstructionProgressUpdate::class, 'construction-progress:files-view', 'construction-progress:files-manage');

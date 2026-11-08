@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPublicId;
 use App\Support\Money;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -46,6 +47,17 @@ class SupplierBill extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** Bills linked to a project order follow project visibility; company bills are visible to purchases.view. */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->where(fn (Builder $q) => $q->whereNull('purchase_order_id')->orWhereHas('purchaseOrder', fn (Builder $po) => $po->visibleTo($user)));
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        return $this->purchase_order_id === null || $this->purchaseOrder->isVisibleTo($user);
     }
 
     public function paidAmount(): string

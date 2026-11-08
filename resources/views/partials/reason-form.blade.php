@@ -1,5 +1,5 @@
 {{-- Generic form for actions that need a reason (reject, reverse, cancel). --}}
-<form method="POST" action="{{ $action }}" data-ajax-form class="space-y-5">
+<form method="POST" action="{{ $action }}" data-ajax-form @if ($reload ?? false) data-reload-on-success @endif class="space-y-5">
     @csrf
     @if (($method ?? 'POST') !== 'POST') @method($method) @endif
     @if (! empty($summary))

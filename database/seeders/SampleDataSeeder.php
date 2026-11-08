@@ -9,6 +9,7 @@ use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
 use App\Models\Project;
 use App\Models\Role;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Modules\Customers\Services\CustomerService;
@@ -16,6 +17,7 @@ use App\Modules\Flats\Controllers\BuildingController;
 use App\Modules\Flats\Services\FlatService;
 use App\Modules\Inventory\Services\InventoryService;
 use App\Modules\Projects\Services\ProjectService;
+use App\Modules\Purchasing\Services\PurchasingService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -46,7 +48,12 @@ class SampleDataSeeder extends Seeder
         });
 
         $admin = User::query()->whereHas('roles', fn ($q) => $q->where('name', config('keyone.super_admin_role')))->first();
-        if (! $admin || Project::query()->exists()) {
+        if (! $admin) {
+            return;
+        }
+        if (Project::query()->exists()) {
+            $this->purchasing($admin);
+
             return;
         }
 
@@ -83,6 +90,7 @@ class SampleDataSeeder extends Seeder
         }
 
         $this->inventory($admin);
+        $this->purchasing($admin);
 
         $customers = app(CustomerService::class);
         foreach ([
@@ -143,5 +151,39 @@ class SampleDataSeeder extends Seeder
             $service->receive($wh, $materials->take(4)->map(fn ($p) => ['material' => $p[0], 'quantity' => (string) (500 + $i * 100), 'unit_cost' => $p[1]])->all(),
                 ['received_at' => now()->toDateString(), 'source' => 'opening'], $admin, (string) Str::uuid());
         });
+    }
+
+    private function purchasing(User $admin): void
+    {
+        $warehouse = Warehouse::query()->whereNotNull('project_id')->orderBy('id')->first();
+        if (Supplier::query()->exists() || ! $warehouse || ! Material::query()->exists()) {
+            return;
+        }
+
+        $service = app(PurchasingService::class);
+        $suppliers = collect([
+            ['Shah Cement Industries', 'Kamal Uddin', '01811000001', 'Narayanganj'],
+            ['BSRM Steels Ltd', 'Rafiq Ahmed', '01811000002', 'Chattogram'],
+            ['Meghna Bricks Field', 'Jalal Mia', '01811000003', 'Savar, Dhaka'],
+        ])->map(fn ($r) => $service->createSupplier(['name' => $r[0], 'contact_person' => $r[1], 'mobile' => $r[2], 'address' => $r[3], 'status' => 'active'], '0', $admin));
+
+        $material = fn (string $sku) => Material::query()->where('sku', $sku)->firstOrFail();
+        $po = $service->savePurchaseOrder(null, $suppliers[0], $warehouse, [
+            ['material' => $material('CEM-OPC-50'), 'quantity' => '500', 'unit_cost' => '515', 'discount' => '2500', 'tax' => '0'],
+        ], ['order_date' => now()->subDays(20)->toDateString(), 'expected_date' => now()->subDays(10)->toDateString()], $admin);
+        $service->submit($po, $admin);
+        $service->approve($po, $admin);
+        $line = $po->lines()->first();
+        $grn = $service->receive($po, [$line->id => ['received' => '300', 'accepted' => '300']], ['received_at' => now()->subDays(12)->toDateString(), 'supplier_challan_no' => 'SC-4411'], $admin, (string) Str::uuid());
+        $bill = $service->createBill($suppliers[0], $grn->lines()->pluck('id')->all(), [['description' => 'Transport', 'amount' => '3500']], '0',
+            ['supplier_invoice_no' => 'SCI-2026-118', 'invoice_date' => now()->subDays(11)->toDateString(), 'due_date' => now()->addDays(19)->toDateString()], $admin);
+        $service->approveBill($bill, $admin);
+        $service->createPayment($suppliers[0], '100000', [$bill->id => '100000'], ['payment_date' => now()->subDays(2)->toDateString(), 'payment_method' => 'bank', 'payment_reference' => 'DBBL-77812'], $admin, (string) Str::uuid());
+
+        $rods = $service->savePurchaseOrder(null, $suppliers[1], $warehouse, [
+            ['material' => $material('STL-ROD-12'), 'quantity' => '5000', 'unit_cost' => '94', 'discount' => '0', 'tax' => '0'],
+            ['material' => $material('STL-ROD-16'), 'quantity' => '3000', 'unit_cost' => '93.5', 'discount' => '0', 'tax' => '0'],
+        ], ['order_date' => now()->subDays(3)->toDateString()], $admin);
+        $service->submit($rods, $admin);
     }
 }

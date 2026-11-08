@@ -58,7 +58,8 @@
     [data-nav-group],
     [data-view-toggle],
     [data-line-add],
-    [data-line-remove] {
+    [data-line-remove],
+    [data-allocate-full] {
         cursor: pointer;
     }
 
