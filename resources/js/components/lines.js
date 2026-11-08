@@ -16,6 +16,8 @@ function addRow(container, initial = null) {
         select.append(new Option(initial.text, initial.material, true, true));
         if (initial.quantity) row.querySelector('[data-line-qty]').value = initial.quantity;
         if (initial.unit_cost && row.querySelector('[data-line-cost]')) row.querySelector('[data-line-cost]').value = initial.unit_cost;
+        if (initial.discount && row.querySelector('[data-line-discount]')) row.querySelector('[data-line-discount]').value = initial.discount;
+        if (initial.tax && row.querySelector('[data-line-tax]')) row.querySelector('[data-line-tax]').value = initial.tax;
     }
     initSelects(row);
     if (initial) refreshAvailable(container, row);
@@ -43,10 +45,13 @@ async function refreshAvailable(container, row) {
 function updateTotal(container) {
     const out = container.querySelector('[data-lines-total]');
     if (!out) return;
+    const num = (row, sel) => {
+        const v = row.querySelector(sel)?.value.replace(/,/g, '') || '0';
+        return Number.isNaN(Number(v)) ? '0' : v;
+    };
     const products = [...container.querySelectorAll('[data-line]')].map((row) => {
-        const q = row.querySelector('[data-line-qty]')?.value.replace(/,/g, '') || '0';
-        const c = row.querySelector('[data-line-cost]')?.value.replace(/,/g, '') || '0';
-        return Number.isNaN(Number(q)) || Number.isNaN(Number(c)) ? '0' : Decimal.product([q, c]);
+        const gross = Decimal.product([num(row, '[data-line-qty]'), num(row, '[data-line-cost]')]);
+        return Decimal.sum([gross, `-${num(row, '[data-line-discount]')}`.replace('--', ''), num(row, '[data-line-tax]')]);
     });
     out.textContent = `৳ ${Decimal.format(Decimal.sum(products))}`;
 }

@@ -5,16 +5,21 @@
     'costLabel' => 'Unit Cost',
     'qtyLabel' => 'Quantity',
     'signed' => false,
+    'pricing' => false,
     'lines' => [],
 ])
+@php
+    $grid = $pricing ? 'sm:grid-cols-[1fr_110px_120px_110px_110px_36px]' : ($cost ? 'sm:grid-cols-[1fr_140px_140px_36px]' : 'sm:grid-cols-[1fr_160px_36px]');
+    $cost = $cost || $pricing;
+@endphp
 {{-- Repeating material lines. Names: lines[i][material], lines[i][quantity], lines[i][unit_cost]. --}}
 <div data-lines @if ($availableUrl) data-available-url="{{ $availableUrl }}" data-warehouse="{{ $warehouseSelector }}" @endif {{ $attributes->merge(['class' => 'space-y-3']) }}>
-    <div class="hidden gap-3 text-[13px] font-medium text-ink-600 sm:grid {{ $cost ? 'sm:grid-cols-[1fr_140px_140px_36px]' : 'sm:grid-cols-[1fr_160px_36px]' }}">
-        <span>Material</span><span>{{ $qtyLabel }}</span>@if ($cost)<span>{{ $costLabel }}</span>@endif<span></span>
+    <div class="hidden gap-3 text-[13px] font-medium text-ink-600 sm:grid {{ $grid }}">
+        <span>Material</span><span>{{ $qtyLabel }}</span>@if ($cost)<span>{{ $costLabel }}</span>@endif @if ($pricing)<span>Discount</span><span>Tax</span>@endif<span></span>
     </div>
     <div class="space-y-3" data-line-rows></div>
     <template data-line-template>
-        <div class="grid items-start gap-3 rounded-card border border-line p-3 sm:border-0 sm:p-0 {{ $cost ? 'sm:grid-cols-[1fr_140px_140px_36px]' : 'sm:grid-cols-[1fr_160px_36px]' }}" data-line>
+        <div class="grid items-start gap-3 rounded-card border border-line p-3 sm:border-0 sm:p-0 {{ $grid }}" data-line>
             <div data-field>
                 <select name="lines[__I__][material]" data-select data-select-url="{{ route('options.materials') }}" data-placeholder="Search material" class="form-control" aria-label="Material" data-line-material><option value=""></option></select>
                 <p class="mt-1 text-[12px] text-ink-500" data-line-available></p>
@@ -29,6 +34,10 @@
                     <input name="lines[__I__][unit_cost]" class="form-control" inputmode="decimal" placeholder="0.00" aria-label="{{ $costLabel }}" data-line-cost>
                     <p class="form-error" data-error hidden></p>
                 </div>
+            @endif
+            @if ($pricing)
+                <div data-field><input name="lines[__I__][discount]" class="form-control" inputmode="decimal" placeholder="0" aria-label="Discount" data-line-discount><p class="form-error" data-error hidden></p></div>
+                <div data-field><input name="lines[__I__][tax]" class="form-control" inputmode="decimal" placeholder="0" aria-label="Tax" data-line-tax><p class="form-error" data-error hidden></p></div>
             @endif
             <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-line-remove aria-label="Remove line"><x-icon name="x" size="h-4 w-4" /></button>
         </div>
