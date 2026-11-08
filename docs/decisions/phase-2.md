@@ -148,15 +148,28 @@ Reuse `financial_events`. New types: `material.received`, `material.consumed`, `
 
 ## E. Implementation checklist
 
-- [ ] Shared foundation (sequences, attachments, cost allocations, events, permissions, navigation)
-- [ ] Construction
-- [ ] Inventory (WAC ledger, borrow, return, convert, transfer, adjustment, reconciliation)
-- [ ] Purchasing (PO, GRN, bill, payment, return, ledger)
-- [ ] Contractors (work order, measurement, bill, payment, ledger)
-- [ ] Expenses (general and project, approval, payment, reversal, reports)
-- [ ] Integration (reconciliation command, dashboards, exports, security sweep, docs)
+- [x] Shared foundation (sequences, attachments, cost allocations, events, permissions, navigation)
+- [x] Construction
+- [x] Inventory (WAC ledger, borrow, return, convert, transfer, adjustment, reconciliation)
+- [x] Purchasing (PO, GRN, bill, payment, return, ledger)
+- [x] Contractors (work order, measurement, bill, payment, ledger)
+- [x] Expenses (general and project, approval, payment, reversal, reports)
+- [x] Integration (reconciliation command, dashboards, exports, security sweep, docs)
 
-## F. Assumptions and open questions
+## F. Implementation notes
+
+- Line inputs (receipt, return, borrow quantities) are keyed by line position, not by line id;
+  `App\Support\LineKeys` maps them back on the server and maps validation errors to positions.
+- A supplier bill reserves its goods-receipt lines (`billed_bill_id`), so the same line cannot be billed twice.
+- Contractor payments carry `work_order_id`. A payment without a bill is an advance on that work order;
+  a bill's advance adjustment can only use advances of the same work order.
+- Contractor bills have a `kind`: `running` or `retention_release`. Settlement creates the release bill;
+  approving it completes the work order. A running bill cannot be reversed after its retention was released.
+- Expense history is kept in `expense_actions` (append-only).
+- `keyone:reconcile` rebuilds what each posted document should have written to the ledgers and
+  project cost and compares it with what was recorded. It runs nightly at 03:10.
+
+## G. Assumptions and open questions
 
 None block the build; each uses the recommended default above and can be changed later.
 

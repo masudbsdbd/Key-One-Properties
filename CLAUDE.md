@@ -135,7 +135,8 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
 
 - Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md` (Phase 1) and `KEY_ONE_PHASE_2_BLUEPRINT.md` (Phase 2).
   Phase 2 implementation decisions live in `docs/decisions/phase-2.md`.
-- Current phase: Phase 2 (Construction, Inventory, Purchasing, Contractors, Expenses).
+- Current phase: Phase 2 delivered (`docs/phase-2-report.md`). Start Phase 3 only when the user
+  gives its blueprint; until then only fixes and changes the user asks for.
 - Stack: PHP 8.3, Laravel 13, MySQL 8, Blade, Tailwind, jQuery AJAX, Select2.
 - IDs: BIGINT internal `id` never leaves the server. URLs, AJAX payloads and
   Select2 results use the random `public_id`. Business codes are display-only.
