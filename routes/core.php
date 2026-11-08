@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Core\Controllers\ActivityLogController;
 use App\Modules\Core\Controllers\DepartmentController;
 use App\Modules\Core\Controllers\OptionsController;
 use App\Modules\Core\Controllers\RoleController;
@@ -40,3 +41,6 @@ Route::prefix('departments')->name('departments.')->controller(DepartmentControl
 Route::prefix('options')->name('options.')->middleware('throttle:120,1')->controller(OptionsController::class)->group(function () {
     Route::get('users', 'users')->name('users');
 });
+
+Route::get('activity', [ActivityLogController::class, 'index'])->name('activity.index');
+Route::get('activity/table', [ActivityLogController::class, 'table'])->name('activity.table');
