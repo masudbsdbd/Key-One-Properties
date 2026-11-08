@@ -13,6 +13,7 @@ use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Purchasing\Services\PurchasingService;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -197,5 +198,28 @@ class PurchasingHttpTest extends TestCase
         $this->actingAs($viewer)->get(route('suppliers.ledger.export', $supplier))->assertForbidden();
         $this->actingAs($viewer)->ajax()->get(route('supplier-bills.create'))->assertForbidden();
         $this->actingAs($viewer)->ajax()->get(route('supplier-payments.create'))->assertForbidden();
+    }
+
+    public function test_payments_follow_the_projects_of_the_bills_they_settle(): void
+    {
+        $supplier = $this->supplier();
+        $po = $this->approvedOrder($supplier);
+        $line = $po->lines()->orderBy('id')->first();
+        $service = app(PurchasingService::class);
+        $grn = $service->receive($po, [$line->id => ['received' => '10', 'accepted' => '10']], ['received_at' => now()->toDateString()], $this->buyer, (string) Str::uuid());
+        $bill = $service->createBill($supplier, [$grn->lines()->first()->id], [], '0', ['invoice_date' => now()->toDateString()], $this->buyer);
+        $service->approveBill($bill, $this->approver);
+        $paid = $service->createPayment($supplier, '100', [$bill->id => '100'], ['payment_date' => now()->toDateString(), 'payment_method' => 'cash'], $this->buyer, (string) Str::uuid());
+        $advance = $service->createPayment($supplier, '50', [], ['payment_date' => now()->toDateString(), 'payment_method' => 'cash'], $this->buyer, (string) Str::uuid());
+
+        $outsider = $this->userWith(array_merge(self::BUYER, ['purchases.payment.approve']));
+        $this->actingAs($outsider)->get(route('supplier-payments.show', $paid))->assertForbidden();
+        $this->actingAs($outsider)->ajax()->post(route('supplier-payments.approve', $paid))->assertForbidden();
+        $this->actingAs($outsider)->get(route('supplier-payments.document', $paid))->assertForbidden();
+        $this->actingAs($outsider)->get(route('supplier-payments.show', $advance))->assertOk();
+        $html = $this->actingAs($outsider)->ajax()->get(route('supplier-payments.table'))->json('data.html');
+        $this->assertStringNotContainsString($paid->payment_no, $html);
+        $this->assertStringContainsString($advance->payment_no, $html);
+        $this->actingAs($this->buyer)->get(route('supplier-payments.show', $paid))->assertOk();
     }
 }

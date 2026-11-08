@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPublicId;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -31,6 +32,20 @@ class SupplierPayment extends Model
     public function allocations(): HasMany
     {
         return $this->hasMany(SupplierPaymentAllocation::class, 'payment_id');
+    }
+
+    /**
+     * Payments follow the bills they settle: a payment allocated to a bill of a project the user
+     * cannot see is hidden. Unallocated payments (advances) are company-level.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->whereDoesntHave('allocations', fn (Builder $a) => $a->whereNotIn('supplier_bill_id', SupplierBill::query()->visibleTo($user)->select('id')));
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        return ! $this->allocations()->whereNotIn('supplier_bill_id', SupplierBill::query()->visibleTo($user)->select('id'))->exists();
     }
 
     public function creator(): BelongsTo

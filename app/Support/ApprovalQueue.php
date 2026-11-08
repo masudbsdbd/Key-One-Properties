@@ -31,7 +31,7 @@ class ApprovalQueue
         $items = [
             ['purchases.approve', 'Purchase orders', 'note', 'purchase-orders.index', fn () => PurchaseOrder::query()->visibleTo($user)->where('status', 'submitted')],
             ['purchases.bill.approve', 'Supplier bills', 'file', 'supplier-bills.index', fn () => SupplierBill::query()->visibleTo($user)->where('status', 'draft')],
-            ['purchases.payment.approve', 'Supplier payments', 'tag', 'supplier-payments.index', fn () => SupplierPayment::query()->where('status', 'pending')],
+            ['purchases.payment.approve', 'Supplier payments', 'tag', 'supplier-payments.index', fn () => SupplierPayment::query()->visibleTo($user)->where('status', 'pending')],
             ['contractors.workorder.approve', 'Work orders', 'check-square', 'work-orders.index', fn () => ContractorWorkOrder::query()->visibleTo($user)->where('status', 'draft')],
             ['contractors.measurement.approve', 'Measurements', 'note', 'work-orders.index', fn () => ContractorMeasurement::query()->where('status', 'draft')->whereHas('workOrder', fn ($q) => $q->visibleTo($user))],
             ['contractors.bill.approve', 'Contractor bills', 'file', 'contractor-bills.index', fn () => ContractorBill::query()->visibleTo($user)->where('status', 'draft')],

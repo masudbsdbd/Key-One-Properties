@@ -29,8 +29,8 @@ class PurchasingAccess
 
         AttachableRegistry::register('supplier', Supplier::class, 'supplier:files-view', 'supplier:files-manage');
         AttachableRegistry::register('purchase-order', PurchaseOrder::class, 'po:files-view', 'po:files-manage');
-        Gate::define('payment:files-view', fn (User $u, SupplierPayment $p) => $u->can('purchases.view'));
-        Gate::define('payment:files-manage', fn (User $u, SupplierPayment $p) => $u->can('purchases.payment.create'));
+        Gate::define('payment:files-view', fn (User $u, SupplierPayment $p) => $u->can('purchases.view') && $p->isVisibleTo($u));
+        Gate::define('payment:files-manage', fn (User $u, SupplierPayment $p) => $u->can('purchases.payment.create') && $p->isVisibleTo($u));
         AttachableRegistry::register('supplier-payment', SupplierPayment::class, 'payment:files-view', 'payment:files-manage');
         AttachableRegistry::register('supplier-bill', SupplierBill::class, 'bill:files-view', 'bill:files-manage');
     }
