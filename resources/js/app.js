@@ -13,6 +13,8 @@ import { initAjaxForms } from './components/form';
 import { initAjaxTables } from './components/table';
 import { initShell } from './components/shell';
 import { initTabs } from './components/tabs';
+import { initAuthPages } from './pages/auth';
+import { initProfilePage } from './pages/profile';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects };
 
@@ -22,6 +24,8 @@ $(() => {
     initSelects(document);
     initAjaxForms(document);
     initAjaxTables(document);
+    initAuthPages();
+    initProfilePage();
 
     const flash = document.getElementById('flash-data');
     if (flash) {

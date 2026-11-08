@@ -83,6 +83,7 @@ export function initAjaxForms(root = document) {
                 method: 'POST',
                 url: form.action,
                 data: new FormData(form),
+                silent: form.dataset.silent === 'true',
             });
             if (body.message) toast.success(body.message);
             if (body.data?.redirect && form.dataset.redirect !== 'false') {
@@ -104,6 +105,7 @@ export function initAjaxForms(root = document) {
         } finally {
             form.dataset.pending = 'false';
             setPending(submit, false);
+            form.dispatchEvent(new CustomEvent('ajax:done', { bubbles: true }));
         }
     });
 

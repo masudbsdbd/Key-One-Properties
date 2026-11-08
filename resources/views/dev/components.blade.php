@@ -71,8 +71,6 @@
                     <x-button variant="secondary" data-modal-open="demo-modal">Open modal</x-button>
                     <x-button icon="calendar" data-modal-open="demo-drawer">Open drawer</x-button>
                 </div>
-                <x-button variant="ghost" class="mt-3" onclick="App.confirm({ title: 'Delete this record?', confirmText: 'Delete' })">Confirm dialog</x-button>
-                <x-button variant="ghost" onclick="App.toast.success('Saved successfully')">Toast</x-button>
             </div>
         </x-card>
     </div>

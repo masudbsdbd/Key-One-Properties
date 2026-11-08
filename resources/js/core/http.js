@@ -35,7 +35,7 @@ export class HttpError extends Error {
 
 function handleGlobal(error, { silent }) {
     if (error.status === 401) {
-        window.location.assign('/login');
+        window.location.assign(document.querySelector('meta[name="login-url"]')?.content || '/');
         return;
     }
     if (error.status === 0 || silent || error.status === 422) return;

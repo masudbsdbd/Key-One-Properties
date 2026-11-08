@@ -13,9 +13,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="login-url" content="{{ route('login') }}">
     <title>{{ $title ? $title.' · ' : '' }}{{ $branding->name() }}</title>
     <link rel="icon" href="{{ $branding->faviconUrl() ?? asset('favicon.ico') }}">
-    <script>
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
         try { if (localStorage.getItem('keyone.sidebar') === 'collapsed') document.documentElement.dataset.sidebar = 'collapsed'; } catch (e) {}
     </script>
     <style>:root { --brand-primary: {{ $branding->primaryColor() }}; --brand-sidebar: {{ $branding->sidebarColor() }}; }</style>
@@ -135,7 +136,7 @@
 
     @php($flash = array_filter(['success' => session('success'), 'error' => session('error')]))
     @if ($flash)
-        <script type="application/json" id="flash-data">@json($flash)</script>
+        <script type="application/json" id="flash-data" nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">@json($flash)</script>
     @endif
     @stack('scripts')
 </body>
