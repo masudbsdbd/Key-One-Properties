@@ -312,4 +312,18 @@ class ProfitTest extends TestCase
         $this->assertStringContainsString('status=submitted', $queue->firstWhere('label', 'Flat profit')['href']);
         $this->assertNull(collect(app(ApprovalQueue::class)->for($outsider))->firstWhere('label', 'Flat profit'));
     }
+
+    public function test_sales_and_collection_summary_by_project(): void
+    {
+        $user = $this->userWith(['projects.view', 'sales.sale.view', 'sales.export']);
+        $this->project->members()->attach($user->id);
+        $p = app(PaymentService::class);
+        $p->post($p->collect(null, $this->sale->fresh(), ['payment_date' => now()->toDateString(), 'amount' => '1250000', 'method' => 'cash'], $this->maker, (string) Str::uuid()), $this->checker);
+
+        $this->actingAs($user)->get(route('sales.overview'))->assertOk()->assertSee('50,00,000.00')->assertSee('12,50,000.00')->assertSee('37,50,000.00');
+        $csv = $this->actingAs($user)->get(route('sales.summary', ['format' => 'csv']))->assertOk()->streamedContent();
+        $this->assertStringContainsString($this->project->code, $csv);
+        $this->assertStringContainsString('3750000', str_replace([',', '.00'], '', $csv));
+        $this->actingAs($this->userWith(['sales.sale.view']))->get(route('sales.summary'))->assertForbidden();
+    }
 }

@@ -43,4 +43,30 @@
             @endforelse
         </x-card>
     </div>
+
+    <x-card title="By Project" :padded="false" class="mt-6">
+        <x-slot:actions>@can('sales.export')<x-export-menu :url="route('sales.summary')" />@endcan</x-slot:actions>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead><tr><th>Project</th><th class="text-right">Units</th><th class="text-right">Available</th><th class="text-right">Booked</th><th class="text-right">Sold</th><th class="text-right">Sales Value</th><th class="text-right">Collected</th><th class="text-right">Receivable</th><th class="text-right">Overdue</th></tr></thead>
+                <tbody>
+                    @forelse ($summary as $r)
+                        <tr>
+                            <td><span class="font-medium text-ink-900">{{ $r['project']->name }}</span><span class="block text-[13px] text-ink-500">{{ $r['project']->code }}</span></td>
+                            <td class="text-right tabular-nums">{{ number_format($r['units']) }}</td>
+                            <td class="text-right tabular-nums">{{ number_format($r['available']) }}</td>
+                            <td class="text-right tabular-nums">{{ number_format($r['booked']) }}</td>
+                            <td class="text-right tabular-nums">{{ number_format($r['sold']) }}</td>
+                            <td class="text-right"><x-money :value="$r['value']" /></td>
+                            <td class="text-right"><x-money :value="$r['collected']" /></td>
+                            <td class="text-right font-medium"><x-money :value="$r['receivable']" /></td>
+                            <td @class(['text-right', 'text-danger-600 font-medium' => App\Support\Money::isPositive($r['overdue'])])><x-money :value="$r['overdue']" /></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="9"><x-empty-state icon="building" title="No projects" /></td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-card>
 </x-layouts.app>

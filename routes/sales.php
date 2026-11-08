@@ -14,6 +14,7 @@ Route::middleware('throttle:120,1')->group(function () {
 });
 
 Route::get('sales-desk', [SalesOverviewController::class, 'overview'])->name('sales.overview');
+Route::get('sales-desk/summary', [SalesOverviewController::class, 'summaryExport'])->name('sales.summary');
 Route::get('sales-desk/availability', [SalesOverviewController::class, 'availability'])->name('sales.availability');
 Route::get('sales-desk/availability/board', [SalesOverviewController::class, 'board'])->name('sales.board');
 
