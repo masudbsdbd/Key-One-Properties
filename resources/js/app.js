@@ -15,8 +15,10 @@ import { initShell } from './components/shell';
 import { initTabs } from './components/tabs';
 import { initAuthPages } from './pages/auth';
 import { initProfilePage } from './pages/profile';
+import { initRemoteModal, openRemoteModal } from './components/remote-modal';
+import { initActions } from './components/actions';
 
-window.App = { http, toast, modal, confirm: confirmDialog, initSelects };
+window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal };
 
 $(() => {
     initShell();
@@ -26,6 +28,12 @@ $(() => {
     initAjaxTables(document);
     initAuthPages();
     initProfilePage();
+    initRemoteModal();
+    initActions();
+
+    const params = new URLSearchParams(window.location.search);
+    const autoCreate = document.querySelector('[data-auto-create]');
+    if (params.get('create') && autoCreate) autoCreate.click();
 
     const flash = document.getElementById('flash-data');
     if (flash) {

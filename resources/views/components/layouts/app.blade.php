@@ -132,6 +132,7 @@
     </div>
 
     <x-confirm-dialog />
+    <x-remote-modal />
     @stack('modals')
 
     @php($flash = array_filter(['success' => session('success'), 'error' => session('error')]))
