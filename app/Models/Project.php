@@ -94,6 +94,16 @@ class Project extends Model
         return $this->belongsTo(ProjectMedia::class, 'cover_media_id');
     }
 
+    public function buildings(): HasMany
+    {
+        return $this->hasMany(Building::class)->orderBy('code');
+    }
+
+    public function flats(): HasMany
+    {
+        return $this->hasMany(Flat::class);
+    }
+
     /**
      * Projects a user may see: all with projects.view_all, otherwise only those they are a member of.
      */
