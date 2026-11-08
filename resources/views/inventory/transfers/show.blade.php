@@ -21,8 +21,8 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="grid gap-6 xl:grid-cols-3">
-        <x-card class="xl:col-span-2">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <x-card class="min-w-0 xl:col-span-2">
             <div class="grid gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
                 <div><p class="detail-label">From</p><p class="detail-value font-semibold">{{ $transfer->sourceWarehouse->name }}</p><p class="text-[13px] text-ink-500">{{ $transfer->sourceWarehouse->project?->name ?? 'Company' }}</p></div>
                 <span class="icon-tile icon-tile-md tone-accent mx-auto"><x-icon name="arrow-right" /></span>

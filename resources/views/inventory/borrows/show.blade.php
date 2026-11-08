@@ -34,7 +34,7 @@
     </x-page-header>
 
     <div class="grid gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
                     <div><p class="detail-label">From</p><p class="detail-value font-semibold">{{ $borrow->sourceProject->name }}</p><p class="text-[13px] text-ink-500">{{ $borrow->sourceWarehouse->name }} · owner</p></div>

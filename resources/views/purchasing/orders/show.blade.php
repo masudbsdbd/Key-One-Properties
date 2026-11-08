@@ -39,7 +39,7 @@
     </x-page-header>
 
     <div class="grid gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-4">
                     <div class="sm:col-span-2"><p class="detail-label">Supplier</p><a href="{{ route('suppliers.show', $order->supplier) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $order->supplier->name }}</a><p class="text-[13px] text-ink-500">{{ $order->supplier->supplier_code }}</p></div>
