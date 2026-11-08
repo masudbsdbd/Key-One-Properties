@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Flat;
 use App\Models\FlatBooking;
+use App\Models\FlatSale;
 use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
@@ -17,6 +18,8 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Collections\Services\InstallmentService;
+use App\Modules\Collections\Services\PaymentService;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Modules\Customers\Services\CustomerService;
 use App\Modules\Expenses\Services\ExpenseService;
@@ -294,5 +297,25 @@ class SampleDataSeeder extends Seeder
         $service->approveBooking($booked, $admin);
         $make($flats[2], $customers[2], '4500000', '250000', 2);
         app(PriceRevisionService::class)->request($flats[3], (string) ((float) $flats[3]->list_price + 150000), 'Corner unit premium', $admin);
+
+        $this->collections($sale->fresh(), $booked->fresh(), $admin);
+    }
+
+    private function collections(FlatSale $sale, FlatBooking $booking, User $admin): void
+    {
+        $plans = app(InstallmentService::class);
+        $payments = app(PaymentService::class);
+        $pay = fn (?FlatBooking $b, ?FlatSale $s, string $amount, int $daysAgo, string $method, ?string $ref = null) => $payments->collect($b, $s,
+            ['payment_date' => now()->subDays($daysAgo)->toDateString(), 'amount' => $amount, 'method' => $method, 'reference_no' => $ref], $admin, (string) Str::uuid());
+
+        $plan = $plans->create($sale, ['start_date' => now()->subDays(30)->toDateString(), 'down_payment_amount' => '900000', 'installment_frequency' => 'monthly',
+            'count' => 12, 'first_due_date' => now()->subDays(20)->toDateString()], $admin);
+        $plans->submit($plan, $admin);
+        $plans->approve($plan, $admin);
+
+        $payments->post($pay(null, $sale, '900000', 28, 'bank', 'TRX-10021'), $admin);
+        $payments->post($pay(null, $sale, '150000', 5, 'cheque', 'CHQ-552310'), $admin);
+        $pay(null, $sale, '100000', 1, 'cash');
+        $payments->post($pay($booking, null, '300000', 11, 'mobile', 'BK-77120'), $admin);
     }
 }

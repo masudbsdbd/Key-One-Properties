@@ -102,10 +102,10 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
 
 ## 7. Implementation checklist
 
-- [ ] P1 UI shell: navigation, Phase 3 option sources, shared components
-- [ ] P2 Schema, models, permissions, claims, invariants
-- [ ] P3 Booking, sale, cancellation, refund, price revisions, registration, handover
-- [ ] P4 Installment plans, collections, allocation, late fees, reschedule, receipts, statement
+- [x] P1 UI shell: navigation, Phase 3 option sources, shared components
+- [x] P2 Schema, models, permissions, claims, invariants
+- [x] P3 Booking, sale, cancellation, refund, price revisions, registration, handover
+- [x] P4 Installment plans, collections, allocation, late fees, reschedule, receipts, statement
 - [ ] P5 Investors, agreements (≤ 100%), capital, investor ledger
 - [ ] P6 Cost allocation runs and flat profit calculations
 - [ ] P7 Profit approval, payable, distribution, payout

@@ -29,6 +29,7 @@ import { bindLineItems } from './components/lines';
 import { initInventoryPages } from './pages/inventory';
 import { initPurchasingPages, initExpenseForms } from './pages/purchasing';
 import { initContractorPages } from './pages/contractors';
+import { initCollectionPages } from './pages/collections';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
 
@@ -54,6 +55,7 @@ $(() => {
     initInventoryPages();
     initPurchasingPages();
     initContractorPages();
+    initCollectionPages();
     initExpenseForms();
 
     const params = new URLSearchParams(window.location.search);
