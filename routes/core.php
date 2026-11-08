@@ -57,3 +57,4 @@ Route::get('activity/table', [ActivityLogController::class, 'table'])->name('act
 
 Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
 Route::put('settings/branding', [SettingsController::class, 'updateBranding'])->name('settings.branding');
+Route::put('settings/profit-policy', [SettingsController::class, 'updateProfitPolicy'])->name('settings.profit-policy');

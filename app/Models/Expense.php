@@ -84,4 +84,9 @@ class Expense extends Model
     {
         return $user->can('expenses.create.'.$this->scope) && ($this->scope === 'general' || $this->project->isVisibleTo($user));
     }
+
+    public function flat(): BelongsTo
+    {
+        return $this->belongsTo(Flat::class);
+    }
 }

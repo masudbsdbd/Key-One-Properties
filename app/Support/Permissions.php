@@ -196,6 +196,7 @@ class Permissions
                 'investor.capital.return' => 'Return capital',
                 'investor.cost.view' => 'View flat cost',
                 'investor.cost.allocate' => 'Run cost allocation',
+                'investor.cost.approve' => 'Approve cost allocation',
                 'investor.profit.calculate' => 'Calculate flat profit',
                 'investor.profit.submit' => 'Submit profit calculations',
                 'investor.profit.approve' => 'Approve flat profit',

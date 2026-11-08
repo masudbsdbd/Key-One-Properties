@@ -47,6 +47,7 @@
                 <dl class="mt-5 grid gap-5 border-t border-line pt-5 sm:grid-cols-4">
                     <div><dt class="detail-label">Scope</dt><dd class="detail-value">@if ($expense->scope === 'project')<a href="{{ route('projects.show', $expense->project) }}" class="text-accent-700 hover:underline">{{ $expense->project->name }}</a>@else General @endif</dd></div>
                     <div><dt class="detail-label">Work Package</dt><dd class="detail-value">{{ $expense->workPackage?->label() ?? '—' }}</dd></div>
+                    @if ($expense->scope === 'project')<div><dt class="detail-label">Unit</dt><dd class="detail-value">{{ $expense->flat ? 'Unit '.$expense->flat->flat_no : 'Shared' }}</dd></div>@endif
                     <div><dt class="detail-label">Date</dt><dd class="detail-value">{{ App\Support\Format::date($expense->expense_date) }}</dd></div>
                     <div><dt class="detail-label">Paid To</dt><dd class="detail-value">{{ $expense->payee_name ?: '—' }}</dd></div>
                     @if ($s === 'paid' || $expense->paid_on)

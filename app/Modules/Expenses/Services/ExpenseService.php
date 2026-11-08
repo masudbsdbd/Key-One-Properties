@@ -58,6 +58,7 @@ class ExpenseService
                 'scope' => $scope,
                 'project_id' => $project?->id,
                 'work_package_id' => $package?->id,
+                'flat_id' => $scope === 'project' ? ($data['flat_id'] ?? null) : null,
                 'category_id' => $category->id,
                 'expense_date' => $data['expense_date'],
                 'description' => $data['description'],
@@ -89,7 +90,7 @@ class ExpenseService
 
             $expense->forceFill(['status' => 'approved', 'approved_by' => $user->id, 'approved_at' => now()])->save();
             if ($expense->scope === 'project') {
-                $this->costs->post($expense->project, $expense, 'expense', $expense->amount, $expense->expense_date, $expense->work_package_id);
+                $this->costs->post($expense->project, $expense, 'expense', $expense->amount, $expense->expense_date, $expense->work_package_id, $expense->flat_id);
             }
             $this->events->record('expenses', $expense, 'expense.approved', $expense->amount, $expense->expense_date,
                 ['expense_no' => $expense->expense_no, 'scope' => $expense->scope, 'category' => $expense->category->code, 'source_module' => 'expenses'],

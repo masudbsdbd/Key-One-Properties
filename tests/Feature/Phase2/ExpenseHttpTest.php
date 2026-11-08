@@ -4,8 +4,11 @@ namespace Tests\Feature\Phase2;
 
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Flat;
 use App\Models\Project;
+use App\Models\ProjectCostAllocation;
 use App\Models\User;
+use Database\Factories\FlatFactory;
 use Tests\TestCase;
 
 class ExpenseHttpTest extends TestCase
@@ -70,6 +73,21 @@ class ExpenseHttpTest extends TestCase
         $this->actingAs($this->clerk)->get(route('expenses.show', $expense))->assertOk()->assertSee('DESCO');
         $this->actingAs($this->clerk)->get(route('expenses.index'))->assertOk();
         $this->actingAs($this->manager)->get(route('expenses.export'))->assertForbidden();
+    }
+
+    public function test_project_expense_tagged_to_a_unit_becomes_direct_unit_cost(): void
+    {
+        $flat = Flat::factory()->forFloor(FlatFactory::floorFor($this->project))->create();
+        $foreign = Flat::factory()->forFloor(FlatFactory::floorFor(Project::factory()->create()))->create();
+        $input = ['scope' => 'project', 'project' => $this->project->public_id, 'category' => $this->utilities->public_id, 'expense_date' => now()->toDateString(), 'description' => 'Tiles for 3B', 'amount' => '900', 'submit' => '1'];
+        $this->assertSame($flat->public_id, $this->actingAs($this->clerk)->ajax()->get(route('options.expense-flats', ['project' => $this->project->public_id]))->json('results.0.id'));
+        $this->actingAs($this->clerk)->ajax()->post(route('expenses.store'), $input + ['flat' => $foreign->public_id])->assertStatus(422)->assertJsonValidationErrors('flat');
+        $this->actingAs($this->clerk)->ajax()->post(route('expenses.store'), $input + ['flat' => $flat->public_id])->assertOk();
+        $expense = Expense::query()->firstOrFail();
+        $this->actingAs($this->manager)->ajax()->post(route('expenses.approve', $expense))->assertOk();
+        $this->assertSame($flat->id, ProjectCostAllocation::query()->where('source_id', $expense->id)->value('flat_id'));
+        $this->actingAs($this->manager)->ajax()->post(route('expenses.reverse', $expense), ['reason' => 'Wrong unit'])->assertOk();
+        $this->assertSame([$flat->id, $flat->id], ProjectCostAllocation::query()->where('source_id', $expense->id)->pluck('flat_id')->all());
     }
 
     public function test_visibility_by_scope_and_project(): void

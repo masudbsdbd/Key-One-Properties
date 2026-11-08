@@ -4,6 +4,7 @@
     $today = now(config('app.display_timezone'))->toDateString();
     $projectOptions = $expense->project ? [$expense->project->public_id => $expense->project->name] : [];
     $packageOptions = $expense->workPackage ? [$expense->workPackage->public_id => $expense->workPackage->label()] : [];
+    $flatOptions = $expense->flat ? [$expense->flat->public_id => $expense->flat->building->code.' · Unit '.$expense->flat->flat_no] : [];
     $categoryOptions = $expense->category ? [$expense->category->public_id => $expense->category->label().' · '.$expense->category->code] : [];
 @endphp
 <form method="POST" action="{{ $expense->exists ? route('expenses.update', $expense) : route('expenses.store') }}" data-ajax-form class="grid gap-5 sm:grid-cols-2" data-expense-form>
@@ -14,6 +15,7 @@
     <div class="grid gap-5 sm:col-span-2 sm:grid-cols-2" data-expense-project @if ($expense->scope !== 'project') hidden @endif>
         <x-form.select name="project" id="exp-project" label="Project" :url="route('options.projects')" :options="$projectOptions" :selected="$expense->project?->public_id" required placeholder="Search projects" />
         <x-form.select name="work_package" label="Work Package" :url="route('options.work-packages')" depends-on="#exp-project" depends-param="project" :options="$packageOptions" :selected="$expense->workPackage?->public_id" placeholder="None" />
+        <x-form.select name="flat" label="Unit" :url="route('options.expense-flats')" depends-on="#exp-project" depends-param="project" :options="$flatOptions" :selected="$expense->flat?->public_id" placeholder="Shared by all units" wrapper-class="sm:col-span-2" />
     </div>
     <x-form.input name="description" label="Description" :value="$expense->description" required wrapper-class="sm:col-span-2" />
     <x-form.input name="payee_name" label="Paid To" :value="$expense->payee_name" />

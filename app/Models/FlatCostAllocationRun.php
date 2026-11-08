@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToVisibleProject;
 use App\Models\Concerns\HasPublicId;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,25 @@ class FlatCostAllocationRun extends Model
     public function allocations(): HasMany
     {
         return $this->hasMany(FlatCostAllocation::class, 'cost_run_id');
+    }
+
+    public function sourceMaxId(): int
+    {
+        return (int) ($this->snapshot_json['source_max_id'] ?? 0);
+    }
+
+    /** Cost rows posted after the run (up to its cutoff) or unit areas changed since. */
+    public function isStale(): bool
+    {
+        $newer = ProjectCostAllocation::query()->where('project_id', $this->project_id)->where('id', '>', $this->sourceMaxId())
+            ->whereDate('effective_at', '<=', $this->cost_cutoff)->exists();
+        if ($newer) {
+            return true;
+        }
+        $areas = collect($this->snapshot_json['flats'] ?? [])->pluck('area', 'id')->map(fn ($a) => (string) $a);
+        $current = Flat::query()->where('project_id', $this->project_id)->where('saleable_area', '>', 0)->pluck('saleable_area', 'id')->map(fn ($a) => (string) $a);
+
+        return $areas->count() !== $current->count() || $current->contains(fn ($a, $id) => ! isset($areas[$id]) || Money::cmp($areas[$id], $a) !== 0);
     }
 
     public function creator(): BelongsTo

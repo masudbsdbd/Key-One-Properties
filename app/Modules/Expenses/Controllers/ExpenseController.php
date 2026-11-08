@@ -5,6 +5,7 @@ namespace App\Modules\Expenses\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Flat;
 use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Expenses\Services\ExpenseService;
@@ -80,6 +81,17 @@ class ExpenseController extends Controller
         ];
     }
 
+    /** Units of a visible project, for tagging a project expense to one unit. */
+    public function flatOptions(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('expenses.create.project'), 403);
+        $project = Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first();
+        $query = Flat::query()->where('project_id', $project?->id ?? 0)->with('building:id,code')->orderBy('flat_no');
+        [$results, $more] = TableQuery::options($query, $request, ['flat_no'], fn (Flat $f) => ['id' => $f->public_id, 'text' => $f->building->code.' · Unit '.$f->flat_no]);
+
+        return Ajax::options($results, $more);
+    }
+
     public function create(Request $request): JsonResponse
     {
         abort_unless($request->user()->canAny(['expenses.create.general', 'expenses.create.project']), 403);
@@ -106,7 +118,7 @@ class ExpenseController extends Controller
     {
         $this->authorizeEdit($request, $expense);
 
-        return $this->form($expense->load(['project', 'workPackage', 'category.parent']), 'Edit '.$expense->expense_no);
+        return $this->form($expense->load(['project', 'workPackage', 'flat.building', 'category.parent']), 'Edit '.$expense->expense_no);
     }
 
     public function update(Request $request, Expense $expense): JsonResponse
@@ -121,7 +133,7 @@ class ExpenseController extends Controller
     public function show(Request $request, Expense $expense): View
     {
         abort_unless($expense->isVisibleTo($request->user()), 403);
-        $expense->load(['project', 'workPackage', 'category.parent', 'creator', 'actions.actor']);
+        $expense->load(['project', 'workPackage', 'flat', 'category.parent', 'creator', 'actions.actor']);
 
         return view('expenses.show', ['expense' => $expense]);
     }
@@ -222,6 +234,7 @@ class ExpenseController extends Controller
             'scope' => ['required', Rule::in(array_keys(Expense::SCOPES))],
             'project' => ['nullable', 'required_if:scope,project', 'string', 'size:16'],
             'work_package' => ['nullable', 'string', 'size:16'],
+            'flat' => ['nullable', 'string', 'size:16'],
             'category' => ['required', 'string', 'size:16'],
             'expense_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'description' => ['required', 'string', 'max:255'],
@@ -240,6 +253,10 @@ class ExpenseController extends Controller
             if (! empty($data['work_package'])) {
                 $package = WorkPackage::query()->where('project_id', $project->id)->where('public_id', $data['work_package'])->first()
                     ?? throw ValidationException::withMessages(['work_package' => 'Select a work package of this project.']);
+            }
+            if (! empty($data['flat'])) {
+                $data['flat_id'] = Flat::query()->where('project_id', $project->id)->where('public_id', $data['flat'])->value('id')
+                    ?? throw ValidationException::withMessages(['flat' => 'Select a unit of this project.']);
             }
         }
 

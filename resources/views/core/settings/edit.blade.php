@@ -72,4 +72,27 @@
             </div>
         </x-card>
     </form>
+
+    @php $policy = app(App\Modules\Investors\Services\ProfitPolicy::class); @endphp
+    <form method="POST" action="{{ route('settings.profit-policy') }}" data-ajax-form data-reload-on-success class="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
+        @csrf
+        @method('PUT')
+        <x-card title="Investor Profit Policy">
+            <div class="grid gap-5 sm:grid-cols-2">
+                <x-form.select name="revenue_recognition" label="Revenue Recognition" :options="App\Modules\Investors\Services\ProfitPolicy::RECOGNITION" :selected="$policy->revenueRecognition()" placeholder="Not set" :enhance="false" />
+                <x-form.select name="cost_policy" label="Cost Policy" :options="App\Modules\Investors\Services\ProfitPolicy::COST_POLICIES" :selected="$policy->costPolicy()" placeholder="Not set" :enhance="false" />
+            </div>
+            <x-form.actions>
+                <x-button type="submit" icon="check">Save</x-button>
+            </x-form.actions>
+        </x-card>
+        <x-card title="Profit Approval">
+            @if ($reason = $policy->blockingReason())
+                <x-badge tone="warning">Blocked</x-badge>
+                <p class="mt-2 text-sm text-ink-700">{{ $reason }}</p>
+            @else
+                <x-badge tone="success">Enabled</x-badge>
+            @endif
+        </x-card>
+    </form>
 </x-layouts.app>

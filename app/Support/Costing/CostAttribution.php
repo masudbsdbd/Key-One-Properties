@@ -16,7 +16,7 @@ use InvalidArgumentException;
  */
 class CostAttribution
 {
-    public function post(Project $project, Model $source, string $category, string $amount, CarbonInterface $effectiveAt, ?int $workPackageId = null): ProjectCostAllocation
+    public function post(Project $project, Model $source, string $category, string $amount, CarbonInterface $effectiveAt, ?int $workPackageId = null, ?int $flatId = null): ProjectCostAllocation
     {
         if (! array_key_exists($category, ProjectCostAllocation::CATEGORIES)) {
             throw new InvalidArgumentException("Unknown cost category [{$category}].");
@@ -31,6 +31,7 @@ class CostAttribution
             'cost_category' => $category,
             'amount' => Money::amount($amount),
             'work_package_id' => $workPackageId,
+            'flat_id' => $flatId,
             'effective_at' => $effectiveAt->toDateString(),
         ]);
     }
@@ -55,6 +56,7 @@ class CostAttribution
                 'cost_category' => $original->cost_category,
                 'amount' => Money::neg($original->amount),
                 'work_package_id' => $original->work_package_id,
+                'flat_id' => $original->flat_id,
                 'effective_at' => $effectiveAt->toDateString(),
                 'reversal_of_id' => $original->id,
             ],

@@ -5,6 +5,7 @@ use App\Modules\Expenses\Controllers\ExpenseController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('options/expense-categories', [ExpenseCategoryController::class, 'options'])->middleware('throttle:120,1')->name('options.expense-categories');
+Route::get('options/expense-flats', [ExpenseController::class, 'flatOptions'])->middleware('throttle:120,1')->name('options.expense-flats');
 
 Route::prefix('expense-categories')->name('expense-categories.')->controller(ExpenseCategoryController::class)->group(function () {
     Route::get('/', 'index')->name('index');

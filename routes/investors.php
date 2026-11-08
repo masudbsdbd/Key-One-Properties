@@ -2,6 +2,7 @@
 
 use App\Modules\Investors\Controllers\AgreementController;
 use App\Modules\Investors\Controllers\CapitalController;
+use App\Modules\Investors\Controllers\CostRunController;
 use App\Modules\Investors\Controllers\InvestorController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,4 +52,18 @@ Route::prefix('investor-capital')->name('investor-capital.')->controller(Capital
     Route::post('{transaction}/post', 'post')->name('post');
     Route::get('{transaction}/{action}/form', 'reasonForm')->whereIn('action', ['reject', 'reverse'])->name('reason');
     Route::post('{transaction}/{action}/reason', 'reason')->whereIn('action', ['reject', 'reverse'])->name('reason.store');
+});
+
+Route::prefix('cost-runs')->name('cost-runs.')->controller(CostRunController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
+    Route::get('create', 'create')->name('create');
+    Route::post('/', 'store')->name('store');
+    Route::get('{run}', 'show')->name('show');
+    Route::get('{run}/worksheet', 'worksheetExport')->name('worksheet');
+    Route::get('{run}/sources', 'sources')->name('sources');
+    Route::post('{run}/approve', 'approve')->name('approve');
+    Route::get('{run}/reject', 'rejectForm')->name('reject.form');
+    Route::post('{run}/reject', 'reject')->name('reject');
 });

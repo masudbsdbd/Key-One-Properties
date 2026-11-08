@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 use LogicException;
 
 /**
@@ -39,5 +41,28 @@ class ProjectCostAllocation extends Model
     public function reversalOf(): BelongsTo
     {
         return $this->belongsTo(self::class, 'reversal_of_id');
+    }
+
+    public function flat(): BelongsTo
+    {
+        return $this->belongsTo(Flat::class);
+    }
+
+    public function source(): MorphTo
+    {
+        return $this->morphTo();
+    }
+
+    /** Document number of the source row, or a readable fallback. */
+    public function sourceLabel(): string
+    {
+        $source = $this->source;
+        foreach (['expense_no', 'bill_no', 'issue_no', 'entry_no', 'payment_no'] as $field) {
+            if ($source && ! empty($source->{$field})) {
+                return $source->{$field};
+            }
+        }
+
+        return Str::headline(class_basename($this->source_type)).' #'.$this->source_id;
     }
 }
