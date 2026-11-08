@@ -30,7 +30,14 @@ class AuthorizationRegressionTest extends TestCase
 
     private function uri(Route $route): string
     {
-        return '/'.ltrim(preg_replace('/\{[^}]+\}/', 'aaaaaaaaaaaaaaaa', $route->uri()), '/');
+        // Use a value that satisfies the route's own constraints (e.g. {action} limited to reject|reverse).
+        $uri = preg_replace_callback('/\{([^}?]+)\??\}/', function (array $m) use ($route) {
+            $pattern = $route->wheres[$m[1]] ?? null;
+
+            return $pattern ? explode('|', trim($pattern, '()'))[0] : 'aaaaaaaaaaaaaaaa';
+        }, $route->uri());
+
+        return '/'.ltrim($uri, '/');
     }
 
     public function test_every_application_route_requires_authentication(): void
