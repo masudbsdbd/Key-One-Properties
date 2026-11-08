@@ -43,7 +43,7 @@
             <x-data-table :url="route('contractors.ledger', $contractor)" :search="false" :columns="[
                 ['label' => 'Date'], ['label' => 'Type'], ['label' => 'Description'], ['label' => 'Charge', 'class' => 'text-right'], ['label' => 'Payment', 'class' => 'text-right'], ['label' => 'Balance', 'class' => 'text-right'],
             ]">
-                <x-slot:toolbar><a href="{{ route('contractors.ledger.export', $contractor) }}" class="btn btn-secondary"><x-icon name="download" size="h-4 w-4" />CSV</a></x-slot:toolbar>
+                <x-slot:toolbar><x-export-menu :url="route('contractors.ledger.export', $contractor)" /></x-slot:toolbar>
             </x-data-table>
         </section>
     @endcan

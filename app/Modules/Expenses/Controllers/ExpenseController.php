@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Expenses\Services\ExpenseService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ExpenseController extends Controller
 {
@@ -44,20 +45,31 @@ class ExpenseController extends Controller
         return Ajax::table(view('expenses._rows', ['expenses' => $expenses, 'totals' => $totals])->render(), $expenses);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): Response
     {
         abort_unless($request->user()->can('expenses.export') && $request->user()->canAny(['expenses.view.general', 'expenses.view.project']), 403);
         $query = $this->filtered($request)->with(['project:id,code', 'category:id,code,name'])->orderBy('expense_date')->orderBy('id');
+        $total = (string) (clone $this->filtered($request))->whereIn('status', ['approved', 'paid'])->sum('amount');
 
-        return response()->streamDownload(function () use ($query) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Expense No', 'Date', 'Scope', 'Project', 'Category', 'Description', 'Payee', 'Amount', 'Status', 'Paid On', 'Method']);
-            foreach ($query->cursor() as $e) {
-                fputcsv($out, [$e->expense_no, $e->expense_date->toDateString(), Expense::SCOPES[$e->scope], $e->project?->code, $e->category->code.' '.$e->category->name,
-                    $e->description, $e->payee_name, $e->amount, Expense::STATUSES[$e->status], $e->paid_on?->toDateString(), $e->payment_method ? Expense::METHODS[$e->payment_method] : null]);
-            }
-            fclose($out);
-        }, 'expenses-'.now()->format('Ymd').'.csv', ['Content-Type' => 'text/csv']);
+        return Report::make('Expenses')
+            ->meta($this->filterSummary($request))
+            ->columns(['Expense No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Category' => 'text', 'Description' => 'text', 'Payee' => 'text', 'Amount' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $query->lazy()->map(fn (Expense $e) => [$e->expense_no, $e->expense_date, $e->project?->code ?? 'General', $e->category->name,
+                $e->description, $e->payee_name, $e->amount, Expense::STATUSES[$e->status]]))
+            ->totals([null, null, null, null, null, 'Approved and paid', $total, null])
+            ->respond($request);
+    }
+
+    /** @return array<string, string> */
+    private function filterSummary(Request $request): array
+    {
+        return [
+            'Status' => Expense::STATUSES[(string) $request->input('status')] ?? null,
+            'Scope' => Expense::SCOPES[(string) $request->input('scope')] ?? null,
+            'Project' => Project::findByPublicId($request->input('project'))?->name,
+            'Category' => ExpenseCategory::findByPublicId($request->input('category'))?->name,
+            'Period' => $request->filled('from') || $request->filled('to') ? ($request->input('from') ?: '…').' to '.($request->input('to') ?: '…') : null,
+        ];
     }
 
     public function create(Request $request): JsonResponse

@@ -6,6 +6,9 @@ use Carbon\CarbonInterface;
 
 class Format
 {
+    /** PDF fonts have no taka glyph; PDF rendering switches to "Tk". */
+    public static bool $plainSymbol = false;
+
     /**
      * Money with South Asian digit grouping, e.g. ৳ 1,23,45,678.00.
      */
@@ -22,7 +25,7 @@ class Format
         $rest = substr($whole, 0, -3);
         $grouped = $rest !== '' ? preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $rest).','.$last3 : $last3;
 
-        $symbol = config('app.currency') === 'BDT' ? '৳' : config('app.currency');
+        $symbol = config('app.currency') === 'BDT' ? (self::$plainSymbol ? 'Tk' : '৳') : config('app.currency');
 
         return ($negative ? '-' : '').$symbol.' '.$grouped.($decimals ? '.'.$fraction : '');
     }

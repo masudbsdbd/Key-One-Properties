@@ -8,17 +8,18 @@ use App\Models\ContractorLedgerEntry;
 use App\Models\ContractorWorkOrder;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
+use App\Support\Format;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ContractorController extends Controller
 {
@@ -102,18 +103,16 @@ class ContractorController extends Controller
             new LengthAwarePaginator($rows, $contractor->ledgerEntries()->count(), 50, $page));
     }
 
-    public function exportLedger(Request $request, Contractor $contractor): StreamedResponse
+    public function exportLedger(Request $request, Contractor $contractor): Response
     {
         abort_unless($request->user()->can('contractors.ledger.view'), 403);
 
-        return response()->streamDownload(function () use ($contractor) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Type', 'Description', 'Charge', 'Payment', 'Balance']);
-            foreach ($this->statement($contractor)->cursor() as $row) {
-                fputcsv($out, [$row->entry_date->toDateString(), ContractorLedgerEntry::TYPES[$row->entry_type] ?? $row->entry_type, $row->description, $row->charge_amount, $row->payment_amount, $row->running_balance]);
-            }
-            fclose($out);
-        }, Str::slug($contractor->contractor_code.'-ledger').'.csv', ['Content-Type' => 'text/csv']);
+        return Report::make('Contractor Statement')
+            ->meta(['Contractor' => $contractor->name.' ('.$contractor->contractor_code.')', 'Payable' => Format::money($contractor->balance())])
+            ->columns(['Date' => 'date', 'Type' => 'text', 'Description' => 'text', 'Charge' => 'money', 'Payment' => 'money', 'Balance' => 'money'])
+            ->rows(fn () => $this->statement($contractor)->lazy()->map(fn ($r) => [$r->entry_date, ContractorLedgerEntry::TYPES[$r->entry_type] ?? $r->entry_type, $r->description,
+                (float) $r->charge_amount ? $r->charge_amount : null, (float) $r->payment_amount ? $r->payment_amount : null, $r->running_balance]))
+            ->respond($request);
     }
 
     public function activity(Request $request, Contractor $contractor): JsonResponse

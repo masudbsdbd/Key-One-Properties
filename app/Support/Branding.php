@@ -41,6 +41,14 @@ class Branding
         return $this->publicUrl('branding.logo_path');
     }
 
+    /** Local file path of the logo, for PDF rendering. */
+    public function logoPath(): ?string
+    {
+        $path = $this->settings->get('branding.logo_path');
+
+        return $path && Storage::disk('public')->exists($path) ? Storage::disk('public')->path($path) : null;
+    }
+
     public function faviconUrl(): ?string
     {
         return $this->publicUrl('branding.favicon_path');

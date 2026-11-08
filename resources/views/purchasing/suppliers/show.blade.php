@@ -76,7 +76,7 @@
                 ['label' => 'Date'], ['label' => 'Type'], ['label' => 'Description'], ['label' => 'Charge', 'class' => 'text-right'], ['label' => 'Payment', 'class' => 'text-right'], ['label' => 'Balance', 'class' => 'text-right'],
             ]">
                 @can('suppliers.ledger.export')
-                    <x-slot:toolbar><a href="{{ route('suppliers.ledger.export', $supplier) }}" class="btn btn-secondary"><x-icon name="download" size="h-4 w-4" />CSV</a></x-slot:toolbar>
+                    <x-slot:toolbar><x-export-menu :url="route('suppliers.ledger.export', $supplier)" /></x-slot:toolbar>
                 @endcan
             </x-data-table>
         </section>

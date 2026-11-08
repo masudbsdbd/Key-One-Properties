@@ -17,7 +17,7 @@
             <input type="date" name="to" class="form-control w-40" data-table-filter aria-label="To date" data-tooltip="To">
         </x-slot:filters>
         @can('expenses.export')
-            <x-slot:toolbar><a href="{{ route('expenses.export') }}" data-table-export="{{ route('expenses.export') }}" class="btn btn-secondary"><x-icon name="download" size="h-4 w-4" />CSV</a></x-slot:toolbar>
+            <x-slot:toolbar><x-export-menu :url="route('expenses.export')" /></x-slot:toolbar>
         @endcan
     </x-data-table>
 </x-layouts.app>
