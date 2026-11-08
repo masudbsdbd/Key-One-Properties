@@ -36,3 +36,46 @@ Follow these rules in every session on this repository.
 - Conventional Commits style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `style:`, `test:`.
 - Commit messages in English, short and specific.
 - Do not commit code until the user gives the project/feature prompt.
+
+## Security rules
+
+### Login protection
+- 5 failed logins from one IP lock that IP out for 5 minutes. Also lock per username.
+- Login page shows a countdown of the remaining lock time. The server sends
+  `retry_after` seconds and enforces the lock; the client only displays it.
+- Read the client IP only from trusted proxies; never trust a raw `X-Forwarded-For`.
+
+### Two-factor authentication
+- TOTP (RFC 6238), works with Google Authenticator. QR setup plus backup codes.
+- Admin controls 2FA: require it per user or role, reset or disable a user's 2FA.
+- 2FA is mandatory for admin accounts. TOTP secrets are stored encrypted.
+
+### No sensitive data in URLs
+- Never expose a table's internal `id` in URLs, API responses, or forms.
+- Each table keeps an internal integer `id` and a random, unique `public_id`
+  (UUID or nanoid). Only `public_id` (or slug + `public_id`) leaves the server.
+- Every lookup by `public_id` checks server-side authorization (prevents IDOR).
+  Do not use Hashids or encoded integer ids.
+- No tokens, emails, phone numbers, reset codes, file paths, roles, or debug
+  flags in URLs. Files are served through signed, expiring URLs.
+
+### Injection and web attacks
+- All database access goes through the ORM or parameterized queries.
+  No string-concatenated SQL anywhere.
+- Validate all input on the server with schemas. Escape all output (XSS).
+- CSRF protection on every form. Security headers: CSP, HSTS, X-Frame-Options.
+- Errors never show stack traces, SQL errors, or framework versions to users.
+
+### Accounts and sessions
+- Hash passwords with Argon2id or bcrypt. Enforce a minimum length.
+- Cookies are httpOnly, Secure, SameSite. Rotate the session id after login.
+  Idle timeout and "log out of all devices" support.
+- Role-based access control (admin, agent, customer) enforced in middleware.
+
+### Operations
+- Admin panel lives on a non-obvious path, not `/admin`.
+- Audit log for logins, failed logins, password and 2FA changes, admin actions.
+- Rate limit public endpoints (search, contact form). Captcha against bots.
+- File uploads: check type and size, random filename, store outside web root.
+- Secrets live in `.env`, never in the repo. Scan dependencies for vulnerabilities.
+- Deferred: admin IP allowlist. Do not implement until the user asks.
