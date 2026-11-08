@@ -51,6 +51,9 @@ Follow these rules in every session on this repository.
 - Tooltips: every icon-only button or link has a short `aria-label` ("Edit 10A", "Change status");
   the global tooltip (`resources/js/components/tooltip.js`) shows it on hover and keyboard focus.
   Other elements can use `data-tooltip="..."`. Do not use the native `title` attribute.
+- Disabled controls explain why: every control that can be disabled carries a short
+  `data-disabled-reason` ("Preview the units first", "Select building first"), shown on hover.
+  Dependent selects get one automatically from the parent field's label.
 
 ## Security rules
 

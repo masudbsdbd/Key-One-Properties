@@ -2,6 +2,12 @@ import $ from 'jquery';
 import { http } from '../core/http';
 import { clearErrors, showErrors, setPending } from '../components/form';
 
+function lockTransfer(form) {
+    const submit = form.querySelector('[data-transfer-submit]');
+    submit.disabled = true;
+    submit.dataset.disabledReason = 'Preview the transfer first';
+}
+
 export function initInventoryPages() {
     document.addEventListener('click', async (event) => {
         const button = event.target.closest('[data-transfer-preview-button]');
@@ -13,7 +19,9 @@ export function initInventoryPages() {
         try {
             const res = await http.post(form.dataset.previewUrl, new FormData(form));
             form.querySelector('[data-transfer-preview]').innerHTML = res.data.html;
-            form.querySelector('[data-transfer-submit]').disabled = !res.data.ok;
+            const submit = form.querySelector('[data-transfer-submit]');
+            submit.disabled = !res.data.ok;
+            submit.dataset.disabledReason = 'Not enough stock for some lines';
         } catch (error) {
             if (error.status === 422) showErrors(form, error.errors);
         } finally {
@@ -23,10 +31,10 @@ export function initInventoryPages() {
 
     document.addEventListener('input', (event) => {
         const form = event.target.closest('[data-transfer-form]');
-        if (form) form.querySelector('[data-transfer-submit]').disabled = true;
+        if (form) lockTransfer(form);
     });
     $(document).on('change', '[data-transfer-form] select', function () {
-        this.closest('[data-transfer-form]').querySelector('[data-transfer-submit]').disabled = true;
+        lockTransfer(this.closest('[data-transfer-form]'));
     });
 
     document.addEventListener('ajax:success', (event) => {

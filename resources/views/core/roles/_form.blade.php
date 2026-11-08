@@ -22,7 +22,7 @@
                     <div class="space-y-2.5">
                         @foreach ($permissions as $name => $label)
                             <label class="flex items-center gap-2.5 text-sm {{ $grantable($name) ? 'text-ink-700' : 'text-ink-400' }}">
-                                <input type="checkbox" name="permissions[]" value="{{ $name }}" class="form-check" @checked(in_array($name, $granted, true)) @disabled(! $grantable($name))>
+                                <input type="checkbox" name="permissions[]" value="{{ $name }}" class="form-check" @checked(in_array($name, $granted, true)) @disabled(! $grantable($name)) @unless ($grantable($name)) data-disabled-reason="You can only grant permissions you have" @endunless>
                                 {{ $label }}
                             </label>
                         @endforeach

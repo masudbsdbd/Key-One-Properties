@@ -8,7 +8,10 @@ function bulkForm(target) {
 
 function invalidate(form) {
     const submit = form.querySelector('[data-bulk-submit]');
-    if (submit) submit.disabled = true;
+    if (submit) {
+        submit.disabled = true;
+        submit.dataset.disabledReason = 'Preview the units first';
+    }
     const preview = form.querySelector('[data-bulk-preview]');
     if (preview && preview.innerHTML) preview.classList.add('opacity-50');
 }
@@ -21,7 +24,9 @@ async function preview(form, button) {
         const box = form.querySelector('[data-bulk-preview]');
         box.classList.remove('opacity-50');
         box.innerHTML = res.data.html;
-        form.querySelector('[data-bulk-submit]').disabled = box.querySelector('[data-bulk-ready]')?.value !== '1';
+        const submit = form.querySelector('[data-bulk-submit]');
+        submit.disabled = box.querySelector('[data-bulk-ready]')?.value !== '1';
+        submit.dataset.disabledReason = 'Resolve the conflicts shown in the preview';
     } catch (error) {
         if (error.status === 422) showErrors(form, error.errors);
     } finally {

@@ -14,6 +14,7 @@ function startCountdown(form, seconds) {
 
     box.hidden = false;
     submit.disabled = true;
+    submit.dataset.disabledReason = 'Too many failed attempts. Wait for the timer.';
     form.dataset.locked = 'true';
     render();
 
@@ -38,7 +39,11 @@ export function initAuthPages() {
             if (error.status === 429) startCountdown(form, Number(error.payload.retry_after || 0));
         });
         form.addEventListener('ajax:done', () => {
-            if (form.dataset.locked === 'true') form.querySelector('[type="submit"]').disabled = true;
+            if (form.dataset.locked === 'true') {
+                const submit = form.querySelector('[type="submit"]');
+                submit.disabled = true;
+                submit.dataset.disabledReason = 'Too many failed attempts. Wait for the timer.';
+            }
         });
     }
 

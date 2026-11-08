@@ -48,6 +48,10 @@ export function initSelects(root = document) {
                 });
 
                 if (dependsOn) {
+                    if (!$el[0].dataset.disabledReason) {
+                        const label = document.querySelector(`label[for="${$(dependsOn).attr('id')}"]`)?.textContent.replace('*', '').trim();
+                        $el[0].dataset.disabledReason = label ? `Select ${label.toLowerCase()} first` : 'Fill in the field above first';
+                    }
                     $(dependsOn).on('change.dependent', () => {
                         $el.val(null).trigger('change');
                         $el.prop('disabled', !$(dependsOn).val());

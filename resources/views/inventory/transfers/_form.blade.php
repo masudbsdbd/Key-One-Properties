@@ -14,6 +14,6 @@
     <x-form.actions class="mt-0">
         <x-button variant="secondary" data-modal-close>Cancel</x-button>
         <x-button variant="secondary" icon="eye" data-transfer-preview-button>Preview</x-button>
-        <x-button type="submit" icon="check" disabled data-transfer-submit>Request Transfer</x-button>
+        <x-button type="submit" icon="check" disabled data-transfer-submit data-disabled-reason="Preview the transfer first">Request Transfer</x-button>
     </x-form.actions>
 </form>

@@ -27,7 +27,7 @@
         <x-form.actions class="mt-0">
             <x-button variant="secondary" data-modal-close>Cancel</x-button>
             <x-button variant="secondary" icon="eye" data-bulk-preview-button>Preview</x-button>
-            <x-button type="submit" icon="check" disabled data-bulk-submit>Create Units</x-button>
+            <x-button type="submit" icon="check" disabled data-bulk-submit data-disabled-reason="Preview the units first">Create Units</x-button>
         </x-form.actions>
     @endif
 </form>

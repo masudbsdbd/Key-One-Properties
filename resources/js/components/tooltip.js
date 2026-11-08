@@ -1,14 +1,31 @@
 /**
- * Small hover/focus tooltip for icon-only controls. Text comes from
- * data-tooltip, or from aria-label when the control has no visible text.
+ * Small hover/focus tooltip. Text comes from data-tooltip, or from aria-label
+ * when the control has no visible text. A disabled control with
+ * data-disabled-reason shows that reason instead.
  */
-const SELECTOR = '[data-tooltip], [data-tooltip-collapsed], button[aria-label], a[aria-label], [role="button"][aria-label], label[aria-label]';
+const SELECTOR = '[data-disabled-reason], .select2-container, [data-tooltip], [data-tooltip-collapsed], button[aria-label], a[aria-label], [role="button"][aria-label], label[aria-label]';
 const GAP = 8;
 
 let tip;
 let current;
 
+function isDisabled(el) {
+    return el.disabled || el.getAttribute('aria-disabled') === 'true' || !!el.closest('fieldset:disabled');
+}
+
+function disabledReason(el) {
+    if (el.classList.contains('select2-container')) {
+        const select = el.previousElementSibling;
+        return select?.tagName === 'SELECT' && select.disabled ? select.dataset.disabledReason || null : null;
+    }
+    const control = el.matches('label') ? el.querySelector('input, select, button') : el;
+    return control && isDisabled(control) ? control.dataset.disabledReason || el.dataset.disabledReason || null : null;
+}
+
 function textFor(el) {
+    const reason = disabledReason(el);
+    if (reason) return reason;
+    if (el.classList.contains('select2-container')) return null;
     if (el.dataset.tooltipCollapsed !== undefined) {
         return document.documentElement.dataset.sidebar === 'collapsed' && window.innerWidth >= 1024 ? el.dataset.tooltipCollapsed : null;
     }
@@ -36,7 +53,7 @@ function place(el) {
 
 function show(el) {
     const text = textFor(el);
-    if (!text || el.disabled && el.dataset.tooltip === undefined) return;
+    if (!text) return;
     current = el;
     tip.textContent = text;
     tip.hidden = false;
@@ -65,6 +82,7 @@ export function initTooltips() {
         if (e.pointerType === 'touch') return;
         const el = e.target.closest?.(SELECTOR);
         if (el && el !== current) show(el);
+        else if (!el && current) hide();
     });
     document.addEventListener('pointerout', (e) => {
         if (current && !current.contains(e.relatedTarget)) hide();

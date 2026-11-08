@@ -6,6 +6,7 @@ function sync(form) {
         toggle.checked = boxes.length > 0 && checked === boxes.length;
         toggle.indeterminate = checked > 0 && checked < boxes.length;
         toggle.disabled = boxes.length === 0;
+        toggle.dataset.disabledReason = 'You cannot grant permissions in this group';
     });
     const all = [...form.querySelectorAll('input[name="permissions[]"]:not(:disabled)')];
     const master = form.querySelector('[data-check-all]');
