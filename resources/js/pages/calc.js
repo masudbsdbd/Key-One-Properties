@@ -6,7 +6,7 @@ import { Decimal } from './decimal';
  */
 export function initCalculators() {
     document.addEventListener('input', (event) => {
-        const form = event.target.closest('[data-labour-form]');
+        const form = event.target.closest('[data-labour-form], [data-calc-form]');
         if (!form || !event.target.matches('[data-calc]')) return;
         const values = [...form.querySelectorAll('[data-calc]')].map((i) => i.value.replace(/,/g, ''));
         const total = values.every((v) => v !== '' && !Number.isNaN(Number(v))) ? Decimal.product(values) : '0.00';

@@ -84,7 +84,7 @@ class WorkPackageController extends Controller
     public function options(Request $request): JsonResponse
     {
         $project = Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first();
-        if (! $project || ! $request->user()->can('construction.view')) {
+        if (! $project || ! $request->user()->canAny(['construction.view', 'contractors.workorder.create'])) {
             return Ajax::options([]);
         }
 

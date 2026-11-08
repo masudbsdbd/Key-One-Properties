@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Contractor;
 use App\Models\Customer;
 use App\Models\Department;
 use App\Models\Material;
@@ -12,6 +13,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Contractors\Services\ContractorService;
 use App\Modules\Customers\Services\CustomerService;
 use App\Modules\Flats\Controllers\BuildingController;
 use App\Modules\Flats\Services\FlatService;
@@ -53,6 +55,7 @@ class SampleDataSeeder extends Seeder
         }
         if (Project::query()->exists()) {
             $this->purchasing($admin);
+            $this->contractors($admin);
 
             return;
         }
@@ -91,6 +94,7 @@ class SampleDataSeeder extends Seeder
 
         $this->inventory($admin);
         $this->purchasing($admin);
+        $this->contractors($admin);
 
         $customers = app(CustomerService::class);
         foreach ([
@@ -185,5 +189,37 @@ class SampleDataSeeder extends Seeder
             ['material' => $material('STL-ROD-16'), 'quantity' => '3000', 'unit_cost' => '93.5', 'discount' => '0', 'tax' => '0'],
         ], ['order_date' => now()->subDays(3)->toDateString()], $admin);
         $service->submit($rods, $admin);
+    }
+
+    private function contractors(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        if (Contractor::query()->exists() || ! $project) {
+            return;
+        }
+
+        $service = app(ContractorService::class);
+        $civil = $service->createContractor(['name' => 'Rahim Builders', 'trade' => 'Civil', 'contact_person' => 'Abdur Rahim', 'mobile' => '01911000001', 'status' => 'active'], $admin);
+        $service->createContractor(['name' => 'Bright Electric Works', 'trade' => 'Electrical', 'contact_person' => 'Sohel Rana', 'mobile' => '01911000002', 'status' => 'active'], $admin);
+
+        $wo = $service->saveWorkOrder(null, $civil, $project, null, [
+            'title' => 'Brick work, floors 1–5', 'scope' => 'Outer and partition walls with 1st class bricks.', 'contract_amount' => '1800000', 'retention_percent' => '5',
+            'start_date' => now()->subDays(40)->toDateString(), 'end_date' => now()->addDays(50)->toDateString(),
+        ], $admin);
+        $service->approveWorkOrder($wo, $admin);
+        $advance = $service->createPayment($wo, null, '150000', ['payment_date' => now()->subDays(38)->toDateString(), 'payment_method' => 'bank', 'reference' => 'DBBL-55120'], $admin, (string) Str::uuid());
+        $service->approvePayment($advance, $admin);
+
+        $ids = [];
+        foreach ([['1st floor walls', '4200', 85], ['2nd floor walls', '4200', 85], ['3rd floor walls', '3900', 85]] as $i => [$what, $qty, $rate]) {
+            $m = $service->recordMeasurement($wo, ['measurement_date' => now()->subDays(30 - $i * 8)->toDateString(), 'description' => $what, 'quantity' => $qty, 'unit' => 'sft', 'rate' => (string) $rate], $admin);
+            if ($i < 2) {
+                $service->approveMeasurement($m, $admin);
+                $ids[] = $m->id;
+            }
+        }
+        $bill = $service->createBill($wo, $ids, ['bill_date' => now()->subDays(10)->toDateString(), 'advance_adjustment' => '150000'], $admin);
+        $service->approveBill($bill, $admin);
+        $service->createPayment($wo, $bill->fresh(), '300000', ['payment_date' => now()->subDays(3)->toDateString(), 'payment_method' => 'cheque', 'reference' => 'CHQ-118802'], $admin, (string) Str::uuid());
     }
 }
