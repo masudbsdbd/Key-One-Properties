@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Modules\Core\Policies\UserPolicy;
 use App\Support\Branding;
 use App\Support\Settings;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -19,8 +21,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Super Admin passes every permission check explicitly; everyone else is deny-by-default.
-        Gate::before(fn ($user) => $user->isSuperAdmin() ? true : null);
+        // Super Admin holds every named permission ("module.action"); everyone else is deny-by-default.
+        // Policy abilities (no dot) still run so record-level rules apply to Super Admin too.
+        Gate::before(fn ($user, string $ability) => str_contains($ability, '.') && $user->isSuperAdmin() ? true : null);
+        Gate::policy(User::class, UserPolicy::class);
 
         if ($proxies = config('keyone.trusted_proxies')) {
             TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
