@@ -68,6 +68,39 @@ class Navigation
                 ],
             ],
             [
+                'title' => 'Sales',
+                'items' => [
+                    ['label' => 'Sales Overview', 'icon' => 'bar-chart', 'route' => 'sales.overview', 'active' => 'sales.overview', 'can' => ['sales.booking.view', 'sales.sale.view']],
+                    ['label' => 'Availability', 'icon' => 'grid', 'route' => 'sales.availability', 'active' => 'sales.availability', 'can' => ['sales.booking.view', 'sales.sale.view']],
+                    ['label' => 'Bookings', 'icon' => 'calendar-check', 'route' => 'bookings.index', 'active' => 'bookings.*', 'can' => 'sales.booking.view'],
+                    ['label' => 'Sales', 'icon' => 'door', 'route' => 'sales.index', 'active' => ['sales.index', 'sales.show', 'sales.table'], 'can' => 'sales.sale.view'],
+                    ['label' => 'Cancellations', 'icon' => 'x', 'route' => 'cancellations.index', 'active' => 'cancellations.*', 'can' => ['sales.booking.cancel.request', 'sales.booking.cancel.approve']],
+                    ['label' => 'Refunds', 'icon' => 'restore', 'route' => 'refunds.index', 'active' => 'refunds.*', 'can' => 'sales.refund.view'],
+                    ['label' => 'Price Revisions', 'icon' => 'tag', 'route' => 'price-revisions.index', 'active' => 'price-revisions.*', 'can' => 'sales.price.view'],
+                ],
+            ],
+            [
+                'title' => 'Collections',
+                'items' => [
+                    ['label' => 'Collections', 'icon' => 'bar-chart', 'route' => 'collections.overview', 'active' => 'collections.overview', 'can' => 'collections.payment.view'],
+                    ['label' => 'Installment Plans', 'icon' => 'calendar', 'route' => 'installment-plans.index', 'active' => 'installment-plans.*', 'can' => 'collections.plan.view'],
+                    ['label' => 'Payments', 'icon' => 'tag', 'route' => 'customer-payments.index', 'active' => 'customer-payments.*', 'can' => 'collections.payment.view'],
+                    ['label' => 'Dues & Overdue', 'icon' => 'clock', 'route' => 'dues.index', 'active' => 'dues.*', 'can' => 'collections.plan.view'],
+                    ['label' => 'Late Fees', 'icon' => 'alert', 'route' => 'late-fees.index', 'active' => 'late-fees.*', 'can' => 'collections.latefee.view'],
+                ],
+            ],
+            [
+                'title' => 'Investors',
+                'items' => [
+                    ['label' => 'Investors', 'icon' => 'users', 'route' => 'investors.index', 'active' => 'investors.*', 'can' => 'investor.view'],
+                    ['label' => 'Agreements', 'icon' => 'file', 'route' => 'investor-agreements.index', 'active' => 'investor-agreements.*', 'can' => 'investor.view'],
+                    ['label' => 'Capital', 'icon' => 'tag', 'route' => 'investor-capital.index', 'active' => 'investor-capital.*', 'can' => 'investor.view'],
+                    ['label' => 'Cost Allocation', 'icon' => 'layers', 'route' => 'cost-runs.index', 'active' => 'cost-runs.*', 'can' => 'investor.cost.view'],
+                    ['label' => 'Flat Profit', 'icon' => 'bar-chart', 'route' => 'profit-calculations.index', 'active' => 'profit-calculations.*', 'can' => 'investor.cost.view'],
+                    ['label' => 'Distributions', 'icon' => 'check-square', 'route' => 'distributions.index', 'active' => 'distributions.*', 'can' => 'investor.view'],
+                ],
+            ],
+            [
                 'title' => 'Administration',
                 'items' => [
                     ['label' => 'Users', 'icon' => 'user', 'route' => 'users.index', 'active' => 'users.*', 'can' => 'users.view'],

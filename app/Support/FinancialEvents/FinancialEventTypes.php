@@ -41,6 +41,10 @@ class FinancialEventTypes
         'investment.withdrawn' => 'Investor capital withdrawn',
         'profit.distribution_approved' => 'Investor profit distribution approved',
         'profit.distribution_paid' => 'Investor profit paid',
+        'sale.cancelled' => 'Approved sale cancelled',
+        'late_fee.assessed' => 'Late fee charged on an overdue installment',
+        'late_fee.waived' => 'Late fee waived',
+        'profit.payable_approved' => 'Flat profit approved as investor payable',
     ];
 
     /**

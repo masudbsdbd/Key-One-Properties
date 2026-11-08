@@ -69,6 +69,31 @@ class Customer extends Model
         return $this->hasMany(CustomerNote::class)->latest()->latest('id');
     }
 
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(FlatBooking::class);
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(FlatSale::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(CustomerPayment::class);
+    }
+
+    public function statementEntries(): HasMany
+    {
+        return $this->hasMany(CustomerStatementEntry::class);
+    }
+
+    public function lateFeePolicies(): HasMany
+    {
+        return $this->hasMany(CustomerLateFeePolicy::class);
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(CustomerDocument::class)->latest()->latest('id');

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -77,6 +78,31 @@ class Flat extends Model
     public function priceHistory(): HasMany
     {
         return $this->hasMany(FlatPriceHistory::class)->latest('effective_at')->latest('id');
+    }
+
+    public function claim(): HasOne
+    {
+        return $this->hasOne(ActiveFlatClaim::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(FlatBooking::class);
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(FlatSale::class);
+    }
+
+    public function priceRevisions(): HasMany
+    {
+        return $this->hasMany(FlatPriceRevision::class);
+    }
+
+    public function investorAgreements(): HasMany
+    {
+        return $this->hasMany(InvestorFlatAgreement::class);
     }
 
     public function statusHistory(): HasMany
