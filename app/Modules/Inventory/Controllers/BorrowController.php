@@ -11,6 +11,7 @@ use App\Modules\Inventory\Policies\InventoryAccess;
 use App\Modules\Inventory\Services\BorrowService;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Support\Ajax;
+use App\Support\LineKeys;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,10 +101,8 @@ class BorrowController extends Controller
     {
         abort_unless(InventoryAccess::borrow($request->user(), $borrow, 'approve'), 403);
         $data = $request->validate(['approved' => ['required', 'array'], 'approved.*' => ['required', 'numeric', 'min:0']]);
-        $lineIds = $borrow->lines()->pluck('id', 'id');
-        $approved = collect($data['approved'])->filter(fn ($v, $k) => isset($lineIds[$k]))->map(fn ($v) => (string) $v)->all();
-
-        $this->service->approve($borrow, $approved, $request->user());
+        $approved = collect($data['approved'])->map(fn ($v) => (string) $v)->all();
+        LineKeys::call($borrow->lines()->get(), $approved, 'approved', fn ($ids) => $this->service->approve($borrow, $ids, $request->user()));
 
         return Ajax::success('Borrow approved.');
     }
@@ -137,13 +136,15 @@ class BorrowController extends Controller
         ]);
         $quantities = collect($data['quantities'])->map(fn ($v) => (string) ($v ?? '0'))->all();
 
+        $lines = $borrow->lines()->get();
+
         if ($mode === 'return') {
-            $this->service->return($borrow, $quantities, $request->user(), $data['idempotency_key']);
+            LineKeys::call($lines, $quantities, 'quantities', fn ($ids) => $this->service->return($borrow, $ids, $request->user(), $data['idempotency_key']));
 
             return Ajax::success('Return recorded.');
         }
 
-        $transfer = $this->service->convert($borrow, $quantities, $data['reason'], $request->user(), $data['idempotency_key']);
+        $transfer = LineKeys::call($lines, $quantities, 'quantities', fn ($ids) => $this->service->convert($borrow, $ids, $data['reason'], $request->user(), $data['idempotency_key']));
 
         return Ajax::success($transfer ? 'Converted to transfer '.$transfer->transfer_no.'.' : 'Already converted.');
     }

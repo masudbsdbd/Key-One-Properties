@@ -128,16 +128,16 @@ class InventoryHttpTest extends TestCase
         $line = $borrow->lines()->firstOrFail();
 
         $this->actingAs($this->manager)->ajax()->post(route('borrows.issue', $borrow))->assertStatus(409);
-        $this->actingAs($this->manager)->ajax()->post(route('borrows.approve', $borrow), ['approved' => [$line->id => '60']])->assertStatus(422);
-        $this->actingAs($this->manager)->ajax()->post(route('borrows.approve', $borrow), ['approved' => [$line->id => '40']])->assertOk();
+        $this->actingAs($this->manager)->ajax()->post(route('borrows.approve', $borrow), ['approved' => [0 => '60']])->assertStatus(422)->assertJsonValidationErrors('approved.0');
+        $this->actingAs($this->manager)->ajax()->post(route('borrows.approve', $borrow), ['approved' => [0 => '40']])->assertOk();
         $this->actingAs($this->manager)->ajax()->post(route('borrows.issue', $borrow))->assertOk();
         $this->assertSame('40.000', StockBalance::query()->where('warehouse_id', $this->whB->id)->value('borrowed_in_qty'));
 
-        $this->actingAs($this->keeper)->ajax()->post(route('borrows.settle', [$borrow, 'return']), ['quantities' => [$line->id => '50'], 'idempotency_key' => (string) Str::uuid()])->assertStatus(409);
-        $this->actingAs($this->keeper)->ajax()->post(route('borrows.settle', [$borrow, 'return']), ['quantities' => [$line->id => '10'], 'idempotency_key' => (string) Str::uuid()])->assertOk();
+        $this->actingAs($this->keeper)->ajax()->post(route('borrows.settle', [$borrow, 'return']), ['quantities' => [0 => '50'], 'idempotency_key' => (string) Str::uuid()])->assertStatus(409);
+        $this->actingAs($this->keeper)->ajax()->post(route('borrows.settle', [$borrow, 'return']), ['quantities' => [0 => '10'], 'idempotency_key' => (string) Str::uuid()])->assertOk();
 
-        $this->actingAs($this->keeper)->ajax()->post(route('borrows.settle', [$borrow, 'convert']), ['quantities' => [$line->id => '5'], 'reason' => 'x', 'idempotency_key' => (string) Str::uuid()])->assertForbidden();
-        $this->actingAs($this->manager)->ajax()->post(route('borrows.settle', [$borrow, 'convert']), ['quantities' => [$line->id => '30'], 'reason' => 'Keep it', 'idempotency_key' => (string) Str::uuid()])->assertOk();
+        $this->actingAs($this->keeper)->ajax()->post(route('borrows.settle', [$borrow, 'convert']), ['quantities' => [0 => '5'], 'reason' => 'x', 'idempotency_key' => (string) Str::uuid()])->assertForbidden();
+        $this->actingAs($this->manager)->ajax()->post(route('borrows.settle', [$borrow, 'convert']), ['quantities' => [0 => '30'], 'reason' => 'Keep it', 'idempotency_key' => (string) Str::uuid()])->assertOk();
 
         $this->assertSame('closed', $borrow->fresh()->status);
         $this->assertSame('3000.00', StockBalance::query()->where('warehouse_id', $this->whB->id)->value('owned_value'));
