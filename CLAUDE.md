@@ -79,3 +79,36 @@ Follow these rules in every session on this repository.
 - File uploads: check type and size, random filename, store outside web root.
 - Secrets live in `.env`, never in the repo. Scan dependencies for vulnerabilities.
 - Deferred: admin IP allowlist. Do not implement until the user asks.
+
+## Product roadmap (Key One Properties ERP)
+
+Single-company real estate ERP: 16 modules over 5 phases. Build only the phase
+the user is currently on; never silently implement a future module. Keep
+schemas and code ready for later phases (routes isolated, accounting-ready).
+
+### Phase 1: Foundation & Master Data
+1. Core & Access Management
+2. Project Management
+3. Flat Inventory Management
+4. Customer Management
+
+### Phase 2: Construction & Operations
+5. Construction Management
+6. Material & Warehouse Management
+7. Supplier & Purchase Management
+8. Contractor Management
+9. Expense Management
+
+### Phase 3: Sales & Investment
+10. Booking & Sales Management
+11. Installment & Collection Management
+12. Investor Management
+
+### Phase 4: Portals & Reports
+13. Investor Portal
+14. Customer Portal
+15. Dashboard & Reports
+
+### Phase 5: Accounting & Finance
+16. Accounting & Finance: double-entry accounting, general ledger, vouchers,
+    balance sheet, profit & loss, cash flow
