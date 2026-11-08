@@ -3,6 +3,7 @@
 use App\Modules\Investors\Controllers\AgreementController;
 use App\Modules\Investors\Controllers\CapitalController;
 use App\Modules\Investors\Controllers\CostRunController;
+use App\Modules\Investors\Controllers\DistributionController;
 use App\Modules\Investors\Controllers\InvestorController;
 use App\Modules\Investors\Controllers\ProfitController;
 use Illuminate\Support\Facades\Route;
@@ -81,4 +82,25 @@ Route::prefix('profit-calculations')->name('profit-calculations.')->controller(P
     Route::post('{calculation}/{action}', 'decide')->whereIn('action', ['submit', 'approve'])->name('decide');
     Route::get('{calculation}/{action}/form', 'reasonForm')->whereIn('action', ['reject', 'cancel'])->name('reason');
     Route::post('{calculation}/{action}/reason', 'reason')->whereIn('action', ['reject', 'cancel'])->name('reason.store');
+});
+
+Route::prefix('distributions')->name('distributions.')->controller(DistributionController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('table', 'table')->name('table');
+    Route::get('payables', 'payables')->name('payables');
+    Route::get('export', 'export')->name('export');
+    Route::get('create', 'create')->name('create');
+    Route::post('/', 'store')->name('store');
+    Route::get('{distribution}', 'show')->name('show');
+    Route::post('{distribution}/approve', 'approve')->name('approve');
+    Route::get('{distribution}/reject', 'rejectForm')->name('reject.form');
+    Route::post('{distribution}/reject', 'reject')->name('reject');
+    Route::get('{distribution}/pay', 'payForm')->name('pay.form');
+    Route::post('{distribution}/pay', 'pay')->name('pay');
+});
+
+Route::prefix('payouts')->name('payouts.')->controller(DistributionController::class)->group(function () {
+    Route::get('{payout}/document', 'voucher')->name('document');
+    Route::get('{payout}/reverse', 'reverseForm')->name('reverse.form');
+    Route::post('{payout}/reverse', 'reverse')->name('reverse');
 });

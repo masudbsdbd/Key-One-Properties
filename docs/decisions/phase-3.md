@@ -127,7 +127,17 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
   against the payable already approved for that investor and unit (`profit_payable` in the investor ledger).
   An investor's new profit can never drop below what was already paid to them.
 
-## 9. Implementation checklist
+## 9. Distribution and payout (P7)
+
+- Approved payable → distribution request (`investor.profit.distribution.create`) → approval by another user
+  (`investor.profit.distribution.approve`) → payout (`investor.profit.payout.post`). Approval is not payment:
+  only a posted payout writes `profit_paid` to the investor ledger.
+- A request or approval can never exceed profit due less other open distributions; payouts re-check the due
+  amount. Requests and payouts carry idempotency keys; the investor row is locked while amounts are checked.
+- Reversing a payout (`investor.profit.reverse`) writes a reversal entry and a reversing financial event and
+  returns the distribution to Approved so it can be paid again or rejected.
+
+## 10. Implementation checklist
 
 - [x] P1 UI shell: navigation, Phase 3 option sources, shared components
 - [x] P2 Schema, models, permissions, claims, invariants
@@ -135,5 +145,5 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
 - [x] P4 Installment plans, collections, allocation, late fees, reschedule, receipts, statement
 - [x] P5 Investors, agreements (≤ 100%), capital, investor ledger
 - [x] P6 Cost allocation runs and flat profit calculations
-- [ ] P7 Profit approval, payable, distribution, payout
+- [x] P7 Profit approval, payable, distribution, payout
 - [ ] P8 Integration, reports, reconciliation, portal DTOs, release

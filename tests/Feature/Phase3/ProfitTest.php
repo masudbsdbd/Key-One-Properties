@@ -8,9 +8,12 @@ use App\Models\Flat;
 use App\Models\FlatProfitCalculation;
 use App\Models\FlatSale;
 use App\Models\Investor;
+use App\Models\InvestorPayout;
+use App\Models\InvestorProfitDistribution;
 use App\Models\Project;
 use App\Models\User;
 use App\Modules\Investors\Services\CostAllocationService;
+use App\Modules\Investors\Services\DistributionService;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Investors\Services\ProfitService;
@@ -18,7 +21,9 @@ use App\Modules\Sales\Services\SalesService;
 use App\Support\Costing\CostAttribution;
 use App\Support\Settings;
 use Database\Factories\FlatFactory;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
 class ProfitTest extends TestCase
@@ -178,5 +183,77 @@ class ProfitTest extends TestCase
         $outsider = $this->userWith(['projects.view', 'investor.cost.view', 'investor.profit.calculate', 'investor.profit.approve']);
         $this->actingAs($outsider)->get(route('profit-calculations.show', $c))->assertForbidden();
         $this->actingAs($outsider)->ajax()->post(route('profit-calculations.store'), ['flat' => $this->flat->public_id, 'as_of' => now()->toDateString()])->assertStatus(422);
+    }
+
+    public function test_distribution_approval_payout_and_reversal(): void
+    {
+        $this->configure();
+        $this->profit->approve($this->calc(), $this->checker);
+        $karim = $this->investors[0];
+        $service = app(DistributionService::class);
+        $this->assertSame('2340000.00', DistributionService::available($karim, $this->flat->id));
+
+        $d = $service->request($karim, $this->flat, '2000000', $this->maker, (string) Str::uuid());
+        $this->refused(fn () => $service->request($karim, $this->flat, '340000.01', $this->maker, (string) Str::uuid()), '340000.00');
+        $this->refused(fn () => $service->approve($d, $this->maker), 'cannot approve');
+        try {
+            $service->pay($d, ['paid_at' => now()->toDateString(), 'payment_method' => 'bank'], $this->maker, (string) Str::uuid());
+            $this->fail('Unapproved distribution must not be paid.');
+        } catch (ConflictHttpException) {
+        }
+        $service->approve($d, $this->checker);
+        $this->assertSame('0.00', InvestorLedger::balances($karim, $this->flat->id)['paid']);
+
+        $key = (string) Str::uuid();
+        $payout = $service->pay($d, ['paid_at' => now()->toDateString(), 'payment_method' => 'bank', 'payment_reference' => 'TRX'], $this->maker, $key);
+        $this->assertTrue($payout->is($service->pay($d->fresh(), ['paid_at' => now()->toDateString(), 'payment_method' => 'bank'], $this->maker, $key)));
+        $this->assertSame(['capital' => '0.00', 'payable' => '2340000.00', 'paid' => '2000000.00', 'profit_due' => '340000.00'], InvestorLedger::balances($karim, $this->flat->id));
+        $this->assertSame(1, FinancialEvent::query()->where('event_type', 'profit.distribution_paid')->count());
+
+        // A new calculation can never cut an investor's profit below what was already paid.
+        $this->cost('3000000.00', $this->flat);
+        $this->approveRun();
+        $lower = $this->calc();
+        $this->refused(fn () => $this->profit->approve($lower, $this->checker), 'already paid more');
+
+        $service->reversePayout($payout, 'Cheque bounced', $this->checker);
+        $this->assertSame('0.00', InvestorLedger::balances($karim, $this->flat->id)['paid']);
+        $this->assertSame('approved', $d->fresh()->status);
+        $this->assertSame(1, FinancialEvent::query()->where('event_type', 'profit.distribution_paid')->whereNotNull('reversal_of_id')->count());
+    }
+
+    public function test_distribution_screens(): void
+    {
+        $this->configure();
+        $this->profit->approve($this->calc(), $this->checker);
+        $officer = $this->userWith(['projects.view', 'investor.view', 'investor.profit.distribution.create', 'investor.profit.payout.post', 'investor.ledger.export']);
+        $approver = $this->userWith(['projects.view', 'investor.view', 'investor.profit.distribution.approve', 'investor.profit.reverse']);
+        $this->project->members()->attach([$officer->id, $approver->id]);
+        $karim = $this->investors[0];
+
+        $this->assertStringContainsString('23,40,000.00', $this->actingAs($officer)->ajax()->get(route('distributions.payables'))->assertOk()->json('data.html'));
+        $this->actingAs($officer)->ajax()->get(route('distributions.create', ['investor' => $karim->public_id, 'flat' => $this->flat->public_id]))->assertOk();
+        $input = ['investor' => $karim->public_id, 'flat' => $this->flat->public_id, 'amount' => '9,999,999', 'idempotency_key' => (string) Str::uuid()];
+        $this->actingAs($officer)->ajax()->post(route('distributions.store'), $input)->assertStatus(422)->assertJsonValidationErrors('amount');
+        $this->actingAs($officer)->ajax()->post(route('distributions.store'), ['amount' => '1,000,000'] + $input)->assertOk();
+        $d = InvestorProfitDistribution::query()->firstOrFail();
+        $this->actingAs($officer)->ajax()->post(route('distributions.approve', $d))->assertForbidden();
+        $this->actingAs($approver)->ajax()->post(route('distributions.approve', $d))->assertOk();
+        $this->actingAs($officer)->ajax()->post(route('distributions.pay', $d), ['paid_at' => now()->toDateString(), 'payment_method' => 'cheque', 'idempotency_key' => (string) Str::uuid()])
+            ->assertStatus(422)->assertJsonValidationErrors('payment_reference');
+        $this->actingAs($officer)->ajax()->post(route('distributions.pay', $d), ['paid_at' => now()->toDateString(), 'payment_method' => 'cash', 'idempotency_key' => (string) Str::uuid()])->assertOk();
+        $payout = InvestorPayout::query()->firstOrFail();
+        $this->assertStringStartsWith('%PDF', $this->actingAs($officer)->get(route('payouts.document', $payout).'?format=pdf')->getContent());
+        $this->actingAs($approver)->get(route('distributions.show', $d))->assertOk()->assertSee($payout->payout_no);
+        $this->actingAs($officer)->ajax()->post(route('payouts.reverse', $payout), ['reason' => 'x'])->assertForbidden();
+        $this->actingAs($approver)->ajax()->post(route('payouts.reverse', $payout), ['reason' => 'Bounced'])->assertOk();
+        $this->actingAs($approver)->get(route('distributions.index'))->assertOk();
+        $this->actingAs($approver)->ajax()->get(route('distributions.table'))->assertOk();
+        $this->actingAs($officer)->get(route('distributions.export', ['format' => 'csv']))->assertOk();
+
+        $outsider = $this->userWith(['projects.view', 'investor.view', 'investor.profit.distribution.create', 'investor.profit.distribution.approve']);
+        $this->actingAs($outsider)->get(route('distributions.show', $d))->assertForbidden();
+        $this->assertStringNotContainsString($karim->name, (string) $this->actingAs($outsider)->ajax()->get(route('distributions.payables'))->json('data.html'));
+        $this->actingAs($outsider)->ajax()->post(route('distributions.store'), $input)->assertStatus(422)->assertJsonValidationErrors('flat');
     }
 }

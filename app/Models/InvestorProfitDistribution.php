@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -43,5 +44,15 @@ class InvestorProfitDistribution extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->whereIn($this->qualifyColumn('flat_id'), Flat::query()->visibleTo($user)->select('flats.id'));
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        return $this->flat !== null && $this->flat->isVisibleTo($user);
     }
 }
