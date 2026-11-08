@@ -9,6 +9,7 @@ use App\Models\Floor;
 use App\Models\Project;
 use App\Modules\Flats\Requests\FlatRequest;
 use App\Modules\Flats\Services\FlatService;
+use App\Modules\Sales\Services\PriceRevisionService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\TableQuery;
@@ -170,9 +171,9 @@ class FlatController extends Controller
             'reason' => ['required', 'string', 'max:255'],
         ]);
 
-        $this->service->changePrice($flat, $data['list_price'], $data['reason'], $request->user());
+        app(PriceRevisionService::class)->request($flat, (string) $data['list_price'], $data['reason'], $request->user());
 
-        return Ajax::success('Price updated.');
+        return Ajax::success('Price change sent for approval.');
     }
 
     public function statusForm(Flat $flat): JsonResponse

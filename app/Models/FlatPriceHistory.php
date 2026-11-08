@@ -10,7 +10,7 @@ class FlatPriceHistory extends Model
 {
     protected $table = 'flat_price_history';
 
-    protected $fillable = ['old_price', 'new_price', 'reason', 'changed_by', 'effective_at'];
+    protected $fillable = ['old_price', 'new_price', 'reason', 'changed_by', 'approved_by', 'effective_at'];
 
     protected function casts(): array
     {

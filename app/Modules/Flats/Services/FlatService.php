@@ -47,9 +47,9 @@ class FlatService
         return $flat;
     }
 
-    public function changePrice(Flat $flat, string $newPrice, string $reason, User $user): void
+    public function changePrice(Flat $flat, string $newPrice, string $reason, User $user, ?User $approver = null): void
     {
-        DB::transaction(function () use ($flat, $newPrice, $reason, $user) {
+        DB::transaction(function () use ($flat, $newPrice, $reason, $user, $approver) {
             $locked = Flat::query()->lockForUpdate()->findOrFail($flat->id);
             $new = number_format((float) $newPrice, 2, '.', '');
 
@@ -62,12 +62,24 @@ class FlatService
                 'new_price' => $new,
                 'reason' => $reason,
                 'changed_by' => $user->id,
+                'approved_by' => $approver?->id,
                 'effective_at' => now(),
             ]);
 
             $locked->list_price = $new;
             $locked->save();
         });
+    }
+
+    /** Booked / sold / available transitions driven by the sales workflow. Caller holds the flat lock. */
+    public function setSalesStatus(Flat $flat, string $status, string $reason, User $user): void
+    {
+        if ($flat->status === $status) {
+            return;
+        }
+        $flat->statusHistory()->create(['from_status' => $flat->status, 'to_status' => $status, 'reason' => $reason, 'changed_by' => $user->id, 'changed_at' => now()]);
+        $flat->status = $status;
+        $flat->save();
     }
 
     public function changeStatus(Flat $flat, string $status, ?string $reason, User $user): void
