@@ -130,7 +130,10 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
 - IDs: BIGINT internal `id` never leaves the server. URLs, AJAX payloads and
   Select2 results use the random `public_id`. Business codes are display-only.
 - 2FA: TOTP available but not mandatory for any role yet.
-- Login: by email or mobile (both supported). Password reset by email.
+- Login: by email or mobile (both supported).
+- Password reset (for now): no email reset. The forgot-password page sends a request to
+  administrators (`users.reset_password`); an admin sets a new password and the user must
+  change it at next sign-in.
 - Flat number unique within a building: UQ(building_id, flat_no).
 - Customer `primary_mobile` is unique.
 - Customer NID/passport: optional field, stored encrypted, shown masked.

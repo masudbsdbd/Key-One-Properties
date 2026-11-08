@@ -29,7 +29,6 @@
    | `SESSION_SECURE_COOKIE` | `true` (HTTPS only) |
    | `LOGIN_PATH` | a non-obvious path instead of `login` |
    | `TRUSTED_PROXIES` | proxy IPs only when behind Cloudflare or a load balancer |
-   | `MAIL_*` | SMTP for password reset emails |
    | `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD` | first admin, used by the seeder only |
 
 5. Run:

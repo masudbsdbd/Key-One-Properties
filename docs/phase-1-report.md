@@ -5,7 +5,7 @@
 | Area | What works |
 | --- | --- |
 | Foundation | Laravel 13, MySQL 8, Tailwind 4, jQuery, Select2, navy/gold design system, configurable brand and sidebar colours, reusable Blade components, AJAX helpers (forms, tables, modals, partial reloads) |
-| Security | Sign-in by email or mobile, 5-attempt / 5-minute lock per IP and per username with live countdown, optional TOTP 2FA with recovery codes and admin control, password reset by email, session revocation, CSP / HSTS / frame headers, random `public_id` in every URL, private file storage, audit log |
+| Security | Sign-in by email or mobile, admin-handled password reset requests, 5-attempt / 5-minute lock per IP and per username with live countdown, optional TOTP 2FA with recovery codes and admin control, password reset by email, session revocation, CSP / HSTS / frame headers, random `public_id` in every URL, private file storage, audit log |
 | Core | Users, roles and permissions (with escalation guards), departments, activity log with redacted diffs, branding settings, profile, global search |
 | Projects | Directory (table and cards), CRUD and archive, stages with reorder, immutable progress updates, stage-average progress, gallery, team, project activity |
 | Flats | Buildings and floors, units with dependent selects, bulk create with preview and idempotency, immutable price and status history, unit images |
@@ -17,7 +17,7 @@
 
 | Check | Result |
 | --- | --- |
-| Automated tests (`php artisan test`, MySQL) | 100 passed, 533 assertions |
+| Automated tests (`php artisan test`, MySQL) | 104 passed, 570 assertions |
 | Migrations | `migrate:reset` then `migrate --seed` succeed |
 | Code style (`pint --test`) | passed |
 | Asset build (`npm run build`) | passed |
@@ -29,8 +29,9 @@ without signing in or without a permission check.
 
 ## Known gaps and decisions to revisit
 
-- Email delivery is not configured here (`MAIL_MAILER=log`); set SMTP before go-live.
-- The notifications panel is in place, but no Phase 1 action sends notifications yet.
+- Password reset is handled by administrators (request, notification, admin reset, forced change).
+  Email-based reset can be added later once SMTP is available.
+- Notifications are sent for password reset requests only; other Phase 1 actions do not notify yet.
 - `approval_requests` exists as a foundation only; approval workflows arrive with the modules that need them.
 - Stage reordering uses up/down buttons (keyboard accessible) rather than drag and drop.
 - Images are served at original size; there is no thumbnail generation.

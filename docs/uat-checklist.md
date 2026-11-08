@@ -7,7 +7,9 @@ Tick each item on desktop and on a phone. Record the tester and date.
 - [ ] Sign in with email; sign in with mobile in any format (01…, +880…, with dashes).
 - [ ] Five wrong passwords lock sign-in for 5 minutes; the countdown shows and survives a page reload.
 - [ ] The lock also applies to the same username from another network.
-- [ ] Forgot password sends an email; the link works once and expires in 30 minutes.
+- [ ] Forgot password sends a request; admins see it in the bell and under Reset Requests.
+- [ ] Admin resets the password; the user's other sessions end and they must change it at next sign-in.
+- [ ] The forgot-password answer is the same for unknown accounts.
 - [ ] Enable Google Authenticator from Profile; sign-in then asks for the code; a recovery code works once.
 - [ ] Admin can require 2FA for a user and reset a user's 2FA.
 - [ ] A deactivated user is signed out on their next click.
