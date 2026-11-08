@@ -69,6 +69,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Display Timezone and Currency
+    |--------------------------------------------------------------------------
+    |
+    | Timestamps are stored in UTC and rendered in the display timezone.
+    | Money defaults to the configured currency code.
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Dhaka'),
+
+    'currency' => env('APP_CURRENCY', 'BDT'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
