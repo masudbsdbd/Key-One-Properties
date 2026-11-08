@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Core\Controllers\DepartmentController;
+use App\Modules\Core\Controllers\OptionsController;
 use App\Modules\Core\Controllers\RoleController;
 use App\Modules\Core\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -23,4 +25,18 @@ Route::prefix('roles')->name('roles.')->controller(RoleController::class)->group
     Route::get('{role}/edit', 'edit')->name('edit');
     Route::put('{role}', 'update')->name('update');
     Route::delete('{role}', 'destroy')->name('destroy');
+});
+
+Route::prefix('departments')->name('departments.')->controller(DepartmentController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('table', 'table')->name('table');
+    Route::get('create', 'create')->name('create');
+    Route::post('/', 'store')->name('store');
+    Route::get('{department}/edit', 'edit')->name('edit');
+    Route::put('{department}', 'update')->name('update');
+    Route::delete('{department}', 'destroy')->name('destroy');
+});
+
+Route::prefix('options')->name('options.')->middleware('throttle:120,1')->controller(OptionsController::class)->group(function () {
+    Route::get('users', 'users')->name('users');
 });
