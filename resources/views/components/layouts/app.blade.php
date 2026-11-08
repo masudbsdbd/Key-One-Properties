@@ -45,8 +45,12 @@
 
         <nav class="relative z-10 flex-1 overflow-y-auto px-3 pb-6 pt-6">
             @foreach ($sections as $section)
-                @if ($section['title'])<p class="nav-section sidebar-label">{{ $section['title'] }}</p>@endif
-                <ul class="space-y-1">
+                @if ($section['title'])
+                    <button type="button" class="nav-section sidebar-label flex w-full items-center justify-between hover:text-white/80" data-nav-group="{{ $section['key'] }}" aria-expanded="{{ $section['open'] ? 'true' : 'false' }}" aria-controls="nav-{{ $section['key'] }}">
+                        {{ $section['title'] }}<x-icon name="chevron-down" size="h-3.5 w-3.5 transition-transform [[aria-expanded=false]_&]:-rotate-90" />
+                    </button>
+                @endif
+                <ul class="space-y-1" id="nav-{{ $section['key'] }}" @if ($section['title']) data-nav-list="{{ $section['key'] }}" data-current="{{ $section['open'] ? '1' : '0' }}" @endif>
                     @foreach ($section['items'] as $item)
                         <li>
                             <a href="{{ $item['url'] }}" class="nav-link" @if ($item['current']) aria-current="page" @endif title="{{ $item['label'] }}">

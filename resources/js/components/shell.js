@@ -8,8 +8,41 @@ function store(value) {
     }
 }
 
+function initNavGroups() {
+    let open = {};
+    try {
+        open = JSON.parse(localStorage.getItem('keyone.nav') || '{}');
+    } catch {
+        open = {};
+    }
+
+    document.querySelectorAll('[data-nav-list]').forEach((list) => {
+        const key = list.dataset.navList;
+        const button = document.querySelector(`[data-nav-group="${key}"]`);
+        const expanded = list.dataset.current === '1' || open[key] !== false;
+        list.hidden = !expanded;
+        button?.setAttribute('aria-expanded', String(expanded));
+    });
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-nav-group]');
+        if (!button) return;
+        const key = button.dataset.navGroup;
+        const list = document.querySelector(`[data-nav-list="${key}"]`);
+        list.hidden = !list.hidden;
+        button.setAttribute('aria-expanded', String(!list.hidden));
+        open[key] = !list.hidden;
+        try {
+            localStorage.setItem('keyone.nav', JSON.stringify(open));
+        } catch {
+            /* storage unavailable */
+        }
+    });
+}
+
 export function initShell() {
     const html = document.documentElement;
+    initNavGroups();
 
     document.addEventListener('click', (event) => {
         if (event.target.closest('[data-sidebar-toggle]')) {

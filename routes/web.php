@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
@@ -37,7 +38,14 @@ Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'
         Route::post('sessions/logout-others', 'logoutOtherSessions')->name('sessions.logout-others');
     });
 
-    foreach (['core', 'projects', 'flats', 'customers'] as $module) {
+    Route::prefix('attachments')->name('attachments.')->controller(AttachmentController::class)->group(function () {
+        Route::get('file/{attachment}', 'show')->name('show');
+        Route::delete('file/{attachment}', 'destroy')->name('destroy');
+        Route::get('{type}/{owner}', 'index')->name('index');
+        Route::post('{type}/{owner}', 'store')->middleware('throttle:30,1')->name('store');
+    });
+
+    foreach (['core', 'projects', 'flats', 'customers', 'construction', 'inventory', 'purchasing', 'contractors', 'expenses'] as $module) {
         if (is_file($file = __DIR__."/{$module}.php")) {
             require $file;
         }
