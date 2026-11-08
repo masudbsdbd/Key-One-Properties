@@ -101,3 +101,54 @@ Notes:
 - Stock movements, ledger entries, borrow actions and expense actions are append-only.
 - `attachments` (polymorphic) holds files for progress updates, suppliers, orders, bills, payments,
   contractors, work orders and expenses.
+
+# Phase 3 ERD
+
+```mermaid
+erDiagram
+    flats ||--o| active_flat_claims : claimed_by
+    flats ||--o{ flat_bookings : booked
+    flats ||--o{ flat_sales : sold
+    flats ||--o{ flat_price_revisions : price_requests
+    customers ||--o{ flat_bookings : books
+    customers ||--o{ flat_sales : buys
+    flat_bookings ||--o| flat_sales : converts
+    flat_sales ||--|| sale_agreements : agreement
+    flat_sales ||--|| flat_registrations : registration
+    flat_sales ||--|| flat_handovers : handover
+    flat_sales ||--o{ sales_cancellations : cancels
+    flat_bookings ||--o{ sales_cancellations : cancels
+    customers ||--o{ customer_refunds : refunded
+
+    flat_sales ||--o{ installment_plans : plans
+    installment_plans ||--o{ installment_schedule_items : items
+    installment_plans ||--o{ installment_reschedules : reschedules
+    customers ||--o{ customer_payments : pays
+    customer_payments ||--o{ payment_allocations : applied_to
+    installment_schedule_items ||--o{ payment_allocations : receives
+    customer_payments ||--o| money_receipts : receipt
+    customers ||--o{ customer_late_fee_policies : policy
+    installment_schedule_items ||--o{ late_fee_assessments : fees
+    customers ||--o{ customer_statement_entries : statement
+
+    investors ||--o{ investor_flat_agreements : agreements
+    flats ||--o{ investor_flat_agreements : shares
+    investor_flat_agreements ||--o| investor_flat_agreements : supersedes
+    investor_flat_agreements ||--o{ investor_capital_transactions : capital
+    projects ||--o{ flat_cost_allocation_runs : runs
+    flat_cost_allocation_runs ||--o{ flat_cost_allocations : allocations
+    flats ||--o{ flat_profit_calculations : profit
+    flat_cost_allocation_runs ||--o{ flat_profit_calculations : uses
+    flat_profit_calculations ||--o{ investor_profit_allocations : splits
+    investors ||--o{ investor_profit_distributions : distributions
+    investor_profit_distributions ||--o{ investor_payouts : payouts
+    investors ||--o{ investor_ledger_entries : ledger
+```
+
+Notes:
+
+- `active_flat_claims.flat_id` is unique: the database decides which booking or sale holds a unit.
+- `customer_statement_entries`, `investor_ledger_entries`, `payment_allocations` and `late_fee_assessments`
+  are append-only; reversals add rows linked by `reversal_of_id`.
+- `project_cost_allocations` and `expenses` gained a nullable `flat_id` (direct unit cost);
+  `users` gained `preferences` (JSON, whitelisted keys).

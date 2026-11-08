@@ -146,4 +146,4 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
 - [x] P5 Investors, agreements (≤ 100%), capital, investor ledger
 - [x] P6 Cost allocation runs and flat profit calculations
 - [x] P7 Profit approval, payable, distribution, payout
-- [ ] P8 Integration, reports, reconciliation, portal DTOs, release
+- [x] P8 Integration, reports, reconciliation, portal DTOs, release
