@@ -85,7 +85,7 @@ export function initAjaxForms(root = document) {
                 data: new FormData(form),
                 silent: form.dataset.silent === 'true',
             });
-            if (body.message) toast.success(body.message);
+            if (body.message && !form.hasAttribute('data-no-toast')) toast.success(body.message);
             if (body.data?.redirect && form.dataset.redirect !== 'false') {
                 window.location.assign(body.data.redirect);
                 return;

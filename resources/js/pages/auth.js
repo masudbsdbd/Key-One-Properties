@@ -58,3 +58,9 @@ export function initAuthPages() {
         });
     }
 }
+
+document.addEventListener('ajax:success', (event) => {
+    if (!event.target.matches('[data-password-request]')) return;
+    const box = document.querySelector('[data-request-sent]');
+    if (box) box.hidden = false;
+});

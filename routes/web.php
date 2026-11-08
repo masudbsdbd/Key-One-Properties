@@ -17,14 +17,12 @@ Route::middleware('guest')->group(function () {
     Route::post('two-factor-challenge', [TwoFactorChallengeController::class, 'store'])->name('two-factor.verify');
 
     Route::get('forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
-    Route::post('forgot-password', [PasswordResetController::class, 'email'])->name('password.email');
-    Route::get('reset-password/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
-    Route::post('reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+    Route::post('forgot-password', [PasswordResetController::class, 'store'])->middleware('throttle:10,1')->name('password.request.store');
 });
 
 Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
-Route::middleware(['auth', 'active', 'two-factor.configured'])->group(function () {
+Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('search');
 

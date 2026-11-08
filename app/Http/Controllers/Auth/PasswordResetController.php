@@ -3,72 +3,84 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\PasswordResetRequest;
 use App\Models\User;
+use App\Notifications\PasswordResetRequested;
 use App\Services\Auth\SecurityLog;
 use App\Support\Ajax;
-use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 
+/**
+ * Users who forget their password send a request; an administrator sets a new one.
+ */
 class PasswordResetController extends Controller
 {
+    public const MESSAGE = 'Your request has been sent to the administrator.';
+
     public function request(): View
     {
         return view('auth.forgot-password');
     }
 
-    public function email(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(['email' => ['required', 'email', 'max:191']]);
+        $data = $request->validate(['login' => ['required', 'string', 'max:191']]);
 
-        $key = 'password-reset:'.$request->ip();
+        $key = 'password-request:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 5)) {
-            return Ajax::error('Too many requests. Try again later.', 429);
+            $seconds = RateLimiter::availableIn($key);
+
+            return response()->json(['success' => false, 'message' => 'Too many requests. Try again in '.gmdate('i:s', $seconds).'.', 'retry_after' => $seconds], 429);
         }
         RateLimiter::hit($key, 900);
 
-        Password::sendResetLink(['email' => mb_strtolower($data['email'])]);
+        $user = User::findForLogin($data['login']);
 
-        // Same response whether or not the account exists.
-        return Ajax::success('If the email belongs to an account, a reset link has been sent.');
-    }
+        if ($user && $user->isActive()) {
+            $created = DB::transaction(function () use ($user, $request) {
+                $pending = PasswordResetRequest::query()->where('user_id', $user->id)->where('status', 'pending')->lockForUpdate()->first();
+                if ($pending) {
+                    $pending->touch();
 
-    public function edit(string $token): View
-    {
-        return view('auth.reset-password', ['token' => $token]);
-    }
+                    return null;
+                }
 
-    public function update(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'token' => ['required', 'string'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()],
-        ]);
+                return PasswordResetRequest::create([
+                    'user_id' => $user->id,
+                    'status' => 'pending',
+                    'requested_ip' => $request->ip(),
+                    'user_agent' => Str::limit((string) $request->userAgent(), 250, ''),
+                ]);
+            });
 
-        $status = Password::reset(
-            ['email' => mb_strtolower($data['email'])] + $data,
-            function (User $user, string $password) use ($request) {
-                $user->forceFill([
-                    'password' => $password,
-                    'remember_token' => Str::random(60),
-                    'password_changed_at' => now(),
-                ])->save();
-
-                event(new PasswordReset($user));
-                SecurityLog::record('password_reset', $user, $request);
+            if ($created) {
+                Notification::send(self::approvers($user), new PasswordResetRequested($created));
+                SecurityLog::record('password_reset_requested', $user, $request);
             }
-        );
-
-        if ($status !== Password::PASSWORD_RESET) {
-            return Ajax::error('Validation failed', 422, ['email' => [__($status)]]);
         }
 
-        return Ajax::success('Password updated. Please sign in.', ['redirect' => route('login')]);
+        // Same answer whether or not the account exists.
+        return Ajax::success(self::MESSAGE);
+    }
+
+    /**
+     * Active users allowed to reset this user's password.
+     *
+     * @return Collection<int, User>
+     */
+    public static function approvers(User $user)
+    {
+        return User::query()->active()->whereKeyNot($user->id)
+            ->where(fn ($q) => $q->permission('users.reset_password')->orWhereHas('roles', fn ($r) => $r->where('name', config('keyone.super_admin_role'))))
+            ->get()
+            ->filter(fn (User $admin) => $admin->can('resetPassword', $user))
+            ->values();
     }
 }

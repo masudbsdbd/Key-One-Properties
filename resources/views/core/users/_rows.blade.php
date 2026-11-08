@@ -18,6 +18,9 @@
         </td>
         <td class="whitespace-nowrap text-ink-600">{{ $user->last_login_at?->timezone(config('app.display_timezone'))->format('d M Y, h:i A') ?? '—' }}</td>
         <td class="text-right whitespace-nowrap">
+            @can('resetPassword', $user)
+                <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('users.password.edit', $user) }}" data-size="max-w-md" aria-label="Reset password of {{ $user->name }}"><x-icon name="key" size="h-4 w-4" /></button>
+            @endcan
             @can('update', $user)
                 <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('users.edit', $user) }}" aria-label="Edit {{ $user->name }}"><x-icon name="edit" size="h-4 w-4" /></button>
             @endcan

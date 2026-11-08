@@ -23,6 +23,11 @@ class RolesAndPermissionsSeeder extends Seeder
 
         foreach (Permissions::defaultRoles() as $roleName => $permissions) {
             $role = Role::findOrCreate($roleName, 'web');
+            if ($roleName === 'Admin') {
+                $role->givePermissionTo($permissions); // Admin always holds every permission, including new ones.
+
+                continue;
+            }
             if (! $role->wasRecentlyCreated && $role->permissions()->exists()) {
                 continue;
             }

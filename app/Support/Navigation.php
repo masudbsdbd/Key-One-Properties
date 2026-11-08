@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\PasswordResetRequest;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,7 @@ class Navigation
                 'title' => 'Administration',
                 'items' => [
                     ['label' => 'Users', 'icon' => 'user', 'route' => 'users.index', 'active' => 'users.*', 'can' => 'users.view'],
+                    ['label' => 'Reset Requests', 'icon' => 'key', 'route' => 'password-requests.index', 'active' => 'password-requests.*', 'can' => 'users.reset_password', 'badge' => fn () => PasswordResetRequest::query()->where('status', 'pending')->count()],
                     ['label' => 'Roles & Permissions', 'icon' => 'shield', 'route' => 'roles.index', 'active' => 'roles.*', 'can' => 'roles.view'],
                     ['label' => 'Departments', 'icon' => 'briefcase', 'route' => 'departments.index', 'active' => 'departments.*', 'can' => 'departments.view'],
                     ['label' => 'Activity Log', 'icon' => 'activity', 'route' => 'activity.index', 'active' => 'activity.*', 'can' => 'activity.view'],
@@ -39,10 +41,11 @@ class Navigation
                 $section['items'] = collect($section['items'])
                     ->filter(fn (array $item) => Route::has($item['route']))
                     ->filter(fn (array $item) => ! isset($item['can']) || ($user && $user->canAny((array) $item['can'])))
-                    ->map(fn (array $item) => $item + [
+                    ->map(fn (array $item) => [
                         'url' => route($item['route']),
                         'current' => request()->routeIs($item['active']),
-                    ])
+                        'badge' => isset($item['badge']) ? ($item['badge'])() : null,
+                    ] + $item)
                     ->values()
                     ->all();
 

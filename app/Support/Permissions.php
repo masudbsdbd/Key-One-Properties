@@ -22,6 +22,7 @@ class Permissions
                 'users.update' => 'Edit users',
                 'users.delete' => 'Delete users',
                 'users.manage_2fa' => 'Manage two-factor settings',
+                'users.reset_password' => 'Reset passwords',
             ],
             'Roles & Permissions' => [
                 'roles.view' => 'View roles',

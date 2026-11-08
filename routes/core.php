@@ -3,10 +3,19 @@
 use App\Modules\Core\Controllers\ActivityLogController;
 use App\Modules\Core\Controllers\DepartmentController;
 use App\Modules\Core\Controllers\OptionsController;
+use App\Modules\Core\Controllers\PasswordRequestController;
 use App\Modules\Core\Controllers\RoleController;
 use App\Modules\Core\Controllers\SettingsController;
 use App\Modules\Core\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+
+Route::prefix('password-requests')->name('password-requests.')->controller(PasswordRequestController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('table', 'table')->name('table');
+    Route::post('{passwordRequest}/dismiss', 'dismiss')->name('dismiss');
+});
+Route::get('users/{user}/password', [PasswordRequestController::class, 'edit'])->name('users.password.edit');
+Route::post('users/{user}/password', [PasswordRequestController::class, 'update'])->name('users.password.update');
 
 Route::prefix('users')->name('users.')->controller(UserController::class)->group(function () {
     Route::get('/', 'index')->name('index');

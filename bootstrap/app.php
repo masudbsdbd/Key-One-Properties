@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\EnsureTwoFactorIsConfigured;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SecurityHeaders;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active' => EnsureUserIsActive::class,
             'two-factor.configured' => EnsureTwoFactorIsConfigured::class,
+            'password.changed' => EnsurePasswordIsChanged::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));

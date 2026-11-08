@@ -52,6 +52,7 @@
                             <a href="{{ $item['url'] }}" class="nav-link" @if ($item['current']) aria-current="page" @endif title="{{ $item['label'] }}">
                                 <x-icon :name="$item['icon']" size="h-5 w-5 shrink-0" />
                                 <span class="sidebar-label truncate">{{ $item['label'] }}</span>
+                                @if ($item['badge'])<span class="nav-count sidebar-label">{{ $item['badge'] }}</span>@endif
                             </a>
                         </li>
                     @endforeach

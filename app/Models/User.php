@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
-use App\Notifications\ResetPasswordNotification;
 use App\Support\Phone;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,6 +58,7 @@ class User extends Authenticatable
             'password_changed_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'two_factor_required' => 'boolean',
+            'must_change_password' => 'boolean',
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
             'password' => 'hashed',
@@ -102,11 +102,6 @@ class User extends Authenticatable
     public function roleLabel(): string
     {
         return $this->getRoleNames()->first() ?? 'User';
-    }
-
-    public function sendPasswordResetNotification($token): void
-    {
-        $this->notify(new ResetPasswordNotification($token));
     }
 
     /**

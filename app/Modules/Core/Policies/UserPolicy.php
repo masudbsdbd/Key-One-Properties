@@ -32,6 +32,14 @@ class UserPolicy
     }
 
     /**
+     * Your own password is changed from the profile page, not reset by yourself.
+     */
+    public function resetPassword(User $actor, User $user): bool
+    {
+        return $actor->can('users.reset_password') && $actor->isNot($user) && $this->canTouch($actor, $user);
+    }
+
+    /**
      * Only a Super Admin may change another Super Admin.
      */
     private function canTouch(User $actor, User $user): bool

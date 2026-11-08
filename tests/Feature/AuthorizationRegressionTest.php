@@ -14,7 +14,7 @@ class AuthorizationRegressionTest extends TestCase
 {
     private const PUBLIC_ROUTES = [
         'login', 'login.store', 'two-factor.challenge', 'two-factor.verify',
-        'password.request', 'password.email', 'password.reset', 'password.update', 'logout',
+        'password.request', 'password.request.store', 'logout',
     ];
 
     /**

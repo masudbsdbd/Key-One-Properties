@@ -92,6 +92,7 @@ class UserController extends Controller
             if ($request->filled('password')) {
                 $user->password = $request->input('password');
                 $user->password_changed_at = now();
+                $user->must_change_password = $user->isNot($request->user());
             }
             $passwordChanged = $user->isDirty('password');
             $user->save();

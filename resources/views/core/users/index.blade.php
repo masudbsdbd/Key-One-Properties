@@ -1,10 +1,14 @@
 <x-layouts.app title="Users">
     <x-page-header title="Users" :breadcrumbs="['Dashboard' => route('dashboard'), 'Users' => null]">
-        @can('create', App\Models\User::class)
-            <x-slot:actions>
+        <x-slot:actions>
+            @can('users.reset_password')
+                @php($pending = App\Models\PasswordResetRequest::query()->where('status', 'pending')->count())
+                <x-button variant="secondary" icon="key" href="{{ route('password-requests.index') }}">Password Requests @if ($pending)<span class="nav-count ml-1">{{ $pending }}</span>@endif</x-button>
+            @endcan
+            @can('create', App\Models\User::class)
                 <x-button icon="user-plus" data-remote-modal="{{ route('users.create') }}" data-auto-create>New User</x-button>
-            </x-slot:actions>
-        @endcan
+            @endcan
+        </x-slot:actions>
     </x-page-header>
 
     <x-data-table :url="route('users.table')" sort="name" search="Search name, email or mobile" :columns="[
@@ -14,7 +18,7 @@
         ['label' => 'Departments'],
         ['label' => 'Status'],
         ['label' => 'Last sign-in', 'sort' => 'last_login'],
-        ['label' => '', 'class' => 'w-24'],
+        ['label' => '', 'class' => 'w-32'],
     ]">
         <x-slot:filters>
             <div class="w-48">

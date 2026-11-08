@@ -7,10 +7,10 @@
     <div id="menu-notifications" data-menu hidden class="absolute right-0 mt-2 w-80 rounded-card border border-line bg-surface shadow-raised">
         <p class="border-b border-line px-4 py-3 text-sm font-semibold text-ink-900">Notifications</p>
         @forelse ($unread as $notification)
-            <div class="border-b border-line px-4 py-3 text-sm last:border-b-0">
+            <a href="{{ $notification->data['url'] ?? '#' }}" class="block border-b border-line px-4 py-3 text-sm last:border-b-0 hover:bg-surface-muted">
                 <p class="text-ink-800">{{ $notification->data['message'] ?? '' }}</p>
                 <p class="mt-0.5 text-xs text-ink-500">{{ $notification->created_at->diffForHumans() }}</p>
-            </div>
+            </a>
         @empty
             <p class="px-4 py-8 text-center text-sm text-ink-500">No new notifications</p>
         @endforelse

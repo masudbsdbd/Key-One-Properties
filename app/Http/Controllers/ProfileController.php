@@ -62,7 +62,7 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
-        $user->forceFill(['password' => $data['password'], 'password_changed_at' => now()])->save();
+        $user->forceFill(['password' => $data['password'], 'password_changed_at' => now(), 'must_change_password' => false])->save();
         $this->destroyOtherSessions($request);
         SecurityLog::record('password_changed', $user, $request);
 
