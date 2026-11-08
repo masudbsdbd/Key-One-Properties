@@ -6,7 +6,9 @@ use Illuminate\Support\Facades\Storage;
 
 class Branding
 {
-    public const DEFAULT_COLOR = '#0f6b52';
+    public const DEFAULT_COLOR = '#b8862b';
+
+    public const DEFAULT_SIDEBAR_COLOR = '#13254b';
 
     public function __construct(private Settings $settings) {}
 
@@ -25,6 +27,13 @@ class Branding
         $color = (string) $this->settings->get('branding.primary_color');
 
         return self::isValidColor($color) ? strtolower($color) : self::DEFAULT_COLOR;
+    }
+
+    public function sidebarColor(): string
+    {
+        $color = (string) $this->settings->get('branding.sidebar_color');
+
+        return self::isValidColor($color) ? strtolower($color) : self::DEFAULT_SIDEBAR_COLOR;
     }
 
     public function logoUrl(): ?string
