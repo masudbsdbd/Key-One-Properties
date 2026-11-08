@@ -34,14 +34,15 @@
             </select>
         </div>
     </x-slot:filters>
-    @if ($project)
-        <x-slot:toolbar>
+    <x-slot:toolbar>
+        @can('flats.export')<x-export-menu :url="route('flats.export', $project ? ['project' => $project->public_id] : [])" />@endcan
+        @if ($project)
             @can('bulkCreateIn', [App\Models\Flat::class, $project])
                 <x-button size="sm" variant="secondary" icon="layers" data-remote-modal="{{ route('projects.flats.bulk', $project) }}" data-size="max-w-5xl">Bulk Create</x-button>
             @endcan
             @can('createIn', [App\Models\Flat::class, $project])
                 <x-button size="sm" icon="plus" data-remote-modal="{{ route('flats.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">New Unit</x-button>
             @endcan
-        </x-slot:toolbar>
-    @endif
+        @endif
+    </x-slot:toolbar>
 </x-data-table>

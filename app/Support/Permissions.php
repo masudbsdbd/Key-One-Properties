@@ -34,6 +34,7 @@ class Permissions
             ],
             'Projects' => [
                 'projects.view' => 'View assigned projects',
+                'projects.export' => 'Export projects',
                 'projects.view_all' => 'View all projects',
                 'projects.create' => 'Create projects',
                 'projects.update' => 'Edit projects',
@@ -45,6 +46,7 @@ class Permissions
             ],
             'Units (Flats)' => [
                 'flats.view' => 'View units',
+                'flats.export' => 'Export units',
                 'flats.create' => 'Create units',
                 'flats.update' => 'Edit units',
                 'flats.delete' => 'Delete units',
@@ -56,6 +58,7 @@ class Permissions
             ],
             'Customers' => [
                 'customers.view' => 'View own customers',
+                'customers.export' => 'Export customers',
                 'customers.view_all' => 'View all customers',
                 'customers.create' => 'Create customers',
                 'customers.update' => 'Edit customers',
@@ -109,6 +112,7 @@ class Permissions
                 'purchases.payment.create' => 'Record supplier payments',
                 'purchases.payment.approve' => 'Approve supplier payments',
                 'purchases.return' => 'Return goods to supplier',
+                'purchases.export' => 'Export purchasing lists',
             ],
             'Contractors' => [
                 'contractors.view' => 'View contractors',
@@ -123,6 +127,7 @@ class Permissions
                 'contractors.payment.create' => 'Record contractor payments',
                 'contractors.payment.approve' => 'Approve contractor payments',
                 'contractors.ledger.view' => 'View contractor ledger',
+                'contractors.export' => 'Export contractor lists',
             ],
             'Expenses' => [
                 'expenses.view.general' => 'View general expenses',

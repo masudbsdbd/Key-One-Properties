@@ -11,13 +11,16 @@ use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\Money;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class WorkOrderController extends Controller
 {
@@ -31,6 +34,25 @@ class WorkOrderController extends Controller
     }
 
     public function table(Request $request): JsonResponse
+    {
+        $query = $this->listing($request);
+        $contractor = Contractor::findByPublicId($request->input('contractor'));
+        $orders = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('contractors.work-orders._rows', ['orders' => $orders, 'showContractor' => ! $contractor])->render(), $orders);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('contractors.export'), 403);
+
+        return Report::make('Work Orders')->meta(['Status' => ContractorWorkOrder::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+            ->columns(['WO No' => 'text', 'Title' => 'text', 'Contractor' => 'text', 'Project' => 'text', 'Contract' => 'money', 'Measured' => 'money', 'Retention %' => 'number', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorWorkOrder $w) => [$w->wo_no, $w->title, $w->contractor->name, $w->project->code, $w->contract_amount, $w->measured ?? '0', $w->retention_percent, ContractorWorkOrder::STATUSES[$w->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('contractors.view'), 403);
 
@@ -46,9 +68,7 @@ class WorkOrderController extends Controller
             $query->where('project_id', $project->id);
         }
 
-        $orders = TableQuery::apply($query, $request, ['wo_no', 'title'], ['date' => 'created_at', 'amount' => 'contract_amount'], 'date', 'desc');
-
-        return Ajax::table(view('contractors.work-orders._rows', ['orders' => $orders, 'showContractor' => ! $contractor])->render(), $orders);
+        return TableQuery::prepare($query, $request, ['wo_no', 'title'], ['date' => 'created_at', 'amount' => 'contract_amount'], 'date', 'desc');
     }
 
     public function create(Request $request): JsonResponse

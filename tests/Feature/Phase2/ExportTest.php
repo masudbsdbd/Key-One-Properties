@@ -32,4 +32,26 @@ class ExportTest extends TestCase
         $this->actingAs($user)->get(route('expenses.export').'?format=print')->assertSee('Office tea')->assertSee('EXP-T-1');
         $this->assertFalse(Format::$plainSymbol);
     }
+
+    public function test_every_list_export_renders_in_all_formats_for_a_super_admin(): void
+    {
+        $admin = $this->superAdmin();
+        $routes = ['suppliers.export', 'purchase-orders.export', 'supplier-bills.export', 'supplier-payments.export', 'contractors.export', 'work-orders.export',
+            'contractor-bills.export', 'contractor-payments.export', 'stock.export', 'stock.movements.export', 'labour.export', 'flats.export', 'customers.export',
+            'projects.export', 'expenses.export'];
+
+        foreach ($routes as $name) {
+            $this->actingAs($admin)->get(route($name))->assertOk();
+            $this->assertStringStartsWith('%PDF', $this->actingAs($admin)->get(route($name, ['format' => 'pdf']))->assertOk()->getContent(), $name);
+            $this->actingAs($admin)->get(route($name, ['format' => 'print']))->assertOk();
+        }
+    }
+
+    public function test_list_exports_need_their_export_permission(): void
+    {
+        $viewer = $this->userWith(['purchases.view', 'suppliers.view', 'contractors.view', 'customers.view', 'flats.view', 'projects.view', 'materials.view']);
+        foreach (['suppliers.export', 'purchase-orders.export', 'contractors.export', 'work-orders.export', 'customers.export', 'flats.export', 'projects.export', 'stock.export'] as $name) {
+            $this->actingAs($viewer)->get(route($name))->assertForbidden();
+        }
+    }
 }

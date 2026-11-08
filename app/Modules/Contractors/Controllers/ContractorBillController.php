@@ -8,12 +8,15 @@ use App\Models\ContractorBill;
 use App\Models\ContractorWorkOrder;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class ContractorBillController extends Controller
 {
@@ -27,6 +30,26 @@ class ContractorBillController extends Controller
     }
 
     public function table(Request $request): JsonResponse
+    {
+        $query = $this->listing($request);
+        $contractor = Contractor::findByPublicId($request->input('contractor'));
+        $order = ContractorWorkOrder::findByPublicId($request->input('work_order'));
+        $bills = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('contractors.bills._rows', ['bills' => $bills, 'showContractor' => ! $contractor && ! $order, 'showOrder' => ! $order])->render(), $bills);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('contractors.export'), 403);
+
+        return Report::make('Contractor Bills')->meta(['Status' => ContractorBill::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name])
+            ->columns(['Bill No' => 'text', 'Date' => 'date', 'Contractor' => 'text', 'Work Order' => 'text', 'Gross' => 'money', 'Advance' => 'money', 'Retention' => 'money', 'Other' => 'money', 'Net Payable' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorBill $b) => [$b->bill_no, $b->bill_date, $b->contractor->name, $b->workOrder->wo_no, $b->gross_amount, $b->advance_adjustment, $b->retention_amount, $b->other_deductions, $b->net_payable, ContractorBill::STATUSES[$b->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('contractors.view'), 403);
 
@@ -42,9 +65,7 @@ class ContractorBillController extends Controller
             $query->where('work_order_id', $order->id);
         }
 
-        $bills = TableQuery::apply($query, $request, ['bill_no'], ['date' => 'bill_date', 'net' => 'net_payable'], 'date', 'desc');
-
-        return Ajax::table(view('contractors.bills._rows', ['bills' => $bills, 'showContractor' => ! $contractor && ! $order, 'showOrder' => ! $order])->render(), $bills);
+        return TableQuery::prepare($query, $request, ['bill_no'], ['date' => 'bill_date', 'net' => 'net_payable'], 'date', 'desc');
     }
 
     public function create(Request $request, ContractorWorkOrder $order): JsonResponse

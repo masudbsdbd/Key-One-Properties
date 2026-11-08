@@ -14,6 +14,7 @@ use App\Support\Format;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -35,6 +36,25 @@ class SupplierController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $suppliers = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('purchasing.suppliers._rows', ['suppliers' => $suppliers])->render(), $suppliers);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('purchases.export'), 403);
+
+        return Report::make('Suppliers')->meta(['Status' => Supplier::STATUSES[(string) $request->input('status')] ?? null])
+            ->columns(['Code' => 'text', 'Name' => 'text', 'Contact' => 'text', 'Mobile' => 'text', 'TIN / BIN' => 'text', 'Payable' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (Supplier $s) => [$s->supplier_code, $s->name, $s->contact_person, $s->mobile ? Phone::display($s->mobile) : null, $s->tax_id,
+                Money::sub((string) ($s->charges ?? '0'), (string) ($s->payments ?? '0')), Supplier::STATUSES[$s->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('suppliers.view'), 403);
 
         $query = Supplier::query()
@@ -44,9 +64,7 @@ class SupplierController extends Controller
             $query->where('status', $status);
         }
 
-        $suppliers = TableQuery::apply($query, $request, ['name', 'supplier_code', 'contact_person', 'mobile'], ['name' => 'name', 'code' => 'supplier_code'], 'name');
-
-        return Ajax::table(view('purchasing.suppliers._rows', ['suppliers' => $suppliers])->render(), $suppliers);
+        return TableQuery::prepare($query, $request, ['name', 'supplier_code', 'contact_person', 'mobile'], ['name' => 'name', 'code' => 'supplier_code'], 'name');
     }
 
     public function create(Request $request): JsonResponse

@@ -7,5 +7,6 @@
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\ContractorBill::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
             <div class="w-56"><select name="contractor" class="form-control" data-table-filter data-select data-select-url="{{ route('options.contractors') }}" data-placeholder="All contractors" aria-label="Contractor"><option value=""></option></select></div>
         </x-slot:filters>
+        <x-slot:toolbar>@can('contractors.export')<x-export-menu :url="route('contractor-bills.export')" />@endcan</x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>

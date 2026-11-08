@@ -29,6 +29,7 @@
             @endcan
         </x-slot:filters>
         <x-slot:toolbar>
+            @can('projects.export')<x-export-menu :url="route('projects.export')" />@endcan
             <input type="hidden" name="view" value="table" data-table-filter data-view-input>
             <div class="inline-flex rounded-control border border-line-strong p-0.5" role="group" aria-label="Layout">
                 <button type="button" class="btn btn-sm btn-ghost h-8 aria-pressed:bg-accent-50 aria-pressed:text-accent-700" data-view-toggle="table" aria-pressed="true" aria-label="Table view"><x-icon name="list" size="h-4 w-4" /></button>

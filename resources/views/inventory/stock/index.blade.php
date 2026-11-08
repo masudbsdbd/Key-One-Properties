@@ -25,5 +25,6 @@
             <div class="w-56"><select name="material" data-table-filter data-select data-select-url="{{ route('options.materials') }}" data-placeholder="All materials" class="form-control" aria-label="Material"><option value=""></option></select></div>
             <select name="filter" class="form-control w-36" data-table-filter aria-label="Show"><option value="">All stock</option><option value="low">Low stock</option><option value="borrowed">Borrowed</option></select>
         </x-slot:filters>
+        <x-slot:toolbar>@can('materials.export')<x-export-menu :url="route('stock.export')" />@endcan</x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>

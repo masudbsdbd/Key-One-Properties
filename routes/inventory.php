@@ -39,6 +39,7 @@ Route::prefix('warehouses')->name('warehouses.')->controller(WarehouseController
 Route::prefix('stock')->name('stock.')->controller(StockController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'exportBalances')->name('export');
     Route::get('receive', 'receiveForm')->name('receive.form');
     Route::post('receive', 'receive')->name('receive');
     Route::get('issue', 'issueForm')->name('issue.form');

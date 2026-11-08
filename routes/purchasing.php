@@ -11,6 +11,7 @@ Route::get('options/suppliers', [SupplierController::class, 'options'])->middlew
 Route::prefix('suppliers')->name('suppliers.')->controller(SupplierController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{supplier}', 'show')->name('show');
@@ -24,6 +25,7 @@ Route::prefix('suppliers')->name('suppliers.')->controller(SupplierController::c
 Route::prefix('purchase-orders')->name('purchase-orders.')->controller(PurchaseOrderController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{order}', 'show')->name('show');
@@ -44,6 +46,7 @@ Route::prefix('purchase-orders')->name('purchase-orders.')->controller(PurchaseO
 Route::prefix('supplier-bills')->name('supplier-bills.')->controller(SupplierBillController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::get('billable', 'billable')->name('billable');
     Route::post('/', 'store')->name('store');
@@ -57,6 +60,7 @@ Route::prefix('supplier-bills')->name('supplier-bills.')->controller(SupplierBil
 Route::prefix('supplier-payments')->name('supplier-payments.')->controller(SupplierPaymentController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::get('allocatable', 'allocatable')->name('allocatable');
     Route::post('/', 'store')->name('store');

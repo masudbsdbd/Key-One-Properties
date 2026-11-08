@@ -18,6 +18,7 @@ use App\Support\Export\Report;
 use App\Support\Format;
 use App\Support\Money;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -47,6 +48,33 @@ class StockController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $balances = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('inventory.stock._rows', [
+            'balances' => $balances,
+            'showValue' => $request->user()->can('materials.valuation.view'),
+        ])->render(), $balances);
+    }
+
+    public function exportBalances(Request $request): Response
+    {
+        abort_unless($request->user()->can('materials.export'), 403);
+
+        $value = $request->user()->can('materials.valuation.view');
+        $columns = ['SKU' => 'text', 'Material' => 'text', 'Unit' => 'text', 'Warehouse' => 'text', 'Owned' => 'qty', 'Borrowed In' => 'qty', 'Lent Out' => 'qty', 'Physical' => 'qty'];
+
+        return Report::make('Stock')->meta(['Warehouse' => Warehouse::findByPublicId($request->input('warehouse'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name,
+            'Show' => ['low' => 'Low stock', 'borrowed' => 'Borrowed'][(string) $request->input('filter')] ?? null])
+            ->columns($value ? $columns + ['Avg Cost' => 'money', 'Value' => 'money'] : $columns)
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (StockBalance $b) => array_merge([$b->material->sku, $b->material->name, $b->material->unit->code, $b->warehouse->code,
+                $b->owned_qty, $b->borrowed_in_qty, $b->borrowed_out_qty, Money::sub(Money::add((string) $b->owned_qty, (string) $b->borrowed_in_qty), (string) $b->borrowed_out_qty)],
+                $value ? [$b->avg_unit_cost, $b->owned_value] : [])))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('materials.view'), 403);
 
         $query = StockBalance::query()->with(['material.unit', 'warehouse.project'])
@@ -68,14 +96,9 @@ class StockController extends Controller
             $query->where(fn ($q) => $q->where('borrowed_in_qty', '>', 0)->orWhere('borrowed_out_qty', '>', 0));
         }
 
-        $balances = TableQuery::apply($query, $request, ['material.name', 'material.sku'], [
+        return TableQuery::prepare($query, $request, ['material.name', 'material.sku'], [
             'owned' => 'owned_qty', 'value' => 'owned_value',
         ], 'owned', 'desc');
-
-        return Ajax::table(view('inventory.stock._rows', [
-            'balances' => $balances,
-            'showValue' => $request->user()->can('materials.valuation.view'),
-        ])->render(), $balances);
     }
 
     public function available(Request $request): JsonResponse

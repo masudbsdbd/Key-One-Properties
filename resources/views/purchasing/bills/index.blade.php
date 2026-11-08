@@ -11,5 +11,6 @@
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\SupplierBill::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
             <div class="w-56"><select name="supplier" class="form-control" data-table-filter data-select data-select-url="{{ route('options.suppliers') }}" data-placeholder="All suppliers" aria-label="Supplier"><option value=""></option></select></div>
         </x-slot:filters>
+        <x-slot:toolbar>@can('purchases.export')<x-export-menu :url="route('supplier-bills.export')" />@endcan</x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>

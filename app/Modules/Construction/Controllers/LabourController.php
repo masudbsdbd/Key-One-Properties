@@ -8,13 +8,16 @@ use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Construction\Services\ConstructionService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\Format;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class LabourController extends Controller
 {
@@ -28,6 +31,25 @@ class LabourController extends Controller
     }
 
     public function table(Request $request): JsonResponse
+    {
+        $query = $this->listing($request);
+        $project = Project::findByPublicId($request->input('project'));
+        $entries = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('construction.labour._rows', ['entries' => $entries, 'showProject' => ! $project])->render(), $entries);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('construction.cost.export'), 403);
+
+        return Report::make('Labour')->meta(['Project' => Project::findByPublicId($request->input('project'))?->name, 'Status' => LabourEntry::STATUSES[(string) $request->input('status')] ?? null])
+            ->columns(['Entry No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Type' => 'text', 'Headcount' => 'number', 'Units' => 'qty', 'Rate' => 'money', 'Amount' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (LabourEntry $e) => [$e->entry_no, $e->work_date, $e->project->code, LabourEntry::TYPES[$e->labour_type] ?? $e->labour_type, $e->headcount, $e->units, $e->rate, $e->total_amount, LabourEntry::STATUSES[$e->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('construction.view'), 403);
 
@@ -44,9 +66,7 @@ class LabourController extends Controller
             $query->where('labour_type', $type);
         }
 
-        $entries = TableQuery::apply($query, $request, ['entry_no', 'notes'], ['date' => 'work_date', 'amount' => 'total_amount'], 'date', 'desc');
-
-        return Ajax::table(view('construction.labour._rows', ['entries' => $entries, 'showProject' => ! $project])->render(), $entries);
+        return TableQuery::prepare($query, $request, ['entry_no', 'notes'], ['date' => 'work_date', 'amount' => 'total_amount'], 'date', 'desc');
     }
 
     public function create(Request $request): JsonResponse

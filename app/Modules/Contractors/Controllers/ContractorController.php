@@ -13,6 +13,7 @@ use App\Support\Format;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -34,6 +35,25 @@ class ContractorController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $contractors = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('contractors.directory._rows', ['contractors' => $contractors])->render(), $contractors);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('contractors.export'), 403);
+
+        return Report::make('Contractors')->meta(['Status' => Contractor::STATUSES[(string) $request->input('status')] ?? null])
+            ->columns(['Code' => 'text', 'Name' => 'text', 'Trade' => 'text', 'Contact' => 'text', 'Mobile' => 'text', 'Active Orders' => 'number', 'Payable' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (Contractor $c) => [$c->contractor_code, $c->name, $c->trade, $c->contact_person, $c->mobile ? Phone::display($c->mobile) : null, $c->active_orders,
+                Money::sub((string) ($c->charges ?? '0'), (string) ($c->payments ?? '0')), Contractor::STATUSES[$c->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('contractors.view'), 403);
 
         $query = Contractor::query()
@@ -44,9 +64,7 @@ class ContractorController extends Controller
             $query->where('status', $status);
         }
 
-        $contractors = TableQuery::apply($query, $request, ['name', 'contractor_code', 'trade', 'contact_person', 'mobile'], ['name' => 'name', 'code' => 'contractor_code'], 'name');
-
-        return Ajax::table(view('contractors.directory._rows', ['contractors' => $contractors])->render(), $contractors);
+        return TableQuery::prepare($query, $request, ['name', 'contractor_code', 'trade', 'contact_person', 'mobile'], ['name' => 'name', 'code' => 'contractor_code'], 'name');
     }
 
     public function create(Request $request): JsonResponse

@@ -12,5 +12,6 @@
             <div class="w-56"><select name="contractor" class="form-control" data-table-filter data-select data-select-url="{{ route('options.contractors') }}" data-placeholder="All contractors" aria-label="Contractor"><option value=""></option></select></div>
             <div class="w-56"><select name="project" class="form-control" data-table-filter data-select data-select-url="{{ route('options.projects') }}" data-placeholder="All projects" aria-label="Project"><option value=""></option></select></div>
         </x-slot:filters>
+        <x-slot:toolbar>@can('contractors.export')<x-export-menu :url="route('work-orders.export')" />@endcan</x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>

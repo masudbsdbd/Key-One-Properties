@@ -8,12 +8,16 @@ use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\LineKeys;
+use App\Support\Money;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class SupplierBillController extends Controller
 {
@@ -28,6 +32,26 @@ class SupplierBillController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $supplier = Supplier::findByPublicId($request->input('supplier'));
+        $bills = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('purchasing.bills._rows', ['bills' => $bills, 'showSupplier' => ! $supplier])->render(), $bills);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('purchases.export'), 403);
+
+        return Report::make('Supplier Bills')->meta(['Status' => SupplierBill::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name])
+            ->columns(['Bill No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Invoice No' => 'text', 'Due' => 'date', 'Total' => 'money', 'Outstanding' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (SupplierBill $b) => [$b->bill_no, $b->invoice_date, $b->supplier->name, $b->supplier_invoice_no, $b->due_date, $b->total_amount,
+                in_array($b->status, ['approved', 'paid'], true) ? Money::sub((string) $b->total_amount, (string) ($b->allocated ?? '0')) : null, SupplierBill::STATUSES[$b->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('purchases.view'), 403);
 
         $query = SupplierBill::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'purchaseOrder:id,public_id,po_no'])->withSum('allocations as allocated', 'amount');
@@ -38,9 +62,7 @@ class SupplierBillController extends Controller
             $query->where('supplier_id', $supplier->id);
         }
 
-        $bills = TableQuery::apply($query, $request, ['bill_no', 'supplier_invoice_no'], ['date' => 'invoice_date', 'due' => 'due_date', 'total' => 'total_amount'], 'date', 'desc');
-
-        return Ajax::table(view('purchasing.bills._rows', ['bills' => $bills, 'showSupplier' => ! $supplier])->render(), $bills);
+        return TableQuery::prepare($query, $request, ['bill_no', 'supplier_invoice_no'], ['date' => 'invoice_date', 'due' => 'due_date', 'total' => 'total_amount'], 'date', 'desc');
     }
 
     public function create(Request $request): JsonResponse

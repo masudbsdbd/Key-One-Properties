@@ -40,5 +40,6 @@
                 </select>
             @endcan
         </x-slot:filters>
+        <x-slot:toolbar>@can('customers.export')<x-export-menu :url="route('customers.export')" />@endcan</x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>

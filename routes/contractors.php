@@ -15,6 +15,7 @@ Route::middleware('throttle:120,1')->group(function () {
 Route::prefix('contractors')->name('contractors.')->controller(ContractorController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{contractor}', 'show')->name('show');
@@ -31,6 +32,7 @@ Route::prefix('work-orders')->name('work-orders.')->group(function () {
         Route::get('table', 'table')->name('table');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
+        Route::get('export', 'export')->name('export');
         Route::get('{order}', 'show')->name('show');
         Route::get('{order}/edit', 'edit')->name('edit');
         Route::put('{order}', 'update')->name('update');
@@ -51,6 +53,7 @@ Route::prefix('work-orders')->name('work-orders.')->group(function () {
 Route::prefix('contractor-bills')->name('contractor-bills.')->controller(ContractorBillController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('{bill}', 'show')->name('show');
     Route::post('{bill}/approve', 'approve')->name('approve');
     Route::post('{bill}/cancel', 'cancel')->name('cancel');
@@ -61,6 +64,7 @@ Route::prefix('contractor-bills')->name('contractor-bills.')->controller(Contrac
 Route::prefix('contractor-payments')->name('contractor-payments.')->controller(ContractorPaymentController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{payment}', 'show')->name('show');

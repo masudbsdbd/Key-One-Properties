@@ -23,9 +23,12 @@
             </select>
         </div>
     </x-slot:filters>
-    @if ($project)
-        @can('construction:labour-manage', $project)
-            <x-slot:toolbar><x-button size="sm" icon="plus" data-remote-modal="{{ route('labour.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Record Labour</x-button></x-slot:toolbar>
-        @endcan
-    @endif
+    <x-slot:toolbar>
+        @can('construction.cost.export')<x-export-menu :url="route('labour.export', $project ? ['project' => $project->public_id] : [])" />@endcan
+        @if ($project)
+            @can('construction:labour-manage', $project)
+                <x-button size="sm" icon="plus" data-remote-modal="{{ route('labour.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Record Labour</x-button>
+            @endcan
+        @endif
+    </x-slot:toolbar>
 </x-data-table>

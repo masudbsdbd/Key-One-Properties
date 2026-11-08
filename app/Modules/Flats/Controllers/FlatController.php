@@ -10,13 +10,16 @@ use App\Models\Project;
 use App\Modules\Flats\Requests\FlatRequest;
 use App\Modules\Flats\Services\FlatService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
+use Symfony\Component\HttpFoundation\Response;
 
 class FlatController extends Controller
 {
@@ -30,6 +33,28 @@ class FlatController extends Controller
     }
 
     public function table(Request $request): JsonResponse
+    {
+        $query = $this->listing($request);
+        $project = Project::findByPublicId($request->input('project'));
+        $flats = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('flats._rows', [
+            'flats' => $flats,
+            'showProject' => ! $project,
+        ])->render(), $flats);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('flats.export'), 403);
+
+        return Report::make('Units')->meta(['Project' => Project::findByPublicId($request->input('project'))?->name, 'Status' => Flat::STATUSES[(string) $request->input('status')] ?? null, 'Type' => $request->input('type')])
+            ->columns(['Project' => 'text', 'Building' => 'text', 'Floor' => 'text', 'Unit' => 'text', 'Type' => 'text', 'Area' => 'qty', 'Unit of Area' => 'text', 'List Price' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (Flat $f) => [$f->project->code, $f->building->code, $f->floor->label, $f->flat_no, $f->flat_type, $f->saleable_area, $f->area_unit, $f->list_price, Flat::STATUSES[$f->status] ?? $f->status]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
     {
         Gate::authorize('viewAny', Flat::class);
 
@@ -51,18 +76,13 @@ class FlatController extends Controller
             $query->where('flat_type', $type);
         }
 
-        $flats = TableQuery::apply($query, $request, ['flat_no', 'flat_type'], [
+        return TableQuery::prepare($query, $request, ['flat_no', 'flat_type'], [
             'flat_no' => fn ($q, $dir) => $q->orderBy('building_id', $dir)->orderBy('flat_no', $dir),
             'floor' => fn ($q, $dir) => $q->orderBy(Floor::select('floor_number')->whereColumn('floors.id', 'flats.floor_id'), $dir),
             'area' => 'saleable_area',
             'price' => 'list_price',
             'status' => 'status',
         ], 'flat_no');
-
-        return Ajax::table(view('flats._rows', [
-            'flats' => $flats,
-            'showProject' => ! $project,
-        ])->render(), $flats);
     }
 
     public function create(Request $request): JsonResponse

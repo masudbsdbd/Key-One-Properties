@@ -13,6 +13,7 @@ Route::prefix('customers')->name('customers.')->group(function () {
     Route::controller(CustomerController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('table', 'table')->name('table');
+        Route::get('export', 'export')->name('export');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::post('{customer}/restore', 'restore')->name('restore');

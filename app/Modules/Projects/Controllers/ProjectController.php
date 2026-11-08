@@ -7,11 +7,14 @@ use App\Models\Project;
 use App\Modules\Projects\Requests\ProjectRequest;
 use App\Modules\Projects\Services\ProjectService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProjectController extends Controller
 {
@@ -26,6 +29,26 @@ class ProjectController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $projects = TableQuery::paginate($query, $request);
+
+        $view = $request->input('view') === 'cards' ? 'projects._cards' : 'projects._rows';
+
+        return Ajax::table(view($view, ['projects' => $projects])->render(), $projects);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('projects.export'), 403);
+
+        return Report::make('Projects')->meta(['Status' => Project::STATUSES[(string) $request->input('status')] ?? null])
+            ->columns(['Code' => 'text', 'Name' => 'text', 'Location' => 'text', 'Status' => 'text', 'Start' => 'date', 'Target' => 'date', 'Progress %' => 'number', 'Budget' => 'money'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (Project $p) => [$p->code, $p->name, $p->location_text, Project::STATUSES[$p->status] ?? $p->status, $p->start_date, $p->target_completion_date, round($p->overallProgress(), 1), $p->estimated_budget]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         Gate::authorize('viewAny', Project::class);
         $user = $request->user();
 
@@ -39,17 +62,13 @@ class ProjectController extends Controller
             $query->where('status', $status);
         }
 
-        $projects = TableQuery::apply($query, $request, ['name', 'code', 'location_text'], [
+        return TableQuery::prepare($query, $request, ['name', 'code', 'location_text'], [
             'name' => 'name',
             'code' => 'code',
             'start' => 'start_date',
             'target' => 'target_completion_date',
             'budget' => 'estimated_budget',
         ], 'name');
-
-        $view = $request->input('view') === 'cards' ? 'projects._cards' : 'projects._rows';
-
-        return Ajax::table(view($view, ['projects' => $projects])->render(), $projects);
     }
 
     public function create(): JsonResponse

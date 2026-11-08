@@ -9,7 +9,9 @@ use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,6 +19,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class ContractorPaymentController extends Controller
 {
@@ -31,6 +34,25 @@ class ContractorPaymentController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $contractor = Contractor::findByPublicId($request->input('contractor'));
+        $payments = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('contractors.payments._rows', ['payments' => $payments, 'showContractor' => ! $contractor])->render(), $payments);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('contractors.export'), 403);
+
+        return Report::make('Contractor Payments')->meta(['Status' => ContractorPayment::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name])
+            ->columns(['Payment No' => 'text', 'Date' => 'date', 'Contractor' => 'text', 'Work Order' => 'text', 'Against' => 'text', 'Method' => 'text', 'Amount' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorPayment $p) => [$p->payment_no, $p->payment_date, $p->contractor->name, $p->workOrder->wo_no, $p->bill?->bill_no ?? 'Advance', ContractorPayment::METHODS[$p->payment_method], $p->amount, ContractorPayment::STATUSES[$p->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('contractors.view'), 403);
 
         $query = ContractorPayment::query()->visibleTo($request->user())->with(['contractor:id,public_id,name', 'workOrder:id,public_id,wo_no', 'bill:id,public_id,bill_no']);
@@ -44,9 +66,7 @@ class ContractorPaymentController extends Controller
             $query->where('work_order_id', $order->id);
         }
 
-        $payments = TableQuery::apply($query, $request, ['payment_no', 'reference'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
-
-        return Ajax::table(view('contractors.payments._rows', ['payments' => $payments, 'showContractor' => ! $contractor])->render(), $payments);
+        return TableQuery::prepare($query, $request, ['payment_no', 'reference'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
     }
 
     public function create(Request $request): JsonResponse
