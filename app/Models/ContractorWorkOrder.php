@@ -67,6 +67,11 @@ class ContractorWorkOrder extends Model
         return $this->hasMany(ContractorPayment::class, 'work_order_id');
     }
 
+    public function variations(): HasMany
+    {
+        return $this->hasMany(ContractorWorkOrderVariation::class, 'work_order_id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

@@ -41,6 +41,11 @@ Route::prefix('work-orders')->name('work-orders.')->group(function () {
         Route::get('{order}/cancel', 'cancelForm')->name('cancel.form');
         Route::post('{order}/cancel', 'cancel')->name('cancel');
         Route::post('{order}/settle', 'settle')->name('settle');
+        Route::get('{order}/variations/create', 'variationForm')->name('variations.create');
+        Route::post('{order}/variations', 'storeVariation')->name('variations.store');
+        Route::post('{order}/variations/{variation}/approve', 'approveVariation')->name('variations.approve');
+        Route::get('{order}/variations/{variation}/reject', 'rejectVariationForm')->name('variations.reject.form');
+        Route::post('{order}/variations/{variation}/reject', 'rejectVariation')->name('variations.reject');
         Route::get('{order}/measurements/create', 'measurementForm')->name('measurements.create');
         Route::post('{order}/measurements', 'storeMeasurement')->name('measurements.store');
         Route::post('{order}/measurements/{measurement}/approve', 'approveMeasurement')->name('measurements.approve');

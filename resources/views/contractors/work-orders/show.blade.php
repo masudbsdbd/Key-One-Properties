@@ -10,6 +10,7 @@
     ])->filter()
         ->merge($order->bills->whereIn('status', ['approved', 'paid'])->map(fn ($b) => ['title' => App\Models\ContractorBill::KINDS[$b->kind].' · '.$b->bill_no, 'meta' => App\Support\Format::date($b->bill_date).' · '.App\Support\Format::money($b->net_payable), 'tone' => 'accent']))
         ->merge($order->payments->where('status', 'approved')->map(fn ($p) => ['title' => ($p->bill_id ? 'Payment · ' : 'Advance · ').$p->payment_no, 'meta' => App\Support\Format::date($p->payment_date).' · '.App\Support\Format::money($p->amount), 'tone' => 'success']))
+        ->merge($order->variations->where('status', 'approved')->map(fn ($v) => ['title' => 'Variation · '.$v->variation_no, 'meta' => $v->approver?->name.' · '.App\Support\Format::datetime($v->approved_at), 'body' => App\Support\Format::money($v->old_amount).' → '.App\Support\Format::money($v->new_amount).' · '.$v->reason, 'tone' => 'warning']))
         ->when($order->completed_at, fn ($c) => $c->push(['title' => 'Completed', 'meta' => App\Support\Format::datetime($order->completed_at), 'tone' => 'success']))
         ->when($s === 'cancelled', fn ($c) => $c->push(['title' => 'Cancelled', 'meta' => App\Support\Format::datetime($order->updated_at), 'body' => $order->status_reason, 'tone' => 'danger']))
         ->values()->all();
@@ -24,6 +25,7 @@
             @endif
             @if ($s === 'approved')
                 @can('wo:measure', $order)<x-button icon="plus" data-remote-modal="{{ route('work-orders.measurements.create', $order) }}" data-size="max-w-3xl">Measurement</x-button>@endcan
+                @can('wo:edit', $order)<x-button variant="secondary" icon="edit" data-remote-modal="{{ route('work-orders.variations.create', $order) }}" data-size="max-w-lg" :disabled="$order->variations->contains('status', 'pending')" data-disabled-reason="A variation is waiting for approval">Variation</x-button>@endcan
                 @can('wo:bill', $order)
                     <x-button variant="secondary" icon="file" data-remote-modal="{{ route('work-orders.bills.create', $order) }}" data-size="max-w-3xl" :disabled="! $hasApproved" data-disabled-reason="No approved measurements to bill">Bill</x-button>
                 @endcan
@@ -62,6 +64,31 @@
                     <div><dt class="detail-label">Retention Held</dt><dd class="detail-value"><x-money :value="$retention" /> @if ((float) $order->retention_percent)<span class="text-[13px] text-ink-500">({{ rtrim(rtrim($order->retention_percent, '0'), '.') }}%)</span>@endif</dd></div>
                 </dl>
             </x-card>
+
+            @if ($order->variations->isNotEmpty())
+                <x-card title="Variations" :padded="false">
+                    <table class="data-table">
+                        <thead><tr><th>Variation</th><th class="text-right">From</th><th class="text-right">To</th><th class="text-right">Change</th><th>Status</th><th class="w-24"></th></tr></thead>
+                        <tbody>
+                            @foreach ($order->variations->sortByDesc('id') as $v)
+                                <tr>
+                                    <td class="min-w-48"><p class="font-medium text-ink-900">{{ $v->variation_no }}</p><p class="text-[13px] text-ink-500">{{ $v->reason }}</p>@if ($v->rejection_reason)<p class="text-[13px] text-danger-600">{{ $v->rejection_reason }}</p>@endif</td>
+                                    <td class="text-right"><x-money :value="$v->old_amount" muted /></td>
+                                    <td class="text-right"><x-money :value="$v->new_amount" /></td>
+                                    <td class="whitespace-nowrap text-right font-medium {{ App\Support\Money::isPositive($v->change()) ? 'text-warning-600' : 'text-success-600' }}">{{ App\Support\Money::isPositive($v->change()) ? '+' : '' }}{{ App\Support\Format::money($v->change()) }}</td>
+                                    <td><x-status-badge :status="$v->status" /></td>
+                                    <td class="whitespace-nowrap text-right">
+                                        @if ($v->status === 'pending' && Gate::allows('wo:approve', $order))
+                                            <button type="button" class="btn btn-ghost btn-icon text-success-600" data-action="post" data-url="{{ route('work-orders.variations.approve', [$order, $v]) }}" data-reload data-confirm="Approve {{ $v->variation_no }}?" data-confirm-message="Contract changes to {{ App\Support\Format::money($v->new_amount) }}." data-confirm-text="Approve" data-tone="primary" aria-label="Approve variation"><x-icon name="check" size="h-4 w-4" /></button>
+                                            <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-remote-modal="{{ route('work-orders.variations.reject.form', [$order, $v]) }}" data-size="max-w-md" aria-label="Reject variation"><x-icon name="x" size="h-4 w-4" /></button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </x-card>
+            @endif
 
             <x-card title="Measurements" :padded="false">
                 @if ($order->measurements->isEmpty())

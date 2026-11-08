@@ -7,6 +7,7 @@ use App\Models\Contractor;
 use App\Models\ContractorBill;
 use App\Models\ContractorMeasurement;
 use App\Models\ContractorWorkOrder;
+use App\Models\ContractorWorkOrderVariation;
 use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Contractors\Services\ContractorService;
@@ -117,7 +118,7 @@ class WorkOrderController extends Controller
     public function show(Request $request, ContractorWorkOrder $order): View
     {
         Gate::authorize('wo:view', $order);
-        $order->load(['contractor', 'project', 'workPackage', 'creator', 'approver', 'measurements.submitter', 'bills', 'payments.bill']);
+        $order->load(['contractor', 'project', 'workPackage', 'creator', 'approver', 'measurements.submitter', 'bills', 'payments.bill', 'variations.requester', 'variations.approver']);
         $billed = $order->bills->whereIn('status', ['draft', 'approved', 'paid'])->where('kind', 'running');
 
         return view('contractors.work-orders.show', [
@@ -161,6 +162,56 @@ class WorkOrderController extends Controller
         return $bill
             ? Ajax::success('Retention release '.$bill->bill_no.' created.', ['redirect' => route('contractor-bills.show', $bill)])
             : Ajax::success('Work order completed.');
+    }
+
+    public function variationForm(Request $request, ContractorWorkOrder $order): JsonResponse
+    {
+        Gate::authorize('wo:edit', $order);
+
+        return Ajax::success(null, ['title' => 'Variation · '.$order->wo_no, 'html' => view('contractors.work-orders._variation', [
+            'order' => $order, 'measured' => $order->measuredAmount(),
+        ])->render()]);
+    }
+
+    public function storeVariation(Request $request, ContractorWorkOrder $order): JsonResponse
+    {
+        Gate::authorize('wo:edit', $order);
+        $request->merge(['new_amount' => str_replace(',', '', (string) $request->input('new_amount'))]);
+        $data = $request->validate([
+            'new_amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
+            'reason' => ['required', 'string', 'max:255'],
+        ]);
+        $variation = $this->service->requestVariation($order, (string) $data['new_amount'], $data['reason'], $request->user());
+
+        return Ajax::success('Variation '.$variation->variation_no.' requested.');
+    }
+
+    public function approveVariation(Request $request, ContractorWorkOrder $order, ContractorWorkOrderVariation $variation): JsonResponse
+    {
+        Gate::authorize('wo:approve', $order);
+        abort_unless($variation->work_order_id === $order->id, 404);
+        $this->service->approveVariation($variation, $request->user());
+
+        return Ajax::success('Variation approved. Contract revised.');
+    }
+
+    public function rejectVariationForm(Request $request, ContractorWorkOrder $order, ContractorWorkOrderVariation $variation): JsonResponse
+    {
+        Gate::authorize('wo:approve', $order);
+        abort_unless($variation->work_order_id === $order->id, 404);
+
+        return Ajax::success(null, ['title' => 'Reject '.$variation->variation_no, 'html' => view('partials.reason-form', [
+            'action' => route('work-orders.variations.reject', [$order, $variation]), 'button' => 'Reject', 'reload' => true,
+        ])->render()]);
+    }
+
+    public function rejectVariation(Request $request, ContractorWorkOrder $order, ContractorWorkOrderVariation $variation): JsonResponse
+    {
+        Gate::authorize('wo:approve', $order);
+        abort_unless($variation->work_order_id === $order->id, 404);
+        $this->service->rejectVariation($variation, $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'], $request->user());
+
+        return Ajax::success('Variation rejected.');
     }
 
     public function measurementForm(Request $request, ContractorWorkOrder $order): JsonResponse

@@ -153,4 +153,42 @@ class ContractorServiceTest extends TestCase
         $this->service->reversePayment($a->fresh(), 'Duplicate', $this->manager);
         $this->assertSame('0.00', $this->contractor->balance());
     }
+
+    public function test_variation_revises_the_contract_after_approval_and_never_below_measured(): void
+    {
+        $wo = $this->workOrder('1000');
+        $this->measured($wo, '80', '10');
+
+        try {
+            $this->service->requestVariation($wo, '700', 'Scope cut', $this->engineer);
+            $this->fail('Variation below measured value.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('new_amount', $e->errors());
+        }
+
+        $variation = $this->service->requestVariation($wo, '1500', 'Extra floor', $this->engineer);
+        $this->expectExceptionOnDuplicate(fn () => $this->service->requestVariation($wo, '1600', 'Again', $this->engineer));
+        $this->assertSame('1000.00', $wo->fresh()->contract_amount);
+
+        try {
+            $this->service->approveVariation($variation, $this->engineer);
+            $this->fail('Self-approved variation.');
+        } catch (\Throwable $e) {
+            $this->assertNotInstanceOf(AssertionFailedError::class, $e);
+        }
+        $this->service->approveVariation($variation, $this->manager);
+        $this->assertSame('1500.00', $wo->fresh()->contract_amount);
+
+        $this->measured($wo->fresh(), '60', '10');
+        $this->assertSame('1400.00', $wo->fresh()->measuredAmount());
+    }
+
+    private function expectExceptionOnDuplicate(callable $fn): void
+    {
+        try {
+            $fn();
+            $this->fail('Second pending variation accepted.');
+        } catch (ConflictHttpException) {
+        }
+    }
 }

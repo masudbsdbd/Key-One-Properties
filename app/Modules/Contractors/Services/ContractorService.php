@@ -7,6 +7,7 @@ use App\Models\ContractorBill;
 use App\Models\ContractorMeasurement;
 use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
+use App\Models\ContractorWorkOrderVariation;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkPackage;
@@ -94,6 +95,68 @@ class ContractorService
         });
     }
 
+    /** A variation revises the contract value; it never goes below what is already measured. */
+    public function requestVariation(ContractorWorkOrder $wo, string $newAmount, string $reason, User $user): ContractorWorkOrderVariation
+    {
+        return DB::transaction(function () use ($wo, $newAmount, $reason, $user) {
+            $wo = ContractorWorkOrder::query()->lockForUpdate()->findOrFail($wo->id);
+            Approval::ensureStatus($wo->status, 'approved', 'Variations need an approved work order.');
+            if ($wo->variations()->where('status', 'pending')->exists()) {
+                throw new ConflictHttpException('A variation is already waiting for approval.');
+            }
+            $this->checkVariation($wo, $newAmount);
+
+            return $wo->variations()->create([
+                'variation_no' => DocumentNumber::next('WOV'),
+                'old_amount' => $wo->contract_amount,
+                'new_amount' => Money::amount($newAmount),
+                'reason' => $reason,
+                'status' => 'pending',
+                'requested_by' => $user->id,
+            ]);
+        });
+    }
+
+    public function approveVariation(ContractorWorkOrderVariation $variation, User $user): void
+    {
+        DB::transaction(function () use ($variation, $user) {
+            $variation = ContractorWorkOrderVariation::query()->lockForUpdate()->findOrFail($variation->id);
+            Approval::ensureStatus($variation->status, 'pending', 'This variation is no longer pending.');
+            Approval::ensureNotSelf($user, $variation->requested_by, 'a variation');
+            $wo = ContractorWorkOrder::query()->lockForUpdate()->findOrFail($variation->work_order_id);
+            Approval::ensureStatus($wo->status, 'approved', 'The work order is no longer open.');
+            if (Money::cmp($wo->contract_amount, $variation->old_amount) !== 0) {
+                throw new ConflictHttpException('The contract changed after this request. Request the variation again.');
+            }
+            $this->checkVariation($wo, $variation->new_amount);
+
+            $variation->forceFill(['status' => 'approved', 'approved_by' => $user->id, 'approved_at' => now()])->save();
+            $wo->forceFill(['contract_amount' => $variation->new_amount])->save();
+        });
+    }
+
+    public function rejectVariation(ContractorWorkOrderVariation $variation, string $reason, User $user): void
+    {
+        DB::transaction(function () use ($variation, $reason, $user) {
+            $variation = ContractorWorkOrderVariation::query()->lockForUpdate()->findOrFail($variation->id);
+            Approval::ensureStatus($variation->status, 'pending', 'This variation is no longer pending.');
+            $variation->forceFill(['status' => 'rejected', 'rejection_reason' => $reason, 'approved_by' => $user->id, 'approved_at' => now()])->save();
+        });
+    }
+
+    private function checkVariation(ContractorWorkOrder $wo, string $newAmount): void
+    {
+        if (! Money::isPositive($newAmount)) {
+            throw ValidationException::withMessages(['new_amount' => 'Enter the revised contract amount.']);
+        }
+        if (Money::cmp($newAmount, $wo->contract_amount) === 0) {
+            throw ValidationException::withMessages(['new_amount' => 'The revised amount is the same as the current contract.']);
+        }
+        if (Money::cmp($newAmount, $wo->measuredAmount()) < 0) {
+            throw ValidationException::withMessages(['new_amount' => 'Cannot be below the measured value of '.Money::amount($wo->measuredAmount()).'.']);
+        }
+    }
+
     public function recordMeasurement(ContractorWorkOrder $wo, array $data, User $user): ContractorMeasurement
     {
         return DB::transaction(function () use ($wo, $data, $user) {
@@ -106,7 +169,7 @@ class ContractorService
             }
             $remaining = Money::sub($wo->contract_amount, $wo->measuredAmount());
             if (Money::cmp($amount, $remaining) > 0) {
-                throw new ConflictHttpException('This exceeds the contract. Remaining value: '.Money::amount($remaining).'.');
+                throw new ConflictHttpException('This exceeds the contract. Remaining value: '.Money::amount($remaining).'. Request a variation to revise the contract.');
             }
 
             return $wo->measurements()->create([
