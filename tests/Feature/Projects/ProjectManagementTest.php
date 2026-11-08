@@ -136,6 +136,6 @@ class ProjectManagementTest extends TestCase
 
         $this->assertDatabaseHas('activity_log', ['project_id' => $project->id, 'event' => 'members_added']);
         $html = $this->actingAs($user)->ajax()->get(route('projects.activity', $project))->json('data.html');
-        $this->assertStringContainsString('Members Added', $html);
+        $this->assertStringContainsString('members added', $html);
     }
 }
