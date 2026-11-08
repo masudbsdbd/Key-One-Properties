@@ -12,7 +12,7 @@ class FlatProfitCalculation extends Model
 {
     use BelongsToVisibleProject, HasPublicId;
 
-    public const STATUSES = ['draft' => 'Draft', 'submitted' => 'Submitted', 'approved' => 'Approved', 'rejected' => 'Rejected', 'superseded' => 'Superseded'];
+    public const STATUSES = ['draft' => 'Draft', 'submitted' => 'Submitted', 'approved' => 'Approved', 'rejected' => 'Rejected', 'superseded' => 'Superseded', 'cancelled' => 'Cancelled'];
 
     protected $guarded = ['id'];
 
@@ -49,5 +49,10 @@ class FlatProfitCalculation extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function submitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
     }
 }

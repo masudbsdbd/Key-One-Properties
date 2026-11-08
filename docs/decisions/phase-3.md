@@ -113,13 +113,27 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
 - Reversing a contribution is refused while it would leave capital below zero (reverse the return first).
 - Investor directory is company-wide (`investor.view`); agreements, capital and ledger rows follow project visibility.
 
-## 8. Implementation checklist
+## 8. Cost allocation and flat profit (P6)
+
+- Direct unit cost comes from project expenses tagged with a unit (new optional Unit field on project
+  expenses; the cost row carries `flat_id`). Material, labour and contractor cost stay shared.
+- A run freezes `source_max_id`, the cutoff and the unit areas. It is stale when a cost row up to the cutoff
+  is posted later or a unit area changes; stale runs cannot be approved, and profit calculated on a stale
+  run cannot be approved either. Approving a run supersedes the previous one.
+- Profit = sale net contract value − direct − shared − other cost (other cost needs a note). Investor amounts
+  are rounded down to the paisa; the company share is the explicit remainder. A loss gives investors zero.
+- Approval needs `investor.profit.approve`, a second user, both policy settings (Settings → Investor Profit
+  Policy), eligible revenue, the latest approved run, unchanged agreements, and posts only the change
+  against the payable already approved for that investor and unit (`profit_payable` in the investor ledger).
+  An investor's new profit can never drop below what was already paid to them.
+
+## 9. Implementation checklist
 
 - [x] P1 UI shell: navigation, Phase 3 option sources, shared components
 - [x] P2 Schema, models, permissions, claims, invariants
 - [x] P3 Booking, sale, cancellation, refund, price revisions, registration, handover
 - [x] P4 Installment plans, collections, allocation, late fees, reschedule, receipts, statement
 - [x] P5 Investors, agreements (≤ 100%), capital, investor ledger
-- [ ] P6 Cost allocation runs and flat profit calculations
+- [x] P6 Cost allocation runs and flat profit calculations
 - [ ] P7 Profit approval, payable, distribution, payout
 - [ ] P8 Integration, reports, reconciliation, portal DTOs, release

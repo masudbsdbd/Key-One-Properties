@@ -4,12 +4,14 @@ use App\Modules\Investors\Controllers\AgreementController;
 use App\Modules\Investors\Controllers\CapitalController;
 use App\Modules\Investors\Controllers\CostRunController;
 use App\Modules\Investors\Controllers\InvestorController;
+use App\Modules\Investors\Controllers\ProfitController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:120,1')->group(function () {
     Route::get('options/investors', [InvestorController::class, 'options'])->name('options.investors');
     Route::get('options/investment-flats', [AgreementController::class, 'flatOptions'])->name('options.investment-flats');
     Route::get('options/investor-agreements', [AgreementController::class, 'agreementOptions'])->name('options.investor-agreements');
+    Route::get('options/profit-flats', [ProfitController::class, 'flatOptions'])->name('options.profit-flats');
     Route::get('investor-agreements/shares', [AgreementController::class, 'shares'])->name('investor-agreements.shares');
 });
 
@@ -66,4 +68,17 @@ Route::prefix('cost-runs')->name('cost-runs.')->controller(CostRunController::cl
     Route::post('{run}/approve', 'approve')->name('approve');
     Route::get('{run}/reject', 'rejectForm')->name('reject.form');
     Route::post('{run}/reject', 'reject')->name('reject');
+});
+
+Route::prefix('profit-calculations')->name('profit-calculations.')->controller(ProfitController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
+    Route::get('create', 'create')->name('create');
+    Route::post('/', 'store')->name('store');
+    Route::get('{calculation}', 'show')->name('show');
+    Route::get('{calculation}/document', 'document')->name('document');
+    Route::post('{calculation}/{action}', 'decide')->whereIn('action', ['submit', 'approve'])->name('decide');
+    Route::get('{calculation}/{action}/form', 'reasonForm')->whereIn('action', ['reject', 'cancel'])->name('reason');
+    Route::post('{calculation}/{action}/reason', 'reason')->whereIn('action', ['reject', 'cancel'])->name('reason.store');
 });

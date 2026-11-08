@@ -73,6 +73,7 @@
     .data-table tbody td { @apply px-4 py-2.5 border-b border-line text-ink-700 align-middle; }
     .data-table tbody tr:last-child td { @apply border-b-0; }
     .data-table tbody tr:hover td { @apply bg-surface-muted; }
+    .data-table tfoot td { @apply px-4 py-2.5 border-t border-line text-ink-900 align-middle; }
     .sort-button { @apply inline-flex items-center gap-1 hover:text-ink-900; }
 
     /* Skeleton */
