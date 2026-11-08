@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectProgressUpdate;
 use App\Models\ProjectStage;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +18,7 @@ class ProjectService
     public function create(array $data, User $creator): Project
     {
         return DB::transaction(function () use ($data, $creator) {
-            $project = new Project($data);
+            $project = new Project(Arr::only($data, (new Project)->getFillable()));
             $project->code = $data['code'] ?? null ?: Project::nextCode();
             $project->created_by = $creator->id;
             $project->save();

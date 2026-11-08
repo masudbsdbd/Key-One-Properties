@@ -6,6 +6,7 @@ use App\Models\Building;
 use App\Models\Flat;
 use App\Models\Floor;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -165,7 +166,7 @@ class FlatService
     {
         $building = $floor->building;
 
-        $flat = new Flat($attributes);
+        $flat = new Flat(Arr::only($attributes, (new Flat)->getFillable()));
         $flat->flat_no = mb_strtoupper(trim($attributes['flat_no']));
         $flat->project_id = $building->project_id;
         $flat->building_id = $building->id;

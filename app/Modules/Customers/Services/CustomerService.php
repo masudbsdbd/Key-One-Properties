@@ -4,6 +4,7 @@ namespace App\Modules\Customers\Services;
 
 use App\Models\Customer;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class CustomerService
@@ -14,7 +15,7 @@ class CustomerService
     public function create(array $data, User $user): Customer
     {
         return DB::transaction(function () use ($data, $user) {
-            $customer = new Customer($data);
+            $customer = new Customer(Arr::only($data, (new Customer)->getFillable()));
             $customer->customer_code = Customer::nextCode();
             $customer->created_by = $user->id;
             $customer->save();
@@ -40,7 +41,7 @@ class CustomerService
     {
         return DB::transaction(function () use ($customer, $data, $user) {
             $customer = Customer::query()->lockForUpdate()->findOrFail($customer->id);
-            $customer->fill($data);
+            $customer->fill(Arr::only($data, $customer->getFillable()));
             $identityChanged = $customer->isDirty('nid_or_passport');
             $customer->save();
 
