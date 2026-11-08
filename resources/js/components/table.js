@@ -32,6 +32,12 @@ function setup(table) {
     const summary = table.querySelector('[data-table-summary]');
     const skeleton = body.innerHTML;
 
+    // Plain filters can be preset from the page URL, e.g. /expenses?status=submitted.
+    const preset = new URLSearchParams(window.location.search);
+    table.querySelectorAll('select[data-table-filter]:not([data-select]), input[data-table-filter]').forEach((input) => {
+        if (input.name && preset.has(input.name)) input.value = preset.get(input.name);
+    });
+
     const params = () => {
         const query = { page: state.page };
         if (state.sort) Object.assign(query, { sort: state.sort, dir: state.dir });
@@ -166,7 +172,18 @@ function setup(table) {
 
     table.reload = load;
     table.addEventListener('table:reload', load);
-    load();
+
+    // Tables inside a hidden tab panel load the first time the panel is shown.
+    if (table.closest('[hidden]')) {
+        const onShown = () => {
+            if (table.closest('[hidden]')) return;
+            document.removeEventListener('tab:shown', onShown);
+            load();
+        };
+        document.addEventListener('tab:shown', onShown);
+    } else {
+        load();
+    }
 }
 
 function pages(current, last) {
