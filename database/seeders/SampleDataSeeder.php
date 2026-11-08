@@ -10,6 +10,8 @@ use App\Models\ExpenseCategory;
 use App\Models\Flat;
 use App\Models\FlatBooking;
 use App\Models\FlatSale;
+use App\Models\Investor;
+use App\Models\InvestorFlatAgreement;
 use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
@@ -26,6 +28,7 @@ use App\Modules\Expenses\Services\ExpenseService;
 use App\Modules\Flats\Controllers\BuildingController;
 use App\Modules\Flats\Services\FlatService;
 use App\Modules\Inventory\Services\InventoryService;
+use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Projects\Services\ProjectService;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Modules\Sales\Services\PriceRevisionService;
@@ -68,6 +71,7 @@ class SampleDataSeeder extends Seeder
             $this->contractors($admin);
             $this->expenses($admin);
             $this->sales($admin);
+            $this->investors($admin);
 
             return;
         }
@@ -317,5 +321,32 @@ class SampleDataSeeder extends Seeder
         $payments->post($pay(null, $sale, '150000', 5, 'cheque', 'CHQ-552310'), $admin);
         $pay(null, $sale, '100000', 1, 'cash');
         $payments->post($pay($booking, null, '300000', 11, 'mobile', 'BK-77120'), $admin);
+    }
+
+    private function investors(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        if (Investor::query()->exists() || ! $project) {
+            return;
+        }
+        $service = app(InvestorService::class);
+        $flats = Flat::query()->where('project_id', $project->id)->orderBy('id')->take(3)->get();
+        $from = now()->subMonths(6)->startOfMonth()->toDateString();
+        $people = collect([['Mahbub Alam', '01711456789', 'mahbub.alam@example.com'], ['Farhana Kabir', '01819223344', null], ['Sajid Chowdhury', '01911667788', 'sajid@example.com']])
+            ->map(fn ($p) => $service->saveInvestor(null, ['name' => $p[0], 'mobile' => $p[1], 'email' => $p[2], 'address' => 'Dhaka', 'status' => 'active'], $admin));
+
+        foreach ([[0, 0, '60', '2500000', ['1500000', '500000']], [1, 0, '30', '1200000', ['1200000']], [2, 1, '50', '2000000', ['800000']], [0, 2, '40', '1800000', []]] as [$i, $f, $share, $capital, $payments]) {
+            $a = $service->saveAgreement(null, $people[$i], $flats[$f], ['committed_capital' => $capital, 'profit_share_percent' => $share, 'effective_from' => $from], $admin);
+            $service->submitAgreement($a, $admin);
+            if ($f === 2) {
+                continue;
+            }
+            $service->approveAgreement($a, $admin);
+            foreach ($payments as $n => $amount) {
+                $tx = $service->recordCapital($a->fresh(), 'contribution', ['amount' => $amount, 'transaction_date' => now()->subMonths(5 - $n * 2)->toDateString(), 'payment_method' => 'bank', 'reference_no' => 'TRX-'.random_int(10000, 99999)], $admin, (string) Str::uuid());
+                $service->postCapital($tx, $admin);
+            }
+        }
+        $service->recordCapital(InvestorFlatAgreement::query()->where('status', 'active')->firstOrFail(), 'contribution', ['amount' => '300000', 'transaction_date' => now()->subDay()->toDateString(), 'payment_method' => 'cheque', 'reference_no' => 'CHQ-889120'], $admin, (string) Str::uuid());
     }
 }

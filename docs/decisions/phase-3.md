@@ -100,13 +100,26 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
 | Investment share changes | Agreements have effective dates; a calculation uses agreements active on its date; no time or capital proration | — |
 | Payment methods | Cash, bank transfer, cheque, mobile banking (same as Phase 2) | — |
 
-## 7. Implementation checklist
+## 7. Investor agreements and capital (P5)
+
+- Share limit: for any single date, the shares of active agreements on a unit add up to at most 100.0000%.
+  The check takes the peak over the new agreement's date range (non-overlapping agreements do not add up)
+  and runs on save, submit and approve; approval locks the unit row first.
+- Versions: "Amend" copies an active agreement into a new draft (`version + 1`, `supersedes_id`). The old
+  version stays active until the amendment is approved; it is then closed the day before the new start date.
+- Capital is tracked per investor and unit across versions. Contributions (posted + pending) never exceed the
+  current agreement's committed capital; returns never exceed posted capital less pending returns. Contributions
+  need an active agreement; returns are also allowed on a closed one. Posting needs a second user.
+- Reversing a contribution is refused while it would leave capital below zero (reverse the return first).
+- Investor directory is company-wide (`investor.view`); agreements, capital and ledger rows follow project visibility.
+
+## 8. Implementation checklist
 
 - [x] P1 UI shell: navigation, Phase 3 option sources, shared components
 - [x] P2 Schema, models, permissions, claims, invariants
 - [x] P3 Booking, sale, cancellation, refund, price revisions, registration, handover
 - [x] P4 Installment plans, collections, allocation, late fees, reschedule, receipts, statement
-- [ ] P5 Investors, agreements (≤ 100%), capital, investor ledger
+- [x] P5 Investors, agreements (≤ 100%), capital, investor ledger
 - [ ] P6 Cost allocation runs and flat profit calculations
 - [ ] P7 Profit approval, payable, distribution, payout
 - [ ] P8 Integration, reports, reconciliation, portal DTOs, release

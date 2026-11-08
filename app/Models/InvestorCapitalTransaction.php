@@ -7,16 +7,23 @@ use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPublicId;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class InvestorCapitalTransaction extends Model
 {
-    use BelongsToVisibleProject, HasAttachments, HasPublicId;
+    use BelongsToVisibleProject, HasAttachments, HasPublicId, LogsActivity;
 
     public const TYPES = ['contribution' => 'Contribution', 'capital_return' => 'Capital Return'];
 
     public const STATUSES = ['pending' => 'Pending', 'posted' => 'Posted', 'rejected' => 'Rejected', 'reversed' => 'Reversed'];
 
     protected $guarded = ['id'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->useLogName('investor-capital')->logOnly(['amount', 'transaction_date', 'status', 'status_reason'])->logOnlyDirty()->dontSubmitEmptyLogs();
+    }
 
     protected function casts(): array
     {
