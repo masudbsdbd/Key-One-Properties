@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasPublicId;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CustomerLateFeePolicy extends Model
 {
@@ -34,5 +35,10 @@ class CustomerLateFeePolicy extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(LateFeeAssessment::class, 'policy_id');
     }
 }
