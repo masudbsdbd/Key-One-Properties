@@ -1,3 +1,4 @@
+import $ from 'jquery';
 import { Decimal } from './decimal';
 
 const clean = (v) => {
@@ -52,5 +53,13 @@ export function initPurchasingPages() {
         if (bill) billTotal(bill);
         const payment = event.target.closest('[data-payment-form]');
         if (payment) unallocated(payment);
+    });
+}
+
+/** Expense form: project fields only for project scope. */
+export function initExpenseForms() {
+    $(document).on('change', '[data-expense-form] #exp-scope', function () {
+        const project = this.closest('[data-expense-form]').querySelector('[data-expense-project]');
+        project.hidden = this.value !== 'project';
     });
 }

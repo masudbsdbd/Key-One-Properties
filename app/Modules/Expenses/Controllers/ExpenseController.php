@@ -1,0 +1,243 @@
+<?php
+
+namespace App\Modules\Expenses\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use App\Models\Project;
+use App\Models\WorkPackage;
+use App\Modules\Expenses\Services\ExpenseService;
+use App\Support\Ajax;
+use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class ExpenseController extends Controller
+{
+    public function __construct(private ExpenseService $service) {}
+
+    public function index(Request $request): View
+    {
+        abort_unless($request->user()->canAny(['expenses.view.general', 'expenses.view.project']), 403);
+
+        return view('expenses.index');
+    }
+
+    public function table(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->canAny(['expenses.view.general', 'expenses.view.project']), 403);
+        $query = $this->filtered($request)->with(['project:id,code,name', 'category:id,code,name,parent_id', 'category.parent:id,name']);
+        $totals = (clone $this->filtered($request))->selectRaw("
+            COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN amount END),0) AS approved_total,
+            COALESCE(SUM(CASE WHEN status = 'paid' THEN amount END),0) AS paid_total,
+            COALESCE(SUM(CASE WHEN status = 'submitted' THEN amount END),0) AS pending_total")->toBase()->first();
+
+        $expenses = TableQuery::apply($query, $request, ['expense_no', 'description', 'payee_name'], ['date' => 'expense_date', 'amount' => 'amount'], 'date', 'desc');
+
+        return Ajax::table(view('expenses._rows', ['expenses' => $expenses, 'totals' => $totals])->render(), $expenses);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        abort_unless($request->user()->can('expenses.export') && $request->user()->canAny(['expenses.view.general', 'expenses.view.project']), 403);
+        $query = $this->filtered($request)->with(['project:id,code', 'category:id,code,name'])->orderBy('expense_date')->orderBy('id');
+
+        return response()->streamDownload(function () use ($query) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Expense No', 'Date', 'Scope', 'Project', 'Category', 'Description', 'Payee', 'Amount', 'Status', 'Paid On', 'Method']);
+            foreach ($query->cursor() as $e) {
+                fputcsv($out, [$e->expense_no, $e->expense_date->toDateString(), Expense::SCOPES[$e->scope], $e->project?->code, $e->category->code.' '.$e->category->name,
+                    $e->description, $e->payee_name, $e->amount, Expense::STATUSES[$e->status], $e->paid_on?->toDateString(), $e->payment_method ? Expense::METHODS[$e->payment_method] : null]);
+            }
+            fclose($out);
+        }, 'expenses-'.now()->format('Ymd').'.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function create(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->canAny(['expenses.create.general', 'expenses.create.project']), 403);
+        $project = Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first();
+        $expense = new Expense(['scope' => $project || ! $request->user()->can('expenses.create.general') ? 'project' : 'general']);
+        $expense->setRelation('project', $project);
+
+        return $this->form($expense, 'New Expense');
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->canAny(['expenses.create.general', 'expenses.create.project']), 403);
+        [$category, $project, $package, $data] = $this->input($request);
+        $expense = $this->service->save(null, $category, $project, $package, $data, $request->user());
+        if ($request->boolean('submit')) {
+            $this->service->submit($expense, $request->user());
+        }
+
+        return Ajax::success('Expense '.$expense->expense_no.' saved.', ['redirect' => route('expenses.show', $expense)]);
+    }
+
+    public function edit(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeEdit($request, $expense);
+
+        return $this->form($expense->load(['project', 'workPackage', 'category.parent']), 'Edit '.$expense->expense_no);
+    }
+
+    public function update(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeEdit($request, $expense);
+        [$category, $project, $package, $data] = $this->input($request);
+        $this->service->save($expense, $category, $project, $package, $data, $request->user());
+
+        return Ajax::success('Expense updated.');
+    }
+
+    public function show(Request $request, Expense $expense): View
+    {
+        abort_unless($expense->isVisibleTo($request->user()), 403);
+        $expense->load(['project', 'workPackage', 'category.parent', 'creator', 'actions.actor']);
+
+        return view('expenses.show', ['expense' => $expense]);
+    }
+
+    public function submit(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeEdit($request, $expense);
+        $this->service->submit($expense, $request->user());
+
+        return Ajax::success('Submitted for approval.');
+    }
+
+    public function approve(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeAction($request, $expense, 'expenses.approve');
+        $this->service->approve($expense, $request->user());
+
+        return Ajax::success('Expense approved.');
+    }
+
+    public function reasonForm(Request $request, Expense $expense, string $action): JsonResponse
+    {
+        $this->authorizeAction($request, $expense, $action === 'reject' ? 'expenses.approve' : 'expenses.reverse');
+
+        return Ajax::success(null, ['title' => Str::headline($action).' '.$expense->expense_no, 'html' => view('partials.reason-form', [
+            'action' => route('expenses.'.$action, $expense), 'button' => Str::headline($action), 'reload' => true,
+        ])->render()]);
+    }
+
+    public function reject(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeAction($request, $expense, 'expenses.approve');
+        $this->service->reject($expense, $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'], $request->user());
+
+        return Ajax::success('Expense rejected.');
+    }
+
+    public function reverse(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeAction($request, $expense, 'expenses.reverse');
+        $this->service->reverse($expense, $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'], $request->user());
+
+        return Ajax::success('Expense reversed.');
+    }
+
+    public function payForm(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeAction($request, $expense, 'expenses.pay');
+
+        return Ajax::success(null, ['title' => 'Pay '.$expense->expense_no, 'html' => view('expenses._pay', ['expense' => $expense])->render()]);
+    }
+
+    public function pay(Request $request, Expense $expense): JsonResponse
+    {
+        $this->authorizeAction($request, $expense, 'expenses.pay');
+        $data = $request->validate([
+            'paid_on' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
+            'payment_method' => ['required', Rule::in(array_keys(Expense::METHODS))],
+            'payment_reference' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
+        ], ['payment_reference.required' => 'Enter the transaction or cheque reference.']);
+        $this->service->pay($expense, $data, $request->user());
+
+        return Ajax::success('Payment recorded.');
+    }
+
+    private function filtered(Request $request): Builder
+    {
+        $query = Expense::query()->visibleTo($request->user());
+        if (array_key_exists($status = (string) $request->input('status'), Expense::STATUSES)) {
+            $query->where('status', $status);
+        }
+        if (array_key_exists($scope = (string) $request->input('scope'), Expense::SCOPES)) {
+            $query->where('scope', $scope);
+        }
+        if ($project = Project::findByPublicId($request->input('project'))) {
+            $query->where('project_id', $project->id);
+        }
+        if ($category = ExpenseCategory::findByPublicId($request->input('category'))) {
+            $query->where(fn ($q) => $q->where('category_id', $category->id)->orWhereIn('category_id', ExpenseCategory::query()->where('parent_id', $category->id)->select('id')));
+        }
+        foreach (['from' => '>=', 'to' => '<='] as $key => $op) {
+            $value = (string) $request->input($key);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) && strtotime($value)) {
+                $query->whereDate('expense_date', $op, $value);
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array{0: ExpenseCategory, 1: ?Project, 2: ?WorkPackage, 3: array}
+     */
+    private function input(Request $request): array
+    {
+        $request->merge(['amount' => str_replace(',', '', (string) $request->input('amount'))]);
+        $data = $request->validate([
+            'scope' => ['required', Rule::in(array_keys(Expense::SCOPES))],
+            'project' => ['nullable', 'required_if:scope,project', 'string', 'size:16'],
+            'work_package' => ['nullable', 'string', 'size:16'],
+            'category' => ['required', 'string', 'size:16'],
+            'expense_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
+            'description' => ['required', 'string', 'max:255'],
+            'payee_name' => ['nullable', 'string', 'max:160'],
+            'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
+        ], ['project.required_if' => 'Select the project for a project expense.']);
+        abort_unless($request->user()->can('expenses.create.'.$data['scope']), 403);
+
+        $category = ExpenseCategory::query()->where('public_id', $data['category'])->first()
+            ?? throw ValidationException::withMessages(['category' => 'Select a category.']);
+        $project = null;
+        $package = null;
+        if ($data['scope'] === 'project') {
+            $project = Project::query()->visibleTo($request->user())->where('public_id', $data['project'])->first()
+                ?? throw ValidationException::withMessages(['project' => 'Select a project you can access.']);
+            if (! empty($data['work_package'])) {
+                $package = WorkPackage::query()->where('project_id', $project->id)->where('public_id', $data['work_package'])->first()
+                    ?? throw ValidationException::withMessages(['work_package' => 'Select a work package of this project.']);
+            }
+        }
+
+        return [$category, $project, $package, $data];
+    }
+
+    private function authorizeEdit(Request $request, Expense $expense): void
+    {
+        abort_unless($expense->isVisibleTo($request->user()) && $expense->canBeCreatedBy($request->user()), 403);
+    }
+
+    private function authorizeAction(Request $request, Expense $expense, string $permission): void
+    {
+        abort_unless($request->user()->can($permission) && $expense->isVisibleTo($request->user()), 403);
+    }
+
+    private function form(Expense $expense, string $title): JsonResponse
+    {
+        return Ajax::success(null, ['title' => $title, 'html' => view('expenses._form', ['expense' => $expense])->render()]);
+    }
+}

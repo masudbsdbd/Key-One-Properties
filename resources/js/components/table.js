@@ -13,6 +13,7 @@ import { toast } from './toast';
  *   [data-table-body]        receives html
  *   [data-table-pagination]  receives pager
  *   [data-table-summary]     receives "x–y of z"
+ *   [data-table-export=url]  link that downloads url with the current filters
  * Row actions:
  *   [data-row-action="delete|post"] with data-url, optional data-confirm.
  * Other scripts can call el.reload() or dispatch "table:reload".
@@ -39,6 +40,15 @@ function setup(table) {
         });
         return query;
     };
+
+    // [data-table-export] links download with the table's current filters and sort.
+    table.querySelectorAll('[data-table-export]').forEach((link) => {
+        link.addEventListener('click', () => {
+            const url = new URL(link.dataset.tableExport, window.location.origin);
+            Object.entries(params()).forEach(([key, value]) => key !== 'page' && url.searchParams.set(key, value));
+            link.href = url.toString();
+        });
+    });
 
     const load = async () => {
         state.controller?.abort();

@@ -27,7 +27,7 @@ import { initCustomerPages } from './pages/customers';
 import { initCalculators } from './pages/calc';
 import { bindLineItems } from './components/lines';
 import { initInventoryPages } from './pages/inventory';
-import { initPurchasingPages } from './pages/purchasing';
+import { initPurchasingPages, initExpenseForms } from './pages/purchasing';
 import { initContractorPages } from './pages/contractors';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
@@ -54,6 +54,7 @@ $(() => {
     initInventoryPages();
     initPurchasingPages();
     initContractorPages();
+    initExpenseForms();
 
     const params = new URLSearchParams(window.location.search);
     const autoCreate = document.querySelector('[data-auto-create]');

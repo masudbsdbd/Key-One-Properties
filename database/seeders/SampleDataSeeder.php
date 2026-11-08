@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Contractor;
 use App\Models\Customer;
 use App\Models\Department;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
@@ -15,6 +17,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Modules\Customers\Services\CustomerService;
+use App\Modules\Expenses\Services\ExpenseService;
 use App\Modules\Flats\Controllers\BuildingController;
 use App\Modules\Flats\Services\FlatService;
 use App\Modules\Inventory\Services\InventoryService;
@@ -56,6 +59,7 @@ class SampleDataSeeder extends Seeder
         if (Project::query()->exists()) {
             $this->purchasing($admin);
             $this->contractors($admin);
+            $this->expenses($admin);
 
             return;
         }
@@ -95,6 +99,7 @@ class SampleDataSeeder extends Seeder
         $this->inventory($admin);
         $this->purchasing($admin);
         $this->contractors($admin);
+        $this->expenses($admin);
 
         $customers = app(CustomerService::class);
         foreach ([
@@ -221,5 +226,37 @@ class SampleDataSeeder extends Seeder
         $bill = $service->createBill($wo, $ids, ['bill_date' => now()->subDays(10)->toDateString(), 'advance_adjustment' => '150000'], $admin);
         $service->approveBill($bill, $admin);
         $service->createPayment($wo, $bill->fresh(), '300000', ['payment_date' => now()->subDays(3)->toDateString(), 'payment_method' => 'cheque', 'reference' => 'CHQ-118802'], $admin, (string) Str::uuid());
+    }
+
+    private function expenses(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        if (Expense::query()->exists() || ! $project || ! ExpenseCategory::query()->exists()) {
+            return;
+        }
+
+        $service = app(ExpenseService::class);
+        $category = fn (string $code) => ExpenseCategory::query()->where('code', $code)->firstOrFail();
+        foreach ([
+            ['general', null, 'ADM-RENT', 'Head office rent', 'Rangs Properties', '185000', 25, 'paid'],
+            ['general', null, 'UTL-ELEC', 'Head office electricity', 'DESCO', '18450', 18, 'approved'],
+            ['project', $project, 'SITE-SEC', 'Night guards, October', 'Safe Guard Services', '42000', 12, 'paid'],
+            ['project', $project, 'SITE-TRN', 'Rod unloading and carriage', 'Rahman Transport', '8600', 6, 'submitted'],
+            ['project', $project, 'SITE-TEST', 'Cylinder test, 3rd floor slab', 'BUET Testing Lab', '12500', 3, 'draft'],
+        ] as [$scope, $p, $code, $what, $payee, $amount, $daysAgo, $status]) {
+            $expense = $service->save(null, $category($code), $p, null,
+                ['scope' => $scope, 'expense_date' => now()->subDays($daysAgo)->toDateString(), 'description' => $what, 'payee_name' => $payee, 'amount' => $amount], $admin);
+            if ($status === 'draft') {
+                continue;
+            }
+            $service->submit($expense, $admin);
+            if ($status === 'submitted') {
+                continue;
+            }
+            $service->approve($expense, $admin);
+            if ($status === 'paid') {
+                $service->pay($expense, ['paid_on' => now()->subDays(max(0, $daysAgo - 2))->toDateString(), 'payment_method' => 'bank', 'payment_reference' => 'TRX-'.random_int(10000, 99999)], $admin);
+            }
+        }
     }
 }
