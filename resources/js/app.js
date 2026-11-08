@@ -20,6 +20,7 @@ import { initActions } from './components/actions';
 import { initPermissionForms } from './pages/permissions';
 import { initSettingsPage } from './pages/settings';
 import { initPartials, reloadPartials } from './components/partials';
+import { initTooltips } from './components/tooltip';
 import { initProjectPages } from './pages/projects';
 import { initFlatPages } from './pages/flats';
 import { initCustomerPages } from './pages/customers';
@@ -42,6 +43,7 @@ $(() => {
     initPermissionForms();
     initSettingsPage();
     initPartials();
+    initTooltips();
     initProjectPages();
     initFlatPages();
     initCustomerPages();

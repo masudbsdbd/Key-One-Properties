@@ -53,7 +53,7 @@
                 <ul class="space-y-1" id="nav-{{ $section['key'] }}" @if ($section['title']) data-nav-list="{{ $section['key'] }}" data-current="{{ $section['open'] ? '1' : '0' }}" @endif>
                     @foreach ($section['items'] as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" class="nav-link" @if ($item['current']) aria-current="page" @endif title="{{ $item['label'] }}">
+                            <a href="{{ $item['url'] }}" class="nav-link" @if ($item['current']) aria-current="page" @endif data-tooltip-collapsed="{{ $item['label'] }}">
                                 <x-icon :name="$item['icon']" size="h-5 w-5 shrink-0" />
                                 <span class="sidebar-label truncate">{{ $item['label'] }}</span>
                                 @if ($item['badge'])<span class="nav-count sidebar-label">{{ $item['badge'] }}</span>@endif

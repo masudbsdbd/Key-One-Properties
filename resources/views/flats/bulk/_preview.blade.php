@@ -12,7 +12,7 @@
             <div class="mb-3 flex flex-wrap items-center gap-2 last:mb-0">
                 <span class="w-28 shrink-0 text-[13px] text-ink-500">{{ $rows->first()['floor']->label }}</span>
                 @foreach ($rows as $row)
-                    <span @class(['badge', 'badge-danger' => $row['exists'] || $row['duplicate'], 'badge-accent' => ! $row['exists'] && ! $row['duplicate']]) @if ($row['exists']) title="Already exists" @elseif ($row['duplicate']) title="Repeated" @endif>{{ $row['flat_no'] }}</span>
+                    <span @class(['badge', 'badge-danger' => $row['exists'] || $row['duplicate'], 'badge-accent' => ! $row['exists'] && ! $row['duplicate']]) @if ($row['exists']) data-tooltip="Already exists" @elseif ($row['duplicate']) data-tooltip="Repeated" @endif>{{ $row['flat_no'] }}</span>
                 @endforeach
             </div>
         @endforeach

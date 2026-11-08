@@ -48,6 +48,9 @@ Follow these rules in every session on this repository.
 - Code comments only where the logic is not obvious; no narrating comments.
 - Every clickable element shows `cursor: pointer` (global rule in `resources/css/app.css`);
   disabled controls show `not-allowed`. New clickable patterns must be added to that rule.
+- Tooltips: every icon-only button or link has a short `aria-label` ("Edit 10A", "Change status");
+  the global tooltip (`resources/js/components/tooltip.js`) shows it on hover and keyboard focus.
+  Other elements can use `data-tooltip="..."`. Do not use the native `title` attribute.
 
 ## Security rules
 

@@ -43,7 +43,7 @@
                                         <span class="font-medium text-ink-900">{{ App\Support\ActivityPresenter::subject($entry) }}</span>
                                     @endif
                                 </p>
-                                <time class="shrink-0 text-[13px] text-ink-400" datetime="{{ $entry->created_at->toIso8601String() }}" title="{{ App\Support\Format::datetime($entry->created_at) }}">{{ $entry->created_at->timezone($tz)->format('h:i A') }}</time>
+                                <time class="shrink-0 text-[13px] text-ink-400" datetime="{{ $entry->created_at->toIso8601String() }}" data-tooltip="{{ App\Support\Format::datetime($entry->created_at) }}">{{ $entry->created_at->timezone($tz)->format('h:i A') }}</time>
                             </div>
                             @if ($group['count'] > 1)
                                 <p class="mt-1.5 text-[13px] text-ink-500">{{ Str::limit(implode(', ', array_reverse($group['subjects'])), 160) }}</p>
