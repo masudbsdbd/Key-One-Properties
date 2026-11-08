@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Phase3;
 
+use App\Contracts\Portal\PortalReadModel;
 use App\Models\Customer;
 use App\Models\FinancialEvent;
 use App\Models\Flat;
@@ -325,5 +326,38 @@ class ProfitTest extends TestCase
         $this->assertStringContainsString($this->project->code, $csv);
         $this->assertStringContainsString('3750000', str_replace([',', '.00'], '', $csv));
         $this->actingAs($this->userWith(['sales.sale.view']))->get(route('sales.summary'))->assertForbidden();
+    }
+
+    public function test_portal_read_model_is_scoped_and_hides_internal_data(): void
+    {
+        $portal = app(PortalReadModel::class);
+        $p = app(PaymentService::class);
+        $p->post($p->collect(null, $this->sale->fresh(), ['payment_date' => now()->toDateString(), 'amount' => '200000', 'method' => 'cash'], $this->maker, (string) Str::uuid()), $this->checker);
+        $other = Customer::factory()->create();
+
+        $view = $portal->customer($this->sale->customer);
+        $this->assertSame($this->sale->sale_no, $view->units[0]->reference);
+        $this->assertSame('4800000.00', $view->units[0]->balance);
+        $this->assertSame('200000.00', $view->units[0]->paid);
+        $this->assertSame('4800000.00', $view->balance);
+        $this->assertCount(2, $view->statement);
+        $this->assertSame([], $portal->customer($other)->units);
+        $this->assertDoesNotMatchRegularExpression('/"(id|[a-z_]+_id|[a-zA-Z]+Id)"\s*:/', json_encode($view));
+
+        $calc = $this->calc();
+        $holding = $portal->investor($this->investors[0])->holdings[0];
+        $this->assertSame('60.0000', $holding->sharePercent);
+        $this->assertSame([], $holding->approvedProfit);
+        $this->assertSame('0.00', $holding->profitDue);
+
+        $this->configure();
+        $this->profit->approve($calc, $this->checker);
+        $iv = $portal->investor($this->investors[0]);
+        $this->assertSame('2340000.00', $iv->profitDue);
+        $this->assertSame($calc->calculation_no, $iv->holdings[0]->approvedProfit[0]['reference']);
+        $this->assertCount(1, $iv->ledger);
+        $this->assertDoesNotMatchRegularExpression('/"(id|[a-z_]+_id|[a-zA-Z]+Id)"\s*:/', json_encode($iv));
+        $this->assertStringNotContainsString('Investor 1', json_encode($iv));
+        $this->assertStringNotContainsString('cost', strtolower(json_encode($iv)));
     }
 }
