@@ -4,6 +4,7 @@ use App\Modules\Core\Controllers\ActivityLogController;
 use App\Modules\Core\Controllers\DepartmentController;
 use App\Modules\Core\Controllers\OptionsController;
 use App\Modules\Core\Controllers\RoleController;
+use App\Modules\Core\Controllers\SettingsController;
 use App\Modules\Core\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,3 +45,6 @@ Route::prefix('options')->name('options.')->middleware('throttle:120,1')->contro
 
 Route::get('activity', [ActivityLogController::class, 'index'])->name('activity.index');
 Route::get('activity/table', [ActivityLogController::class, 'table'])->name('activity.table');
+
+Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
+Route::put('settings/branding', [SettingsController::class, 'updateBranding'])->name('settings.branding');
