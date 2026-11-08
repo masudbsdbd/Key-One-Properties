@@ -20,7 +20,7 @@ class FinancialEvent extends Model
     public const STATUS_FAILED = 'failed';
 
     /** Fields that describe the business fact and can never change once recorded. */
-    private const IMMUTABLE = ['event_uuid', 'idempotency_key', 'source_module', 'source_type', 'source_id', 'event_type', 'project_id', 'flat_id', 'customer_id', 'amount', 'currency', 'effective_at', 'occurred_at', 'payload'];
+    private const IMMUTABLE = ['event_uuid', 'idempotency_key', 'source_module', 'source_type', 'source_id', 'event_type', 'project_id', 'flat_id', 'customer_id', 'amount', 'currency', 'effective_at', 'occurred_at', 'payload', 'reversal_of_id'];
 
     protected $guarded = ['id'];
 

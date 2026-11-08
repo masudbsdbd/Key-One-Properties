@@ -7,6 +7,7 @@ use App\Models\FinancialEvent;
 use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -37,6 +38,7 @@ class FinancialEventRecorder
         ?Customer $customer = null,
         ?User $user = null,
         ?string $discriminator = null,
+        ?FinancialEvent $reversalOf = null,
     ): FinancialEvent {
         if (! in_array($eventType, FinancialEventTypes::all(), true)) {
             throw new InvalidArgumentException("Unknown financial event type [{$eventType}].");
@@ -72,11 +74,31 @@ class FinancialEventRecorder
                 'payload' => $payload,
                 'processing_status' => FinancialEvent::STATUS_PENDING,
                 'recorded_by' => $user?->id,
+                'reversal_of_id' => $reversalOf?->id,
             ]);
         } catch (UniqueConstraintViolationException) {
             // A concurrent request recorded the same event first.
             return FinancialEvent::query()->where('idempotency_key', $key)->firstOrFail();
         }
+    }
+
+    /**
+     * Record the opposite of every event a source produced (negated amount, linked by reversal_of_id).
+     *
+     * @return array<int, FinancialEvent>
+     */
+    public function reverse(string $module, Model $source, CarbonInterface $effectiveAt, ?User $user = null): array
+    {
+        return FinancialEvent::query()
+            ->where('source_type', $source->getMorphClass())->where('source_id', $source->getKey())
+            ->whereNull('reversal_of_id')->get()
+            ->map(fn (FinancialEvent $original) => $this->record(
+                $module, $source, $original->event_type,
+                $original->amount === null ? null : (string) Money::neg($original->amount),
+                $effectiveAt, ['reversal_of' => $original->event_uuid] + ($original->payload ?? []),
+                $original->project, $original->flat, $original->customer, $user,
+                'reversal:'.$original->id, $original,
+            ))->all();
     }
 
     public static function idempotencyKey(string $module, Model $source, string $eventType, ?string $discriminator = null): string

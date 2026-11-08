@@ -28,4 +28,12 @@ return [
 
     'super_admin_role' => 'Super Admin',
 
+    // Whether the person who created a stock, financial or cost document may also approve it.
+    'allow_self_approval' => (bool) env('ALLOW_SELF_APPROVAL', false),
+
+    'attachments' => [
+        'max_kb' => (int) env('UPLOAD_DOCUMENT_MAX_KB', 10240),
+        'mimes' => ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx'],
+    ],
+
 ];

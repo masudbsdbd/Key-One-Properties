@@ -10,7 +10,16 @@ class FinancialEventTypes
 {
     public const TYPES = [
         // Phase 2: construction and operations
+        'material.received' => 'Materials received into stock (opening or other receipt)',
+        'material.consumed' => 'Materials issued to a project (project cost)',
+        'stock.adjusted' => 'Stock quantity or value adjusted',
         'purchase.received' => 'Materials received against a purchase',
+        'purchase.returned' => 'Materials returned to a supplier',
+        'supplier.bill_approved' => 'Supplier bill approved (payable)',
+        'labour.approved' => 'Labour entry approved (project cost)',
+        'contractor.retention_released' => 'Contractor retention released',
+        'expense.approved' => 'Expense approved',
+        'expense.paid' => 'Expense paid',
         'purchase.supplier_payment' => 'Payment made to a supplier',
         'material.transferred' => 'Material moved between projects (cost moves too)',
         'material.borrowed' => 'Material borrowed by another project',
