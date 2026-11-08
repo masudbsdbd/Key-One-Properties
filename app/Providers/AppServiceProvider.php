@@ -2,14 +2,17 @@
 
 namespace App\Providers;
 
+use App\Models\ConstructionProgressUpdate;
 use App\Models\Customer;
 use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
+use App\Modules\Construction\Policies\ConstructionAccess;
 use App\Modules\Core\Policies\UserPolicy;
 use App\Modules\Customers\Policies\CustomerPolicy;
 use App\Modules\Flats\Policies\FlatPolicy;
 use App\Modules\Projects\Policies\ProjectPolicy;
+use App\Support\Attachments\AttachableRegistry;
 use App\Support\Branding;
 use App\Support\Settings;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -34,6 +37,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Flat::class, FlatPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
+        ConstructionAccess::register();
+
+        // Progress evidence: visible with the project; changeable by the submitter or an approver while still submitted.
+        AttachableRegistry::register('construction-progress', ConstructionProgressUpdate::class, 'construction-progress:files-view', 'construction-progress:files-manage');
+        Gate::define('construction-progress:files-view', fn ($user, ConstructionProgressUpdate $owner) => Gate::forUser($user)->allows('construction:view', $owner->project));
+        Gate::define('construction-progress:files-manage', fn ($user, ConstructionProgressUpdate $owner) => $owner->status === 'submitted'
+            && (($owner->submitted_by === $user->id && Gate::forUser($user)->allows('construction:progress-submit', $owner->project))
+                || Gate::forUser($user)->allows('construction:progress-approve', $owner->project)));
 
         if ($proxies = config('keyone.trusted_proxies')) {
             TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));

@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Attachment;
 use App\Support\Ajax;
 use App\Support\Attachments\AttachableRegistry;
+use App\Support\Attachments\AttachmentStore;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttachmentController extends Controller
@@ -39,14 +39,7 @@ class AttachmentController extends Controller
         ], ['files.*.max' => 'Each file must be '.($max / 1024).' MB or smaller.', 'files.*.mimes' => 'Allowed: PDF, images, Word or Excel.']);
 
         foreach ($request->file('files') as $file) {
-            $model->attachments()->create([
-                'original_name' => Str::limit(basename($file->getClientOriginalName()), 200, ''),
-                'disk' => 'local',
-                'path' => $file->storeAs('attachments/'.$type.'/'.$model->public_id, Str::random(40).'.'.$file->guessExtension(), 'local'),
-                'mime_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
-                'uploaded_by' => $request->user()->id,
-            ]);
+            AttachmentStore::store($model, $type, $file, $request->user());
         }
 
         activity($type)->event('attachment_added')->causedBy($request->user())->performedOn($model)

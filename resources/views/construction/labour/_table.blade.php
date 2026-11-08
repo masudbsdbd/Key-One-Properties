@@ -1,0 +1,31 @@
+<x-data-table :url="route('labour.table', $project ? ['project' => $project->public_id] : [])" sort="date" dir="desc" search="Search entry number or notes" :columns="array_values(array_filter([
+    ['label' => 'Entry'],
+    $project ? null : ['label' => 'Project'],
+    ['label' => 'Date', 'sort' => 'date'],
+    ['label' => 'Labour'],
+    ['label' => 'Work Package'],
+    ['label' => 'Amount', 'sort' => 'amount', 'class' => 'text-right'],
+    ['label' => 'Status'],
+    ['label' => '', 'class' => 'w-40'],
+]))">
+    <x-slot:filters>
+        @unless ($project)
+            <div class="w-56"><select name="project" data-table-filter data-select data-select-url="{{ route('options.projects') }}" data-placeholder="All projects" class="form-control" aria-label="Project"><option value=""></option></select></div>
+        @endunless
+        <select name="status" class="form-control w-36" data-table-filter aria-label="Status">
+            <option value="">All statuses</option>
+            @foreach (App\Models\LabourEntry::STATUSES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+        </select>
+        <div class="w-40">
+            <select name="labour_type" class="form-control" data-table-filter data-select data-placeholder="All types" aria-label="Labour type">
+                <option value=""></option>
+                @foreach (App\Models\LabourEntry::TYPES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+            </select>
+        </div>
+    </x-slot:filters>
+    @if ($project)
+        @can('construction:labour-manage', $project)
+            <x-slot:toolbar><x-button size="sm" icon="plus" data-remote-modal="{{ route('labour.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Record Labour</x-button></x-slot:toolbar>
+        @endcan
+    @endif
+</x-data-table>
