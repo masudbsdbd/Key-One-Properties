@@ -12,12 +12,15 @@ abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
-    protected bool $seed = false;
+    // Roles and permissions are seeded once per run, together with the migrations.
+    protected bool $seed = true;
+
+    protected string $seeder = RolesAndPermissionsSeeder::class;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(RolesAndPermissionsSeeder::class);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         $this->withoutVite();
     }
 
