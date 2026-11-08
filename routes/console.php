@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Run `php artisan schedule:run` every minute from cron (see docs/deployment.md).
+Schedule::command('keyone:backup')->dailyAt('02:30')->withoutOverlapping()->onOneServer();
+Schedule::command('activitylog:clean')->weekly();
+Schedule::command('auth:clear-resets')->daily();
+Schedule::command('queue:prune-failed --hours=720')->daily();
+Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
