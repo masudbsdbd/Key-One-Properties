@@ -15,6 +15,7 @@ use App\Modules\Expenses\Policies\ExpenseAccess;
 use App\Modules\Flats\Policies\FlatPolicy;
 use App\Modules\Projects\Policies\ProjectPolicy;
 use App\Modules\Purchasing\Policies\PurchasingAccess;
+use App\Modules\Sales\Policies\SalesAccess;
 use App\Support\Attachments\AttachableRegistry;
 use App\Support\Branding;
 use App\Support\Settings;
@@ -44,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         PurchasingAccess::register();
         ContractorAccess::register();
         ExpenseAccess::register();
+        SalesAccess::register();
 
         // Progress evidence: visible with the project; changeable by the submitter or an approver while still submitted.
         AttachableRegistry::register('construction-progress', ConstructionProgressUpdate::class, 'construction-progress:files-view', 'construction-progress:files-manage');

@@ -45,6 +45,10 @@ export function initPartials() {
     $(document).on('change', 'select[id], input[id]', function () {
         document.querySelectorAll(`[data-partial-source="#${CSS.escape(this.id)}"]`).forEach((el) => loadFromSource(el, $(this).val()));
     });
+    document.querySelectorAll('[data-partial-source]').forEach((el) => {
+        const source = document.querySelector(el.dataset.partialSource);
+        if (source && $(source).val()) loadFromSource(el, $(source).val());
+    });
     document.addEventListener('remote:loaded', (event) => {
         event.target.querySelectorAll?.('[data-partial-source]').forEach((el) => {
             const source = document.querySelector(el.dataset.partialSource);

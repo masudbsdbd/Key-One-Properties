@@ -120,6 +120,11 @@ class Flat extends Model
         return $query->whereHas('project', fn (Builder $q) => $q->visibleTo($user));
     }
 
+    public function isVisibleTo(User $user): bool
+    {
+        return $this->project !== null && $this->project->isVisibleTo($user);
+    }
+
     public function isLockedBySales(): bool
     {
         return in_array($this->status, ['booked', 'sold'], true);

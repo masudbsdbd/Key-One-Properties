@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\Department;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Flat;
+use App\Models\FlatBooking;
 use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
@@ -23,6 +25,8 @@ use App\Modules\Flats\Services\FlatService;
 use App\Modules\Inventory\Services\InventoryService;
 use App\Modules\Projects\Services\ProjectService;
 use App\Modules\Purchasing\Services\PurchasingService;
+use App\Modules\Sales\Services\PriceRevisionService;
+use App\Modules\Sales\Services\SalesService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -60,6 +64,7 @@ class SampleDataSeeder extends Seeder
             $this->purchasing($admin);
             $this->contractors($admin);
             $this->expenses($admin);
+            $this->sales($admin);
 
             return;
         }
@@ -258,5 +263,36 @@ class SampleDataSeeder extends Seeder
                 $service->pay($expense, ['paid_on' => now()->subDays(max(0, $daysAgo - 2))->toDateString(), 'payment_method' => 'bank', 'payment_reference' => 'TRX-'.random_int(10000, 99999)], $admin);
             }
         }
+    }
+
+    private function sales(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        $customers = Customer::query()->orderBy('id')->take(4)->get();
+        if (FlatBooking::query()->exists() || ! $project || $customers->count() < 3) {
+            return;
+        }
+
+        $service = app(SalesService::class);
+        $flats = Flat::query()->where('project_id', $project->id)->where('status', 'available')->orderBy('id')->take(4)->get();
+        $make = function (Flat $flat, Customer $customer, string $price, string $booking, int $daysAgo) use ($service, $admin) {
+            $b = $service->saveBooking(null, $flat, $customer, ['booking_date' => now()->subDays($daysAgo)->toDateString(), 'agreed_price' => $price, 'booking_amount_expected' => $booking], $admin);
+            $service->submitBooking($b, $admin);
+
+            return $b;
+        };
+
+        $sold = $make($flats[0], $customers[0], '4600000', '500000', 40);
+        $service->approveBooking($sold, $admin);
+        $sale = $service->saveSale(null, $flats[0], $customers[0], $sold->fresh(), ['agreement_date' => now()->subDays(30)->toDateString(), 'sale_price' => '4600000', 'discount_amount' => '100000'], $admin);
+        $service->submitSale($sale, $admin);
+        $service->approveSale($sale, $admin);
+        $service->updateAgreement($sale, ['signed_at' => now()->subDays(28)->toDateString()], $admin);
+        $service->updateRegistration($sale, ['status' => 'in_process'], $admin);
+
+        $booked = $make($flats[1], $customers[1], '4750000', '300000', 12);
+        $service->approveBooking($booked, $admin);
+        $make($flats[2], $customers[2], '4500000', '250000', 2);
+        app(PriceRevisionService::class)->request($flats[3], (string) ((float) $flats[3]->list_price + 150000), 'Corner unit premium', $admin);
     }
 }
