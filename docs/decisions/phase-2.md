@@ -169,6 +169,10 @@ Reuse `financial_events`. New types: `material.received`, `material.consumed`, `
 - `keyone:reconcile` rebuilds what each posted document should have written to the ledgers and
   project cost and compares it with what was recorded. It runs nightly at 03:10.
 
+- Work order variations (`contractor_work_order_variations`) change `contract_amount` only on approval;
+  one pending variation per work order; approval fails with 409 if the contract changed since the request.
+- Exports: `?format=csv|pdf|print` on every export route. PDFs use dompdf with DejaVu Sans.
+
 ## G. Assumptions and open questions
 
 None block the build; each uses the recommended default above and can be changed later.

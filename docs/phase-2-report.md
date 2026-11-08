@@ -29,14 +29,21 @@ Blueprint acceptance scenarios 1–14 and 18 are covered by tests (`StockLedgerT
 `ReconciliationTest`). The route sweep now also checks that every write endpoint refuses a
 user without permissions and that every record route answers 404 for an unknown id.
 
+## Follow-up after release
+
+| Was a limitation | Now |
+| --- | --- |
+| Supplier payments visible to anyone with `purchases.view` | A payment allocated to a bill of a project the user cannot see is hidden and cannot be acted on; unallocated advances stay company-level |
+| A work order could not grow beyond its contract | Variations: request a revised contract amount with a reason, a second user approves; never below the measured value |
+| CSV-only exports | Every list, ledger and report exports as CSV, PDF or a print page, carrying the current filters (`App\Support\Export\Report`); new export permissions for projects, units, customers, purchasing and contractors |
+| No printable notes | Print or PDF for purchase orders, goods receipts, purchase returns, supplier bills, payment vouchers, work orders, contractor bills and payments, expense vouchers, transfer notes and borrow notes (`App\Support\Export\Documents`) |
+
 ## Known limitations
 
-- Supplier payments are company-level: anyone with `purchases.view` can see them. Bills and
-  orders follow project visibility.
-- Measurements cannot exceed the contract value; a variation needs a new work order.
 - Tax, VAT and withholding are plain amounts. Rules belong to Phase 5.
-- Exports are CSV only.
-- No printable notes (PO, GRN, transfer) yet.
+- PDF fonts have no taka glyph, so PDFs print amounts as "Tk"; print pages use ৳.
+- PDF exports stop at 3,000 rows; larger lists use CSV.
+- The supplier statement is company-wide: it lists every bill and payment of the supplier for users with the ledger permission.
 - The investor portal is not built; only `visibility` / `published_at` and investor-safe scopes exist.
 
 ## Contract for later phases
