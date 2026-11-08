@@ -37,6 +37,16 @@ Follow these rules in every session on this repository.
 - Commit messages in English, short and specific.
 - Do not commit code until the user gives the project/feature prompt.
 
+## UI copy
+
+- No explanatory or instructional text in the UI. Do not describe what a button,
+  field, page or section does ("Click here to...", "This page lets you...",
+  "Use this form to..."). Labels, titles and button text speak for themselves.
+- Keep copy short and businesslike: page title, field label, button verb.
+  Empty states get a short title and an action, no tutorial paragraphs.
+- Field hints only when a format is truly required (e.g. "JPG or PNG, max 5 MB").
+- Code comments only where the logic is not obvious; no narrating comments.
+
 ## Security rules
 
 ### Login protection
