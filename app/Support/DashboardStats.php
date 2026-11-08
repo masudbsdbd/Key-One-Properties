@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Department;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,12 @@ class DashboardStats
     public function for(User $user): array
     {
         $cards = [];
+
+        if ($user->canAny(['projects.view', 'projects.view_all'])) {
+            $projects = Project::query()->visibleTo($user);
+            $cards[] = ['label' => 'Projects', 'value' => number_format((clone $projects)->count()), 'icon' => 'building', 'href' => route('projects.index')];
+            $cards[] = ['label' => 'Active Projects', 'value' => number_format((clone $projects)->where('status', 'active')->count()), 'icon' => 'activity', 'href' => route('projects.index')];
+        }
 
         if ($user->can('users.view')) {
             $cards[] = ['label' => 'Active Users', 'value' => number_format(User::query()->active()->count()), 'icon' => 'users', 'href' => Route::has('users.index') ? route('users.index') : null];

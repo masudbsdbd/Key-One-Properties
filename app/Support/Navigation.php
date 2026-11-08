@@ -17,7 +17,7 @@ class Navigation
                 'title' => null,
                 'items' => [
                     ['label' => 'Dashboard', 'icon' => 'home', 'route' => 'dashboard', 'active' => 'dashboard'],
-                    ['label' => 'Projects', 'icon' => 'building', 'route' => 'projects.index', 'active' => 'projects.*', 'can' => 'projects.view'],
+                    ['label' => 'Projects', 'icon' => 'building', 'route' => 'projects.index', 'active' => 'projects.*', 'can' => ['projects.view', 'projects.view_all']],
                     ['label' => 'Units (Flats)', 'icon' => 'door', 'route' => 'flats.index', 'active' => 'flats.*', 'can' => 'flats.view'],
                     ['label' => 'Customers', 'icon' => 'users', 'route' => 'customers.index', 'active' => 'customers.*', 'can' => 'customers.view'],
                 ],
@@ -38,7 +38,7 @@ class Navigation
             ->map(function (array $section) use ($user) {
                 $section['items'] = collect($section['items'])
                     ->filter(fn (array $item) => Route::has($item['route']))
-                    ->filter(fn (array $item) => ! isset($item['can']) || ($user && $user->can($item['can'])))
+                    ->filter(fn (array $item) => ! isset($item['can']) || ($user && $user->canAny((array) $item['can'])))
                     ->map(fn (array $item) => $item + [
                         'url' => route($item['route']),
                         'current' => request()->routeIs($item['active']),

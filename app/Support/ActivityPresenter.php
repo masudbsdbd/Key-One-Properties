@@ -13,7 +13,7 @@ class ActivityPresenter
     {
         $subject = $activity->subject;
         if ($subject) {
-            return $subject->name ?? $subject->full_name ?? $subject->title ?? $subject->flat_no ?? Str::headline(class_basename($subject));
+            return $subject->name ?? $subject->full_name ?? $subject->title ?? $subject->flat_no ?? $subject->original_name ?? Str::headline(class_basename($subject));
         }
 
         return $activity->properties['name'] ?? ($activity->subject_type ? Str::headline(class_basename($activity->subject_type)) : '—');

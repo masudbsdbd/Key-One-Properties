@@ -143,7 +143,12 @@ function setup(table) {
             const method = action.dataset.rowAction === 'delete' ? 'delete' : 'post';
             const res = await http[method](action.dataset.url, {});
             if (res.message) toast.success(res.message);
+            if (res.data?.redirect) {
+                window.location.assign(res.data.redirect);
+                return;
+            }
             load();
+            table.dispatchEvent(new CustomEvent('table:action', { bubbles: true, detail: res }));
         } catch {
             action.disabled = false;
         }

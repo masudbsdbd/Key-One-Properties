@@ -19,8 +19,10 @@ import { initRemoteModal, openRemoteModal } from './components/remote-modal';
 import { initActions } from './components/actions';
 import { initPermissionForms } from './pages/permissions';
 import { initSettingsPage } from './pages/settings';
+import { initPartials, reloadPartials } from './components/partials';
+import { initProjectPages } from './pages/projects';
 
-window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal };
+window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
 
 $(() => {
     initShell();
@@ -34,6 +36,8 @@ $(() => {
     initActions();
     initPermissionForms();
     initSettingsPage();
+    initPartials();
+    initProjectPages();
 
     const params = new URLSearchParams(window.location.search);
     const autoCreate = document.querySelector('[data-auto-create]');
