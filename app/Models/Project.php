@@ -94,6 +94,37 @@ class Project extends Model
         return $this->belongsTo(ProjectMedia::class, 'cover_media_id');
     }
 
+    public function workPackages(): HasMany
+    {
+        return $this->hasMany(WorkPackage::class)->orderBy('code');
+    }
+
+    public function milestones(): HasMany
+    {
+        return $this->hasMany(Milestone::class)->orderBy('planned_at')->orderBy('sort_order');
+    }
+
+    public function constructionUpdates(): HasMany
+    {
+        return $this->hasMany(ConstructionProgressUpdate::class);
+    }
+
+    /** Scoped route binding name for {update}. */
+    public function updates(): HasMany
+    {
+        return $this->constructionUpdates();
+    }
+
+    public function labourEntries(): HasMany
+    {
+        return $this->hasMany(LabourEntry::class);
+    }
+
+    public function costAllocations(): HasMany
+    {
+        return $this->hasMany(ProjectCostAllocation::class);
+    }
+
     public function buildings(): HasMany
     {
         return $this->hasMany(Building::class)->orderBy('code');
