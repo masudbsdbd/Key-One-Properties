@@ -21,6 +21,7 @@ import { initPermissionForms } from './pages/permissions';
 import { initSettingsPage } from './pages/settings';
 import { initPartials, reloadPartials } from './components/partials';
 import { initProjectPages } from './pages/projects';
+import { initFlatPages } from './pages/flats';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
 
@@ -38,6 +39,7 @@ $(() => {
     initSettingsPage();
     initPartials();
     initProjectPages();
+    initFlatPages();
 
     const params = new URLSearchParams(window.location.search);
     const autoCreate = document.querySelector('[data-auto-create]');

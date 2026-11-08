@@ -40,7 +40,7 @@ export function initActions() {
                 return;
             }
             const dialog = button.closest('[data-modal]');
-            if (dialog) modal.close(dialog);
+            if (dialog && !button.hasAttribute('data-keep-open')) modal.close(dialog);
             document.querySelectorAll('[data-ajax-table]').forEach((t) => t.reload?.());
             button.dispatchEvent(new CustomEvent('action:success', { bubbles: true, detail: res }));
         } catch {

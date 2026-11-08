@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Department;
+use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,12 @@ class DashboardStats
             $projects = Project::query()->visibleTo($user);
             $cards[] = ['label' => 'Projects', 'value' => number_format((clone $projects)->count()), 'icon' => 'building', 'href' => route('projects.index')];
             $cards[] = ['label' => 'Active Projects', 'value' => number_format((clone $projects)->where('status', 'active')->count()), 'icon' => 'activity', 'href' => route('projects.index')];
+        }
+
+        if ($user->can('flats.view')) {
+            $flats = Flat::query()->visibleTo($user);
+            $cards[] = ['label' => 'Units', 'value' => number_format((clone $flats)->count()), 'icon' => 'door', 'href' => route('flats.index')];
+            $cards[] = ['label' => 'Available Units', 'value' => number_format((clone $flats)->where('status', 'available')->count()), 'icon' => 'check-square', 'href' => route('flats.index')];
         }
 
         if ($user->can('users.view')) {

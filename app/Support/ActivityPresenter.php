@@ -37,7 +37,7 @@ class ActivityPresenter
             'field' => Str::headline($field),
             'old' => self::format($field, $old[$field] ?? null),
             'new' => self::format($field, $new[$field] ?? null),
-        ])->values()->all();
+        ])->reject(fn (array $change) => $change['old'] === $change['new'])->values()->all();
     }
 
     /**

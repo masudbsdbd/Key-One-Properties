@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
 use App\Modules\Core\Policies\UserPolicy;
+use App\Modules\Flats\Policies\FlatPolicy;
 use App\Modules\Projects\Policies\ProjectPolicy;
 use App\Support\Branding;
 use App\Support\Settings;
@@ -28,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(fn ($user, string $ability) => str_contains($ability, '.') && $user->isSuperAdmin() ? true : null);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
+        Gate::policy(Flat::class, FlatPolicy::class);
 
         if ($proxies = config('keyone.trusted_proxies')) {
             TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));

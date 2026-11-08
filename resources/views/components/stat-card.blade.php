@@ -9,7 +9,7 @@
     <span class="icon-tile tone-{{ $tone }} relative"><x-icon :name="$icon" size="h-7 w-7" /></span>
     <div class="relative min-w-0">
         <p class="text-[15px] text-ink-700">{{ $label }}</p>
-        <p class="mt-0.5 text-[28px] leading-8 font-semibold text-ink-900 tabular-nums">{{ $value }}</p>
+        <p @class(['mt-0.5 font-semibold text-ink-900 tabular-nums whitespace-nowrap', 'text-[28px] leading-8' => mb_strlen((string) $value) <= 10, 'text-[21px] leading-8' => mb_strlen((string) $value) > 10])>{{ $value }}</p>
         @isset($meta)<div class="mt-1 text-[13px] font-medium text-success-600">{{ $meta }}</div>@endisset
     </div>
     @if ($href)
