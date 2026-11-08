@@ -48,7 +48,7 @@ Follow these rules in every session on this repository.
 ### Two-factor authentication
 - TOTP (RFC 6238), works with Google Authenticator. QR setup plus backup codes.
 - Admin controls 2FA: require it per user or role, reset or disable a user's 2FA.
-- 2FA is mandatory for admin accounts. TOTP secrets are stored encrypted.
+- 2FA is optional for everyone for now (admin can require it later). TOTP secrets are stored encrypted.
 
 ### No sensitive data in URLs
 - Never expose a table's internal `id` in URLs, API responses, or forms.
@@ -112,3 +112,23 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
 ### Phase 5: Accounting & Finance
 16. Accounting & Finance: double-entry accounting, general ledger, vouchers,
     balance sheet, profit & loss, cash flow
+
+## Confirmed decisions (override the blueprint where they differ)
+
+- Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md` is the Phase 1 product specification.
+- Stack: PHP 8.3, Laravel 13, MySQL 8, Blade, Tailwind, jQuery AJAX, Select2.
+- IDs: BIGINT internal `id` never leaves the server. URLs, AJAX payloads and
+  Select2 results use the random `public_id`. Business codes are display-only.
+- 2FA: TOTP available but not mandatory for any role yet.
+- Login: by email or mobile (both supported). Password reset by email.
+- Flat number unique within a building: UQ(building_id, flat_no).
+- Customer `primary_mobile` is unique.
+- Customer NID/passport: optional field, stored encrypted, shown masked.
+- Project overall progress: average of stage progress.
+- Branding: admin can upload logo and favicon and set the app name in settings.
+- Uploads: images max 5 MB, documents max 10 MB.
+- Super admin seed: `admin@gmail.com`; password comes from `.env`, never the repo.
+- Workflow: do not stop between blueprint prompts; keep committing small
+  features. Stop only when a decision from the user is truly required.
+- UI design samples will come from the user; keep design tokens centralized so
+  the look can be swapped without touching business code.
