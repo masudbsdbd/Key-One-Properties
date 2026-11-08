@@ -38,11 +38,19 @@ class FlatController extends Controller
         $query = $this->listing($request);
         $project = Project::findByPublicId($request->input('project'));
         $flats = TableQuery::paginate($query, $request);
-
-        return Ajax::table(view('flats._rows', [
+        $cards = $request->input('view') === 'cards';
+        $response = Ajax::table(view($cards ? 'flats._cards' : 'flats._rows', [
             'flats' => $flats,
             'showProject' => ! $project,
         ])->render(), $flats);
+
+        $counts = $this->filtered($request, withStatus: false)->toBase()->selectRaw("COUNT(*) AS total,
+            SUM(status = 'available') AS available, SUM(status = 'booked') AS booked, SUM(status = 'sold') AS sold,
+            SUM(status IN ('unavailable', 'maintenance')) AS unavailable")->first();
+        $data = $response->getData(true);
+        $data['data']['stats'] = view('flats._stats', ['counts' => array_map('intval', (array) $counts)])->render();
+
+        return $response->setData($data);
     }
 
     public function export(Request $request): Response
@@ -55,12 +63,10 @@ class FlatController extends Controller
             ->respond($request);
     }
 
-    private function listing(Request $request): Builder
+    private function filtered(Request $request, bool $withStatus = true): Builder
     {
         Gate::authorize('viewAny', Flat::class);
-
-        $query = Flat::query()->visibleTo($request->user())->with(['project:id,public_id,name,code', 'building:id,public_id,code,name', 'floor:id,public_id,label,floor_number']);
-
+        $query = Flat::query()->visibleTo($request->user());
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
@@ -70,12 +76,19 @@ class FlatController extends Controller
         if ($floor = Floor::findByPublicId($request->input('floor'))) {
             $query->where('floor_id', $floor->id);
         }
-        if (array_key_exists($status = (string) $request->input('status'), Flat::STATUSES)) {
+        if ($withStatus && array_key_exists($status = (string) $request->input('status'), Flat::STATUSES)) {
             $query->where('status', $status);
         }
         if (array_key_exists($type = (string) $request->input('type'), Flat::TYPES)) {
             $query->where('flat_type', $type);
         }
+
+        return $query;
+    }
+
+    private function listing(Request $request): Builder
+    {
+        $query = $this->filtered($request)->with(['project:id,public_id,name,code', 'building:id,public_id,code,name', 'floor:id,public_id,label,floor_number']);
 
         return TableQuery::prepare($query, $request, ['flat_no', 'flat_type'], [
             'flat_no' => fn ($q, $dir) => $q->orderBy('building_id', $dir)->orderBy('flat_no', $dir),

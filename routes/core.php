@@ -4,6 +4,7 @@ use App\Modules\Core\Controllers\ActivityLogController;
 use App\Modules\Core\Controllers\DepartmentController;
 use App\Modules\Core\Controllers\OptionsController;
 use App\Modules\Core\Controllers\PasswordRequestController;
+use App\Modules\Core\Controllers\PreferenceController;
 use App\Modules\Core\Controllers\RoleController;
 use App\Modules\Core\Controllers\SettingsController;
 use App\Modules\Core\Controllers\UserController;
@@ -57,4 +58,5 @@ Route::get('activity/table', [ActivityLogController::class, 'table'])->name('act
 
 Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
 Route::put('settings/branding', [SettingsController::class, 'updateBranding'])->name('settings.branding');
+Route::put('preferences', [PreferenceController::class, 'update'])->middleware('throttle:60,1')->name('profile.preferences');
 Route::put('settings/profit-policy', [SettingsController::class, 'updateProfitPolicy'])->name('settings.profit-policy');

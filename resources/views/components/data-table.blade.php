@@ -4,11 +4,15 @@
     'search' => 'Search',
     'sort' => null,
     'dir' => 'asc',
+    'viewKey' => null,
+    'view' => 'table',
 ])
 {{--
     columns: [['label' => 'Name', 'sort' => 'name', 'class' => '']] ; a column without 'sort' is static.
+    viewKey: preference key that enables the Table / Cards switch; the endpoint receives view=table|cards.
 --}}
-<div {{ $attributes->merge(['class' => 'card overflow-hidden']) }} data-ajax-table data-url="{{ $url }}" @if ($sort) data-default-sort="{{ $sort }}" data-default-dir="{{ $dir }}" @endif>
+@php $cards = $viewKey && $view === 'cards'; @endphp
+<div {{ $attributes->merge(['class' => 'card overflow-hidden']) }} data-ajax-table data-url="{{ $url }}" @if ($viewKey) data-view-key="{{ $viewKey }}" data-view-url="{{ route('profile.preferences') }}" @endif @if ($sort) data-default-sort="{{ $sort }}" data-default-dir="{{ $dir }}" @endif>
     <div class="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-center">
         @if ($search !== false)
             <label class="relative block md:w-72">
@@ -18,9 +22,25 @@
             </label>
         @endif
         @isset($filters)<div class="flex flex-1 flex-wrap items-center gap-2">{{ $filters }}</div>@endisset
-        @isset($toolbar)<div class="flex items-center gap-2 md:ml-auto">{{ $toolbar }}</div>@endisset
+        @if ($viewKey || isset($toolbar))
+            <div class="flex items-center gap-2 md:ml-auto">
+                {{ $toolbar ?? '' }}
+                @if ($viewKey)
+                    <input type="hidden" name="view" value="{{ $cards ? 'cards' : 'table' }}" data-table-filter data-table-view-input>
+                    <div class="inline-flex rounded-control border border-line bg-surface p-0.5" role="group" aria-label="View">
+                        @foreach (['table' => ['Table', 'list'], 'cards' => ['Cards', 'grid']] as $mode => [$label, $icon])
+                            <button type="button" @class(['view-switch', 'is-active' => ($cards ? 'cards' : 'table') === $mode]) data-table-view="{{ $mode }}" aria-pressed="{{ ($cards ? 'cards' : 'table') === $mode ? 'true' : 'false' }}"><x-icon :name="$icon" size="h-4 w-4" />{{ $label }}</button>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endif
     </div>
-    <div class="overflow-x-auto">
+    @isset($stats)<div class="border-b border-line p-4" data-table-stats>{{ $stats }}</div>@endisset
+    @if ($viewKey)
+        <div class="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" data-table-cards aria-live="polite" @unless ($cards) hidden @endunless></div>
+    @endif
+    <div class="overflow-x-auto" data-table-grid @if ($cards) hidden @endif>
         <table class="data-table">
             <thead>
                 <tr>

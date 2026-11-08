@@ -106,6 +106,14 @@
     .tone-warning { @apply bg-warning-50 text-warning-600; }
     .tone-danger { @apply bg-danger-50 text-danger-600; }
 
+    /* Table / Cards switch */
+    .view-switch { @apply inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-ink-600 transition-colors hover:text-ink-900; }
+    .view-switch.is-active { @apply bg-sidebar text-white hover:text-white; }
+
+    /* Unit cards */
+    .unit-card { @apply relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-md; }
+    .unit-stat { @apply flex items-center gap-3 rounded-card px-4 py-3; }
+
     /* Tabs */
     .tab {
         @apply inline-flex items-center h-11 px-1 border-b-2 border-transparent text-sm font-medium text-ink-500

@@ -61,7 +61,8 @@
     [data-line-remove],
     [data-allocate-full],
     [data-plan-preview],
-    [data-plan-add-line] {
+    [data-plan-add-line],
+    [data-table-view] {
         cursor: pointer;
     }
 
