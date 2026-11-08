@@ -107,6 +107,7 @@ class StockController extends Controller
 
     public function receive(Request $request): JsonResponse
     {
+        abort_unless($request->user()->can('materials.receive'), 403);
         $data = $request->validate([
             'warehouse' => ['required', 'string', 'size:16'],
             'received_at' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
@@ -132,6 +133,7 @@ class StockController extends Controller
 
     public function issue(Request $request): JsonResponse
     {
+        abort_unless($request->user()->can('materials.issue'), 403);
         $data = $request->validate([
             'warehouse' => ['required', 'string', 'size:16'],
             'project' => ['required', 'string', 'size:16'],

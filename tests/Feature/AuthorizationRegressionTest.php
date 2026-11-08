@@ -81,6 +81,50 @@ class AuthorizationRegressionTest extends TestCase
         $this->assertGreaterThan(15, $checked);
     }
 
+    public function test_user_without_permissions_cannot_write_through_any_endpoint(): void
+    {
+        $user = $this->userWith([]);
+        $checked = 0;
+
+        foreach ($this->appRoutes() as $route) {
+            $method = collect($route->methods())->first(fn ($m) => in_array($m, ['POST', 'PUT', 'PATCH', 'DELETE'], true));
+            if (! $method || $route->parameterNames() !== [] || str_starts_with($route->getName(), 'profile.') || str_starts_with($route->getName(), 'notifications.')) {
+                continue;
+            }
+
+            $response = $this->actingAs($user)->ajax()->call($method, $this->uri($route));
+            if (! in_array($response->getStatusCode(), [403, 404], true)) {
+                $failures[] = "{$route->getName()} {$method} → {$response->getStatusCode()}";
+            }
+            $checked++;
+        }
+
+        $this->assertSame([], $failures ?? [], 'Routes that accept writes before a permission check.');
+        $this->assertGreaterThan(20, $checked);
+    }
+
+    public function test_every_record_route_answers_not_found_for_an_unknown_public_id(): void
+    {
+        $admin = $this->superAdmin();
+        $checked = 0;
+
+        foreach ($this->appRoutes() as $route) {
+            if ($route->parameterNames() === [] || str_starts_with($route->getName(), 'attachments.') || str_starts_with($route->getName(), 'profile.')) {
+                continue;
+            }
+            $method = collect($route->methods())->first(fn ($m) => $m !== 'HEAD');
+            $response = $this->actingAs($admin)->ajax()->call($method, $this->uri($route));
+
+            if (! in_array($response->getStatusCode(), [404, 403], true) || str_contains($response->getContent(), 'App\\Models')) {
+                $failures[] = "{$route->getName()} {$method} → {$response->getStatusCode()}";
+            }
+            $checked++;
+        }
+
+        $this->assertSame([], $failures ?? [], 'Routes that do not answer 404 for an unknown id.');
+        $this->assertGreaterThan(100, $checked);
+    }
+
     public function test_unknown_public_ids_return_not_found_without_details(): void
     {
         $response = $this->actingAs($this->superAdmin())->ajax()->get('/projects/doesnotexist0000/edit');
