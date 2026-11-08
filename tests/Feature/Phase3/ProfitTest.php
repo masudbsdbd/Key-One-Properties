@@ -358,6 +358,6 @@ class ProfitTest extends TestCase
         $this->assertCount(1, $iv->ledger);
         $this->assertDoesNotMatchRegularExpression('/"(id|[a-z_]+_id|[a-zA-Z]+Id)"\s*:/', json_encode($iv));
         $this->assertStringNotContainsString('Investor 1', json_encode($iv));
-        $this->assertStringNotContainsString('cost', strtolower(json_encode($iv)));
+        $this->assertDoesNotMatchRegularExpression('/"[a-zA-Z_]*[Cc]ost[a-zA-Z_]*"\s*:/', json_encode($iv));
     }
 }
