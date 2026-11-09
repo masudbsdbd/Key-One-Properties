@@ -11,6 +11,7 @@ class Preferences
 {
     public const ALLOWED = [
         'flats.view' => ['table', 'cards'],
+        'projects.view' => ['table', 'cards'],
     ];
 
     public static function get(?User $user, string $key): string

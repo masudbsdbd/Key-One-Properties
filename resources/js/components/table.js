@@ -42,11 +42,20 @@ function setup(table) {
     const stats = table.querySelector('[data-table-stats]');
     const target = () => (cards && viewInput?.value === 'cards' ? cards : body);
 
-    // Plain filters can be preset from the page URL, e.g. /expenses?status=submitted.
+    // A page's only table keeps its filters, search and sort in the address bar, so reloads, back/forward
+    // and shared links reopen the same view. Plain filters can also be preset by links, e.g. /expenses?status=submitted.
+    const history = table.hasAttribute('data-table-history') || document.querySelectorAll('[data-ajax-table]').length === 1;
     const preset = new URLSearchParams(window.location.search);
-    table.querySelectorAll('select[data-table-filter]:not([data-select]), input[data-table-filter]').forEach((input) => {
+    table.querySelectorAll('select[data-table-filter]:not([data-select]), input[data-table-filter]:not([data-table-view-input]), [data-table-search]').forEach((input) => {
         if (input.name && preset.has(input.name)) input.value = preset.get(input.name);
     });
+    if (history && preset.get('sort') && table.querySelector(`[data-sort="${CSS.escape(preset.get('sort'))}"]`)) {
+        state.sort = preset.get('sort');
+        state.dir = preset.get('dir') === 'desc' ? 'desc' : 'asc';
+        table.querySelectorAll('[data-sort]').forEach((el) =>
+            el.closest('th')?.setAttribute('aria-sort', el.dataset.sort === state.sort ? (state.dir === 'asc' ? 'ascending' : 'descending') : 'none'),
+        );
+    }
 
     const params = () => {
         const query = { page: state.page };
@@ -74,7 +83,7 @@ function setup(table) {
         try {
             const res = await http.get(table.dataset.url, params(), { signal: state.controller.signal });
             target().innerHTML = res.data.html;
-            if (table.hasAttribute('data-table-history')) {
+            if (history) {
                 const url = new URL(window.location.href);
                 url.search = new URLSearchParams(Object.entries(params()).filter(([k, v]) => k !== 'page' && v !== '')).toString();
                 window.history.replaceState(null, '', url);
