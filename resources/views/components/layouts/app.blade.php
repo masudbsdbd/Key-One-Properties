@@ -43,7 +43,14 @@
             </a>
         </div>
 
-        <nav class="relative z-10 flex-1 overflow-y-auto px-3 pb-6 pt-6">
+        <nav class="relative z-10 flex-1 overflow-y-auto px-3 pb-6 pt-3">
+            @if (collect($sections)->contains(fn ($s) => $s['title']))
+                <div class="sidebar-label mb-1 flex justify-end">
+                    <button type="button" class="btn btn-ghost btn-icon h-8 w-8 text-white/60 hover:bg-white/10 hover:text-white" data-nav-toggle-all aria-label="Collapse all groups">
+                        <span data-nav-icon="collapse"><x-icon name="chevrons-up" size="h-4 w-4" /></span><span data-nav-icon="expand" hidden><x-icon name="chevrons-down" size="h-4 w-4" /></span>
+                    </button>
+                </div>
+            @endif
             @foreach ($sections as $section)
                 @if ($section['title'])
                     <button type="button" @class(['nav-group sidebar-label', 'is-current' => $section['open']]) data-nav-group="{{ $section['key'] }}" aria-expanded="{{ $section['open'] ? 'true' : 'false' }}" aria-controls="nav-{{ $section['key'] }}">

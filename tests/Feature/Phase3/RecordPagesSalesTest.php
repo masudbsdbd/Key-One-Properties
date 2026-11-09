@@ -67,8 +67,9 @@ class RecordPagesSalesTest extends TestCase
     {
         $admin = User::query()->where('email', 'admin@gmail.com')->firstOrFail();
         $this->actingAs($admin)->get(route('projects.show', $this->sale->project))->assertOk()
-            ->assertSee('Actual cost')->assertSee(route('construction.cost', $this->sale->project), false)->assertDontSee('Phase 2');
+            ->assertSee('Budget Used')->assertSee('Remaining Budget')->assertSee(route('construction.cost', $this->sale->project), false)->assertDontSee('Phase 2');
 
-        $this->actingAs($this->userWith(['projects.view_all']))->get(route('projects.show', $this->sale->project))->assertOk()->assertDontSee('Actual cost');
+        $this->actingAs($this->userWith(['projects.view_all']))->get(route('projects.show', $this->sale->project))->assertOk()
+            ->assertDontSee('Budget Used')->assertDontSee('Remaining Budget')->assertDontSee('Sales &amp; Collections', false);
     }
 }

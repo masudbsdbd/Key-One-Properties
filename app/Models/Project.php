@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
 use App\Models\Concerns\LogsProjectActivity;
+use App\Support\Settings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,14 @@ class Project extends Model
     ];
 
     public const STATUS_TONES = ['planned' => 'info', 'active' => 'success', 'on_hold' => 'warning', 'completed' => 'violet'];
+
+    /** Stages every new project starts with, as kept in Settings (falls back to DEFAULT_STAGES). */
+    public static function defaultStages(): array
+    {
+        $saved = json_decode((string) app(Settings::class)->get('projects.default_stages'), true);
+
+        return is_array($saved) ? array_values(array_filter($saved, 'is_string')) : self::DEFAULT_STAGES;
+    }
 
     public const DEFAULT_STAGES = [
         'Planning & Approvals',

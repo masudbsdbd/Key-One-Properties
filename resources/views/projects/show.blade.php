@@ -36,42 +36,96 @@
         @endforeach
     </div>
 
-    <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="grid gap-6 lg:grid-cols-3">
-        <x-card title="Details" class="lg:col-span-2">
-            <dl class="grid gap-5 sm:grid-cols-2">
-                <div><dt class="detail-label">Code</dt><dd class="detail-value">{{ $project->code }}</dd></div>
-                <div><dt class="detail-label">Location</dt><dd class="detail-value">{{ $project->location_text }}</dd></div>
-                <div class="sm:col-span-2"><dt class="detail-label">Address</dt><dd class="detail-value">{{ $project->address ?: '—' }}</dd></div>
-                <div><dt class="detail-label">Start Date</dt><dd class="detail-value">{{ App\Support\Format::date($project->start_date) }}</dd></div>
-                <div><dt class="detail-label">Target Completion</dt><dd class="detail-value">{{ App\Support\Format::date($project->target_completion_date) }}</dd></div>
-                <div><dt class="detail-label">Actual Completion</dt><dd class="detail-value">{{ App\Support\Format::date($project->actual_completion_date) }}</dd></div>
-                <div><dt class="detail-label">Coordinates</dt><dd class="detail-value">{{ $project->latitude ? $project->latitude.', '.$project->longitude : '—' }}</dd></div>
-                <div><dt class="detail-label">Created By</dt><dd class="detail-value">{{ $project->creator?->name ?? '—' }}</dd></div>
-                <div><dt class="detail-label">Created</dt><dd class="detail-value">{{ App\Support\Format::datetime($project->created_at) }}</dd></div>
-                @if ($project->description)
-                    <div class="sm:col-span-2"><dt class="detail-label">Description</dt><dd class="detail-value whitespace-pre-line">{{ $project->description }}</dd></div>
-                @endif
-            </dl>
-        </x-card>
-        <x-card title="Budget">
-            <dl class="space-y-4">
-                <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Estimated</dt><dd class="font-semibold tabular-nums text-ink-900">{{ App\Support\Format::money($project->estimated_budget) }}</dd></div>
-                @can('construction:cost-view', $project)
-                    @php $actual = App\Support\Money::amount(App\Support\Money::add('0', ...array_values(App\Support\Costing\CostAttribution::totals($project)))); @endphp
-                    <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Actual cost</dt><dd><a href="{{ route('construction.cost', $project) }}" class="font-semibold tabular-nums text-ink-900 hover:text-accent-700">{{ App\Support\Format::money($actual) }}</a></dd></div>
-                    @if ($project->estimated_budget !== null)
-                        @php $variance = App\Support\Money::amount(App\Support\Money::sub((string) $project->estimated_budget, $actual)); $over = App\Support\Money::isPositive(App\Support\Money::sub($actual, (string) $project->estimated_budget)); @endphp
-                        <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Remaining</dt><dd @class(['font-medium tabular-nums', 'text-danger-600' => $over, 'text-ink-900' => ! $over])>{{ App\Support\Format::money($variance) }}</dd></div>
+    @php $o = App\Modules\Projects\Services\ProjectOverview::for($project, $user); $fmt = fn ($v) => App\Support\Format::money($v, false); @endphp
+    <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="space-y-6">
+        <div class="grid items-start gap-6 lg:grid-cols-3">
+            <x-card title="Stages" :padded="false" class="min-w-0 lg:col-span-2">
+                @if ($project->stages->isEmpty())
+                    <x-empty-state icon="layers" title="No stages" />
+                @else
+                    <ul class="divide-y divide-line">
+                        @foreach ($project->stages->sortBy('sequence') as $stage)
+                            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-5 py-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_auto]">
+                                <span class="min-w-0"><span class="block truncate text-sm font-medium text-ink-900">{{ $stage->name }}</span>
+                                    <span class="block text-[12px] text-ink-500">{{ $stage->planned_end_at ? 'Due '.App\Support\Format::date($stage->planned_end_at) : 'No due date' }}</span></span>
+                                <x-progress :value="$stage->progress_percent" class="order-last col-span-2 sm:order-none sm:col-span-1" />
+                                <x-badge :tone="App\Models\ProjectStage::STATUS_TONES[$stage->status] ?? 'neutral'">{{ App\Models\ProjectStage::STATUSES[$stage->status] ?? $stage->status }}</x-badge>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($o['milestone'])
+                        <p class="flex items-center gap-2 border-t border-line px-5 py-3 text-sm text-ink-700"><x-icon name="calendar-check" size="h-4 w-4 text-accent-700" />Next milestone: <span class="font-medium text-ink-900">{{ $o['milestone']->title }}</span> · {{ App\Support\Format::date($o['milestone']->planned_at) }}</p>
                     @endif
-                @endcan
-            </dl>
-        </x-card>
+                @endif
+            </x-card>
+
+            <x-card title="Details" class="min-w-0">
+                <dl class="space-y-3.5 text-sm">
+                    <div class="flex gap-3"><x-icon name="tag" size="h-4 w-4 mt-0.5 shrink-0 text-ink-400" /><dt class="sr-only">Code</dt><dd class="font-medium text-ink-900">{{ $project->code }}</dd></div>
+                    <div class="flex gap-3"><x-icon name="map-pin" size="h-4 w-4 mt-0.5 shrink-0 text-ink-400" /><dt class="sr-only">Location</dt><dd class="text-ink-900">{{ $project->location_text }}@if ($project->address && $project->address !== $project->location_text)<span class="block text-[13px] text-ink-500">{{ $project->address }}</span>@endif
+                        @if ($project->latitude)<a href="https://www.google.com/maps?q={{ $project->latitude }},{{ $project->longitude }}" target="_blank" rel="noopener" class="block text-[13px] text-accent-700 hover:underline">{{ $project->latitude }}, {{ $project->longitude }}</a>@endif</dd></div>
+                    <div class="flex gap-3"><x-icon name="calendar" size="h-4 w-4 mt-0.5 shrink-0 text-ink-400" /><dt class="sr-only">Dates</dt><dd class="text-ink-900">{{ App\Support\Format::date($project->start_date) }} → {{ App\Support\Format::date($project->target_completion_date) }}@if ($project->actual_completion_date)<span class="block text-[13px] text-success-600">Completed {{ App\Support\Format::date($project->actual_completion_date) }}</span>@endif</dd></div>
+                    <div class="flex gap-3"><x-icon name="users" size="h-4 w-4 mt-0.5 shrink-0 text-ink-400" /><dt class="sr-only">Team</dt><dd class="text-ink-900">{{ \Illuminate\Support\Str::plural('member', $project->members_count, true) }} · {{ $project->media_count }} {{ \Illuminate\Support\Str::plural('photo', $project->media_count) }}</dd></div>
+                    <div class="flex gap-3"><x-icon name="user" size="h-4 w-4 mt-0.5 shrink-0 text-ink-400" /><dt class="sr-only">Created</dt><dd class="text-ink-500">{{ $project->creator?->name ?? '—' }} · {{ App\Support\Format::date($project->created_at) }}</dd></div>
+                </dl>
+                @if ($project->description)<p class="mt-4 whitespace-pre-line border-t border-line pt-4 text-sm text-ink-700">{{ $project->description }}</p>@endif
+            </x-card>
+        </div>
+
+        @php $cards = array_filter(['sales' => $o['sales'], 'cost' => $o['cost'], 'updates' => true]); @endphp
+        <div @class(['grid gap-6', 'lg:grid-cols-3' => count($cards) >= 3, 'lg:grid-cols-2' => count($cards) === 2])>
+            @if ($o['sales'])
+                @php $s = $o['sales']; @endphp
+                <x-card title="Sales & Collections" class="min-w-0">
+                    <dl class="space-y-3">
+                        <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Sold Value</dt><dd class="font-semibold tabular-nums text-ink-900">{{ $fmt($s['value']) }} <span class="text-[12px] font-normal text-ink-500">· {{ \Illuminate\Support\Str::plural('sale', $s['count'], true) }}</span></dd></div>
+                        @if ($s['collected'] !== null)
+                            <div><div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Collected</dt><dd class="font-semibold tabular-nums text-success-600">{{ $fmt($s['collected']) }}</dd></div>@if ($s['collected_pct'] !== null)<x-progress :value="$s['collected_pct']" class="mt-1.5" />@endif</div>
+                            <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Receivable</dt><dd class="font-semibold tabular-nums text-ink-900">{{ $fmt($s['receivable']) }}</dd></div>
+                        @endif
+                        @if ($s['overdue'] !== null)
+                            <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Overdue</dt><dd @class(['font-semibold tabular-nums', 'text-danger-600' => App\Support\Money::isPositive($s['overdue']), 'text-ink-900' => ! App\Support\Money::isPositive($s['overdue'])])>{{ $fmt($s['overdue']) }}</dd></div>
+                        @endif
+                        @if ($o['units'])<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Unsold Stock</dt><dd class="font-medium tabular-nums text-ink-900">{{ $fmt($o['units']['available_value']) }}</dd></div>@endif
+                    </dl>
+                    <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
+                        <a href="{{ route('sales.index', ['project' => $project->public_id]) }}" class="text-accent-700 hover:underline">Sales</a>
+                        @can('collections.plan.view')<a href="{{ route('dues.index', ['project' => $project->public_id]) }}" class="text-accent-700 hover:underline">Dues</a>@endcan
+                    </div>
+                </x-card>
+            @endif
+
+            @if ($o['cost'])
+                @php $c = $o['cost']; @endphp
+                <x-card title="Cost" class="min-w-0">
+                    <x-bars :items="collect(App\Models\ProjectCostAllocation::CATEGORIES)->mapWithKeys(fn ($label, $key) => [$label => $c['by_category'][$key] ?? '0'])->all()" tone="bg-warning-600" />
+                    <dl class="mt-4 space-y-2 border-t border-line pt-3">
+                        <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Spent</dt><dd class="font-semibold tabular-nums text-ink-900">{{ $fmt($c['spent']) }}</dd></div>
+                        @if ($c['remaining'] !== null)<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">{{ $c['over'] ? 'Over Budget' : 'Remaining Budget' }}</dt><dd @class(['font-semibold tabular-nums', 'text-danger-600' => $c['over'], 'text-ink-900' => ! $c['over']])>{{ $fmt(ltrim($c['remaining'], '-')) }}</dd></div>@endif
+                    </dl>
+                    <a href="{{ route('construction.cost', $project) }}" class="mt-3 inline-block text-[13px] font-medium text-accent-700 hover:underline">Cost details</a>
+                </x-card>
+            @endif
+
+            <x-card title="Latest Progress" :padded="false" class="min-w-0">
+                @forelse ($o['updates'] as $update)
+                    <div class="border-b border-line px-5 py-3 last:border-0">
+                        <div class="flex items-baseline justify-between gap-3"><p class="truncate text-sm font-medium text-ink-900">{{ $update->stage?->name ?? 'Project' }}</p><span class="shrink-0 text-[12px] tabular-nums text-ink-500">{{ (float) $update->previous_percent }}% → <span class="font-semibold text-ink-900">{{ (float) $update->progress_percent }}%</span></span></div>
+                        @if ($update->summary)<p class="mt-0.5 line-clamp-2 text-[13px] text-ink-700">{{ $update->summary }}</p>@endif
+                        <p class="mt-0.5 text-[12px] text-ink-500">{{ App\Support\Format::date($update->report_date) }} · {{ $update->recorder?->name }}</p>
+                    </div>
+                @empty
+                    <x-empty-state icon="activity" title="No progress recorded" class="py-8" />
+                @endforelse
+            </x-card>
+        </div>
     </section>
 
     <section id="panel-stages" role="tabpanel" aria-labelledby="tab-stages" hidden class="grid gap-6 xl:grid-cols-[3fr_2fr]">
         <x-card title="Stages" :padded="false">
             @can('manageStages', $project)
                 <x-slot:actions>
+                    @can('settings.manage')<x-button size="sm" variant="ghost" icon="settings" href="{{ route('settings.edit') }}#default-stages">Default Stages</x-button>@endcan
                     <x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('projects.stages.create', $project) }}">Add Stage</x-button>
                 </x-slot:actions>
             @endcan
