@@ -86,16 +86,50 @@ class Report
     {
         return response()->streamDownload(function () {
             $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, array_column($this->columns, 'label'));
-            foreach (($this->rows)() as $row) {
-                fputcsv($out, array_map(fn ($v, $i) => $this->plain($v, $this->columns[$i]['type']), $row, array_keys($row)));
-            }
-            if ($this->totals) {
-                fputcsv($out, array_map(fn ($v, $i) => $v === null ? '' : $this->plain($v, $this->columns[$i]['type']), $this->totals, array_keys($this->totals)));
-            }
+            $this->writeCsv($out);
             fclose($out);
         }, $this->filename('csv'), ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** Writes the CSV to an open stream and returns the number of data rows. */
+    public function writeCsv($out): int
+    {
+        $count = 0;
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, array_column($this->columns, 'label'));
+        foreach (($this->rows)() as $row) {
+            fputcsv($out, array_map(fn ($v, $i) => $this->plain($v, $this->columns[$i]['type']), $row, array_keys($row)));
+            $count++;
+        }
+        if ($this->totals) {
+            fputcsv($out, array_map(fn ($v, $i) => $v === null ? '' : $this->plain($v, $this->columns[$i]['type']), $this->totals, array_keys($this->totals)));
+        }
+
+        return $count;
+    }
+
+    /**
+     * PDF bytes and row count (same layout and row limit as the download).
+     *
+     * @return array{0: string, 1: int}
+     */
+    public function pdfBytes(): array
+    {
+        Format::$plainSymbol = true;
+        try {
+            $data = $this->viewData(true);
+            if (count($data['rows']) > self::MAX_PDF_ROWS) {
+                throw new HttpException(422, 'Too many rows for a PDF. Narrow the filters or use CSV.');
+            }
+            $dompdf = Pdf::loadView('exports.report', $data)->setPaper('a4', $this->orientation)->getDomPDF();
+            $dompdf->render();
+            $canvas = $dompdf->getCanvas();
+            $canvas->page_text($canvas->get_width() - 110, $canvas->get_height() - 28, 'Page {PAGE_NUM} of {PAGE_COUNT}', $dompdf->getFontMetrics()->getFont('DejaVu Sans'), 7, [0.6, 0.6, 0.6]);
+
+            return [$dompdf->output(), count($data['rows'])];
+        } finally {
+            Format::$plainSymbol = false;
+        }
     }
 
     public function print(): Response
@@ -175,7 +209,7 @@ class Report
         };
     }
 
-    private function filename(string $ext): string
+    public function filename(string $ext): string
     {
         return Str::slug($this->title).'-'.now(config('app.display_timezone'))->format('Ymd-Hi').'.'.$ext;
     }

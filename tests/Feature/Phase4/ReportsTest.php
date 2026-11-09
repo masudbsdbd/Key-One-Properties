@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Phase4;
 
+use App\Jobs\GenerateReportExport;
 use App\Models\CustomerPayment;
 use App\Models\Flat;
 use App\Models\Investor;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
+use App\Models\ReportRun;
 use App\Models\User;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Reports\ExecutiveMetrics;
@@ -15,6 +17,7 @@ use App\Support\Money;
 use Database\Seeders\ExpenseCategorySeeder;
 use Database\Seeders\SampleDataSeeder;
 use Database\Seeders\SuperAdminSeeder;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -102,5 +105,46 @@ class ReportsTest extends TestCase
         $budget = $this->rows($this->admin, 'project-budget', ['project' => $project->public_id]);
         $actual = (float) str_replace(',', '', $budget[1][array_search('Actual', $budget[0], true)]);
         $this->assertEqualsWithDelta((float) ProjectCostAllocation::query()->where('project_id', $project->id)->sum('amount'), $actual, 0.001);
+    }
+
+    public function test_queued_exports_are_private_revalidated_and_expire(): void
+    {
+        Storage::fake('local');
+        $project = Project::query()->orderBy('id')->firstOrFail();
+        $clerk = $this->userWith(['projects.view_all', 'reports.view', 'reports.collections', 'reports.export']);
+
+        $this->actingAs($clerk)->ajax()->get(route('reports.queue.form', ['key' => 'collection-receipts', 'project' => $project->public_id]))->assertOk()->assertSee($project->name);
+        $this->actingAs($clerk)->ajax()->post(route('reports.queue', 'collection-receipts'), ['format' => 'xls'])->assertStatus(422);
+        $this->actingAs($clerk)->ajax()->post(route('reports.queue', 'collection-receipts'), ['format' => 'csv', 'project' => $project->public_id, 'from' => '2026-01-01'])->assertOk();
+        $run = ReportRun::query()->latest('id')->firstOrFail();
+        $this->assertSame('completed', $run->status);
+        $this->assertSame(CustomerPayment::query()->whereIn('status', ['posted', 'reversed'])->where('project_id', $project->id)->count(), $run->row_count);
+        Storage::disk('local')->assertExists($run->file->storage_path);
+
+        $this->flushHeaders();
+        $this->actingAs($clerk)->get(route('report-exports.index'))->assertOk();
+        $this->assertStringContainsString('Ready', $this->actingAs($clerk)->ajax()->get(route('report-exports.table'))->json('data.html'));
+        $this->flushHeaders();
+        $this->actingAs($clerk)->get(route('report-exports.download', $run))->assertOk();
+        $this->actingAs($this->userWith(['reports.view', 'reports.collections', 'reports.export']))->get(route('report-exports.download', $run))->assertNotFound();
+        $this->assertTrue(Activity::query()->where('event', 'report_downloaded')->exists());
+
+        $clerk->revokePermissionTo('reports.collections');
+        $this->actingAs($clerk->fresh())->get(route('report-exports.download', $run))->assertForbidden();
+        $clerk->givePermissionTo('reports.collections');
+
+        $this->travel(8)->days();
+        $this->actingAs($clerk->fresh())->get(route('report-exports.download', $run))->assertNotFound();
+        $this->artisan('keyone:prune-report-exports')->assertSuccessful();
+        $this->assertSame('expired', $run->fresh()->status);
+        Storage::disk('local')->assertMissing($run->file->storage_path);
+
+        // Permission lost before the job runs: the export fails without a file.
+        $queued = ReportRun::query()->create(['report_key' => 'collection-receipts', 'requested_by' => $clerk->id, 'filters_json' => [], 'filter_hash' => 'x', 'format' => 'csv', 'status' => 'queued']);
+        $clerk->revokePermissionTo('reports.export');
+        (new GenerateReportExport($queued->id))->handle();
+        $this->assertSame('failed', $queued->fresh()->status);
+        $this->assertNull($queued->fresh()->file);
+        $this->actingAs($this->userWith(['reports.view']))->ajax()->post(route('reports.queue', 'collection-receipts'), ['format' => 'csv'])->assertForbidden();
     }
 }

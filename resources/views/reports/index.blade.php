@@ -1,6 +1,6 @@
 <x-layouts.app title="Reports">
     <x-page-header title="Reports" :breadcrumbs="['Dashboard' => route('dashboard'), 'Reports' => null]">
-        <x-slot:actions>@can('dashboard.executive.view')<x-button variant="secondary" icon="bar-chart" href="{{ route('executive.index') }}">Executive Dashboard</x-button>@endcan</x-slot:actions>
+        <x-slot:actions>@can('reports.export')<x-button variant="secondary" icon="download" href="{{ route('report-exports.index') }}">My Exports</x-button>@endcan @can('dashboard.executive.view')<x-button variant="secondary" icon="bar-chart" href="{{ route('executive.index') }}">Executive Dashboard</x-button>@endcan</x-slot:actions>
     </x-page-header>
     @if (! $catalog)
         <x-card><x-empty-state icon="file" title="No reports available" /></x-card>

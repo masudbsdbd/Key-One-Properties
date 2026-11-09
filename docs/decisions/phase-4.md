@@ -137,6 +137,11 @@ browser checks for 13–14, and an empty-state check for 17.
   `reports.view` plus `reports.<group>`, exports need `reports.export` and are written to the activity log.
 - General expenses never enter project cost (they carry no project); the project budget report reads posted project cost.
 - Filters stay in the address bar so back/forward and shared links reopen the same view.
+- Queued exports: `report_runs` (requester, report key, filter hash and filters, status, rows, expiry) and
+  `report_files` (private `local` disk under `report-exports/`, random name). The job runs as the requester and checks
+  the report permission again; a download is open only to the requester, re-checks `reports.export` and the report
+  permission, and is written to the activity log. Files expire after `REPORT_EXPORT_DAYS` (default 7) and
+  `keyone:prune-report-exports` (daily 04:10) deletes them. Queue requests are limited to 10 per minute per user.
 
 ## 11. Implementation checklist
 
@@ -146,5 +151,5 @@ browser checks for 13–14, and an empty-state check for 17.
 - [x] P4 Investor project progress, project financials, flat financials
 - [x] P5 Customer portal
 - [x] P6 Executive dashboard and report catalog
-- [ ] P7 Queued exports, report runs and files
+- [x] P7 Queued exports, report runs and files
 - [ ] P8 Integration QA and release

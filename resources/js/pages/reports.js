@@ -24,8 +24,30 @@ function range(preset) {
     }
 }
 
+function initExports() {
+    // Queue opens a modal carrying the table's current filters.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-queue-export]');
+        if (!button) return;
+        const table = button.closest('[data-ajax-table]');
+        const url = new URL(button.dataset.url, window.location.origin);
+        table?.querySelectorAll('[data-table-filter], [data-table-search]').forEach((el) => {
+            if (el.name && $(el).val()) url.searchParams.set(el.name, $(el).val());
+        });
+        button.dataset.remoteModal = url.toString();
+        button.dataset.size = 'max-w-md';
+    }, true);
+
+    const table = document.querySelector('[data-exports-poll]');
+    if (!table) return;
+    table.addEventListener('table:loaded', () => {
+        if (table.querySelector('[data-run-pending]')) setTimeout(() => table.reload?.(), 5000);
+    });
+}
+
 export function initReportPages() {
     initExecutive();
+    initExports();
     document.querySelectorAll('[data-period-preset]').forEach((select) => {
         const scope = select.closest('[data-ajax-table], [data-executive]') || document;
         const from = scope.querySelector('[name=from]');

@@ -5,6 +5,9 @@ return [
     // Path of the sign-in page. Set a non-obvious value in production.
     'login_path' => env('LOGIN_PATH', 'login'),
 
+    // Days a queued report export stays downloadable.
+    'report_export_days' => (int) env('REPORT_EXPORT_DAYS', 7),
+
     // Proxy IPs whose X-Forwarded-For header is trusted for the client IP. Empty = trust none.
     'trusted_proxies' => env('TRUSTED_PROXIES'),
 

@@ -43,6 +43,6 @@
                 <select name="module" class="form-control w-40" data-table-filter aria-label="Module"><option value="">All modules</option>@foreach (Spatie\Activitylog\Models\Activity::query()->distinct()->orderBy('log_name')->pluck('log_name')->filter() as $m)<option value="{{ $m }}">{{ Illuminate\Support\Str::headline($m) }}</option>@endforeach</select>
             @endif
         </x-slot:filters>
-        <x-slot:toolbar>@can('reports.export')<x-export-menu :url="route('reports.export', $report->key())" />@endcan</x-slot:toolbar>
+        <x-slot:toolbar>@can('reports.export')<x-export-menu :url="route('reports.export', $report->key())" /><x-button variant="secondary" icon="archive" data-queue-export data-url="{{ route('reports.queue.form', $report->key()) }}">Queue</x-button>@endcan</x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>
