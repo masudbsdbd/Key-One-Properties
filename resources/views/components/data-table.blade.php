@@ -7,6 +7,7 @@
     'viewKey' => null,
     'view' => 'table',
     'summary' => false,
+    'selectable' => false,
 ])
 {{--
     columns: [['label' => 'Name', 'sort' => 'name', 'class' => '']] ; a column without 'sort' is static.
@@ -39,6 +40,14 @@
         @endif
     </div>
     @endif
+    @if ($selectable && isset($bulk))
+        <div class="flex flex-wrap items-center gap-3 border-b border-line bg-accent-50/60 px-4 py-2.5" data-table-bulk hidden>
+            <span class="text-sm font-semibold text-ink-900" data-bulk-count></span>
+            <button type="button" class="text-[13px] font-medium text-accent-700 hover:underline" data-bulk-all></button>
+            <button type="button" class="text-[13px] font-medium text-ink-500 hover:underline" data-bulk-clear>Clear</button>
+            <div class="flex flex-wrap items-center gap-2 sm:ml-auto">{{ $bulk }}</div>
+        </div>
+    @endif
     @isset($stats)<div class="border-b border-line p-4" data-table-stats>{{ $stats }}</div>@endisset
     @if ($summary && ! isset($stats))
         <div class="border-b border-line p-4" data-table-stats><div class="grid grid-cols-2 gap-3 lg:grid-cols-4">@for ($i = 0; $i < 4; $i++)<div class="h-[66px] animate-pulse rounded-card bg-surface-muted"></div>@endfor</div></div>
@@ -50,6 +59,7 @@
         <table class="data-table">
             <thead>
                 <tr>
+                    @if ($selectable)<th scope="col" class="w-10"><input type="checkbox" class="form-check" data-select-page aria-label="Select all on this page"></th>@endif
                     @foreach ($columns as $column)
                         <th scope="col" class="{{ $column['class'] ?? '' }}" @isset($column['sort']) aria-sort="{{ $sort === $column['sort'] ? ($dir === 'asc' ? 'ascending' : 'descending') : 'none' }}" @endisset>
                             @isset($column['sort'])
@@ -62,7 +72,7 @@
                 </tr>
             </thead>
             <tbody data-table-body aria-live="polite">
-                <x-skeleton-rows :cols="count($columns)" />
+                <x-skeleton-rows :cols="count($columns) + ($selectable ? 1 : 0)" />
             </tbody>
         </table>
     </div>

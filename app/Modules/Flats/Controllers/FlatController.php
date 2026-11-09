@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
@@ -45,13 +46,40 @@ class FlatController extends Controller
             'showProject' => ! $project,
         ])->render(), $flats);
 
-        $counts = $this->filtered($request, withStatus: false)->toBase()->selectRaw("COUNT(*) AS total,
+        $counts = $this->filtered($request, withStatus: false)->toBase()->selectRaw("COUNT(*) AS total, SUM(status = 'not_released') AS not_released,
             SUM(status = 'available') AS available, SUM(status = 'booked') AS booked, SUM(status = 'sold') AS sold,
             SUM(status IN ('unavailable', 'maintenance')) AS unavailable")->first();
         $data = $response->getData(true);
         $data['data']['stats'] = view('flats._stats', ['counts' => array_map('intval', (array) $counts)])->render();
 
         return $response->setData($data);
+    }
+
+    /** One manual status for the selected units, or for every unit matching the current filters. */
+    public function bulkStatus(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('flats.change_status'), 403);
+        $data = $request->validate([
+            'to_status' => ['required', Rule::in(Flat::MANUAL_STATUSES)],
+            'ids' => ['array', 'max:500', Rule::requiredIf(! $request->boolean('all'))],
+            'ids.*' => ['string', 'size:16'],
+            'all' => ['boolean'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+        $query = $request->boolean('all') ? $this->listing($request)->reorder() : Flat::query()->visibleTo($request->user())->whereIn('public_id', $data['ids']);
+        $flats = $query->limit(1000)->get()->filter(fn (Flat $f) => Gate::allows('changeStatus', $f));
+        $r = $this->service->bulkChangeStatus($flats, $data['to_status'], $data['reason'] ?? null, $request->user());
+
+        $skipped = array_filter([
+            $r['no_price'] ? $r['no_price'].' without a list price' : null,
+            $r['sales'] ? $r['sales'].' booked or sold' : null,
+            $r['same'] ? $r['same'].' already '.Flat::STATUSES[$data['to_status']] : null,
+        ]);
+        $verb = $data['to_status'] === 'available' ? 'released for sale' : 'set to '.Flat::STATUSES[$data['to_status']];
+        activity('flats')->causedBy($request->user())->event('bulk_status_changed')
+            ->withProperties(['status' => $data['to_status'], 'changed' => $r['changed'], 'skipped' => array_sum($r) - $r['changed']])->log('bulk_status_changed');
+
+        return Ajax::success(Str::plural('unit', $r['changed'], true).' '.$verb.'.'.($skipped ? ' Skipped: '.implode(', ', $skipped).'.' : ''), ['changed' => $r['changed']]);
     }
 
     public function export(Request $request): Response

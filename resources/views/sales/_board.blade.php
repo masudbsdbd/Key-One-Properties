@@ -1,6 +1,7 @@
 @php
     $tones = ['available' => 'border-success-600/40 bg-success-50 text-success-600 hover:border-success-600', 'booked' => 'border-info-600/30 bg-info-50 text-info-600',
-        'sold' => 'border-violet-600/30 bg-violet-50 text-violet-600', 'unavailable' => 'border-line bg-surface-muted text-ink-500', 'maintenance' => 'border-warning-600/30 bg-warning-50 text-warning-600'];
+        'sold' => 'border-violet-600/30 bg-violet-50 text-violet-600', 'unavailable' => 'border-line bg-surface-muted text-ink-500', 'maintenance' => 'border-warning-600/30 bg-warning-50 text-warning-600',
+        'not_released' => 'border-dashed border-line-strong bg-surface text-ink-400'];
     $canBook = auth()->user()->can('sales.booking.create');
 @endphp
 <div class="space-y-6">

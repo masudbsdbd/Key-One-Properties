@@ -16,6 +16,7 @@ Route::prefix('units')->name('flats.')->group(function () {
     Route::controller(FlatController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('table', 'table')->name('table');
+        Route::post('bulk-status', 'bulkStatus')->middleware('throttle:30,1')->name('bulk-status');
         Route::get('export', 'export')->name('export');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');

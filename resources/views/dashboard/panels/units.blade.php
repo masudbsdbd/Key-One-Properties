@@ -9,7 +9,7 @@
                     <span class="bg-success-600" style="width: {{ $r['total'] ? $r['sold'] / $r['total'] * 100 : 0 }}%"></span>
                     <span class="bg-warning-600" style="width: {{ $r['total'] ? $r['booked'] / $r['total'] * 100 : 0 }}%"></span>
                 </div>
-                <p class="mt-1 text-[12px] text-ink-500">{{ $r['sold'] }} sold · {{ $r['booked'] }} booked · <a href="{{ $r['available_href'] }}" class="text-accent-700 hover:underline">{{ $r['available'] }} available</a> (<x-money :value="$r['available_value']" />)</p>
+                <p class="mt-1 text-[12px] text-ink-500">{{ $r['sold'] }} sold · {{ $r['booked'] }} booked · @if ($r['not_released']){{ $r['not_released'] }} not released · @endif<a href="{{ $r['available_href'] }}" class="text-accent-700 hover:underline">{{ $r['available'] }} available</a> (<x-money :value="$r['available_value']" />)</p>
             </li>
         @endforeach
     </ul>

@@ -6,6 +6,7 @@ use App\Models\Building;
 use App\Models\Flat;
 use App\Models\Floor;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -96,6 +97,9 @@ class FlatService
             if ($locked->status === $status) {
                 throw ValidationException::withMessages(['status' => 'The unit already has this status.']);
             }
+            if ($status === 'available' && ! Money::isPositive((string) $locked->list_price)) {
+                throw ValidationException::withMessages(['status' => 'Set a list price before releasing this unit for sale.']);
+            }
 
             $locked->statusHistory()->create([
                 'from_status' => $locked->status,
@@ -108,6 +112,44 @@ class FlatService
             $locked->status = $status;
             $locked->save();
         });
+    }
+
+    /**
+     * Sets one manual status on many units. Units held by a booking or sale, units without a list price
+     * (when releasing) and units already in that status are skipped and counted.
+     *
+     * @param  iterable<Flat>  $flats
+     * @return array{changed: int, sales: int, no_price: int, same: int}
+     */
+    public function bulkChangeStatus(iterable $flats, string $status, ?string $reason, User $user): array
+    {
+        if (! in_array($status, Flat::MANUAL_STATUSES, true)) {
+            throw ValidationException::withMessages(['status' => 'This status cannot be set manually.']);
+        }
+        $result = ['changed' => 0, 'sales' => 0, 'no_price' => 0, 'same' => 0];
+        DB::transaction(function () use ($flats, $status, $reason, $user, &$result) {
+            foreach ($flats as $flat) {
+                $locked = Flat::query()->lockForUpdate()->find($flat->id);
+                $skip = match (true) {
+                    ! $locked || $locked->isLockedBySales() || in_array($locked->status, ['booked', 'sold'], true) => 'sales',
+                    $locked->status === $status => 'same',
+                    $status === 'available' && ! Money::isPositive((string) $locked->list_price) => 'no_price',
+                    default => null,
+                };
+                if ($skip) {
+                    $result[$skip]++;
+
+                    continue;
+                }
+                $locked->statusHistory()->create(['from_status' => $locked->status, 'to_status' => $status,
+                    'reason' => $reason ?: ($status === 'available' ? 'Released for sale' : 'Bulk status change'), 'changed_by' => $user->id, 'changed_at' => now()]);
+                $locked->status = $status;
+                $locked->save();
+                $result['changed']++;
+            }
+        });
+
+        return $result;
     }
 
     /**
@@ -183,7 +225,7 @@ class FlatService
         $flat->project_id = $building->project_id;
         $flat->building_id = $building->id;
         $flat->floor_id = $floor->id;
-        $flat->status = 'available';
+        $flat->status = 'not_released';
         $flat->created_by = $user->id;
 
         return $flat;
@@ -193,7 +235,7 @@ class FlatService
     {
         $flat->statusHistory()->create([
             'from_status' => null,
-            'to_status' => 'available',
+            'to_status' => $flat->status,
             'reason' => 'Created',
             'changed_by' => $user->id,
             'changed_at' => now(),

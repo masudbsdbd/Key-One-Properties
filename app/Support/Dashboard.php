@@ -295,12 +295,12 @@ class Dashboard
     {
         $rows = Flat::query()->whereIn('project_id', $this->projectIds())
             ->selectRaw("project_id, SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available, SUM(CASE WHEN status = 'booked' THEN 1 ELSE 0 END) AS booked,
-                SUM(CASE WHEN status = 'sold' THEN 1 ELSE 0 END) AS sold, COUNT(*) AS total, SUM(CASE WHEN status = 'available' THEN list_price ELSE 0 END) AS available_value")
+                SUM(CASE WHEN status = 'sold' THEN 1 ELSE 0 END) AS sold, SUM(CASE WHEN status = 'not_released' THEN 1 ELSE 0 END) AS not_released, COUNT(*) AS total, SUM(CASE WHEN status = 'available' THEN list_price ELSE 0 END) AS available_value")
             ->groupBy('project_id')->get();
         $projects = Project::query()->whereIn('id', $rows->pluck('project_id'))->get(['id', 'public_id', 'code', 'name'])->keyBy('id');
 
         return ['rows' => $rows->map(fn ($r) => ['code' => $projects[$r->project_id]->code, 'href' => RecordLink::url($projects[$r->project_id], $this->user),
-            'available_href' => route('flats.index', ['project' => $projects[$r->project_id]->public_id, 'status' => 'available']), 'available' => (int) $r->available, 'booked' => (int) $r->booked, 'sold' => (int) $r->sold,
+            'available_href' => route('flats.index', ['project' => $projects[$r->project_id]->public_id, 'status' => 'available']), 'available' => (int) $r->available, 'booked' => (int) $r->booked, 'sold' => (int) $r->sold, 'not_released' => (int) $r->not_released,
             'total' => (int) $r->total, 'available_value' => Money::amount((string) $r->available_value)])->sortBy('code')->values()->all()];
     }
 
