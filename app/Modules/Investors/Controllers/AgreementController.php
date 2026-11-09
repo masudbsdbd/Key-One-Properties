@@ -10,11 +10,9 @@ use App\Models\Project;
 use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
-use App\Support\Export\Document;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
-use App\Support\Format;
 use App\Support\Money;
-use App\Support\Phone;
 use App\Support\TableQuery;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -220,16 +218,8 @@ class AgreementController extends Controller
     public function document(Request $request, InvestorFlatAgreement $agreement): Response
     {
         $this->authorizeRecord($request, 'investor.view', $agreement);
-        $agreement->load(['investor', 'flat.building', 'project', 'creator', 'approver']);
-        $i = $agreement->investor;
 
-        return Document::make('Investment Agreement', $agreement->agreement_no)->stamp(InvestorFlatAgreement::STATUSES[$agreement->status])
-            ->parties(['Investor' => [$i->name, $i->investor_code, Phone::display($i->mobile), $i->address], 'Unit' => [$agreement->project->name, $agreement->flat->building->name.' · Unit '.$agreement->flat->flat_no, number_format((float) $agreement->flat->saleable_area).' '.$agreement->flat->area_unit]])
-            ->meta(['Version' => (string) $agreement->version, 'Effective From' => $agreement->effective_from, 'Effective To' => $agreement->effective_to ?? 'Open', 'Prepared By' => $agreement->creator->name, 'Approved By' => $agreement->approver?->name])
-            ->lines(['Term' => 'text', 'Value' => 'text'], [['Profit share', self::pct($agreement->profit_share_percent)], ['Capital contributed to date', Format::money(InvestorService::capitalBalance($agreement->investor_id, $agreement->flat_id))]])
-            ->summary(['Committed Capital' => $agreement->committed_capital])
-            ->notes($agreement->terms)
-            ->signatures(['Investor', 'Prepared by', 'Authorised signatory'])
+        return Documents::investorAgreement($agreement)
             ->respond($request);
     }
 

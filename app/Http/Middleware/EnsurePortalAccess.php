@@ -18,7 +18,7 @@ class EnsurePortalAccess
     {
         $user = $request->user();
         if ($user && $user->isStaff()) {
-            return $request->expectsJson() ? response()->json(['success' => false, 'message' => 'Not found.'], 404) : redirect()->route('dashboard');
+            abort(404);
         }
         if ($user && $user->account_type !== $portal) {
             return $request->expectsJson() ? response()->json(['success' => false, 'message' => 'Not found.'], 404) : redirect()->to(PortalAccess::homeRoute($user));

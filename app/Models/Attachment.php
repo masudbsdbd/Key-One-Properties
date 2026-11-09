@@ -13,6 +13,11 @@ class Attachment extends Model
 
     protected $fillable = ['original_name', 'disk', 'path', 'mime_type', 'file_size', 'uploaded_by'];
 
+    protected function casts(): array
+    {
+        return ['portal_visible' => 'boolean'];
+    }
+
     public function attachable(): MorphTo
     {
         return $this->morphTo();

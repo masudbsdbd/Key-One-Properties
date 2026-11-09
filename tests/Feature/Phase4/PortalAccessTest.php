@@ -86,7 +86,7 @@ class PortalAccessTest extends TestCase
         $this->actingAs($user)->get(route('customer.dashboard'))->assertRedirect(route('investor.dashboard'));
 
         // Staff never enter a portal.
-        $this->actingAs($this->admin)->get(route('investor.dashboard'))->assertRedirect(route('dashboard'));
+        $this->actingAs($this->admin)->get(route('investor.dashboard'))->assertNotFound();
         $this->actingAs($this->admin)->ajax()->get(route('customer.dashboard'))->assertNotFound();
         $this->flushHeaders();
 

@@ -46,6 +46,7 @@ Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'
     Route::prefix('attachments')->name('attachments.')->controller(AttachmentController::class)->group(function () {
         Route::get('file/{attachment}', 'show')->name('show');
         Route::delete('file/{attachment}', 'destroy')->name('destroy');
+        Route::post('file/{attachment}/portal', 'portal')->name('portal');
         Route::get('{type}/{owner}', 'index')->name('index');
         Route::post('{type}/{owner}', 'store')->middleware('throttle:30,1')->name('store');
     });
