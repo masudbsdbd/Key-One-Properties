@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Modules\Sales\Services\PriceRevisionService;
 use Database\Factories\FlatFactory;
+use Illuminate\Database\UniqueConstraintViolationException;
 use LogicException;
 use Tests\TestCase;
 
@@ -219,5 +220,28 @@ class FlatInventoryTest extends TestCase
 
         Flat::factory()->forFloor($this->floor)->create();
         $this->actingAs($this->user)->ajax()->delete(route('projects.buildings.destroy', [$this->project, $this->floor->building]))->assertStatus(409);
+    }
+
+    public function test_a_deleted_unit_number_can_be_used_again(): void
+    {
+        $this->actingAs($this->user)->ajax()->post(route('flats.store'), $this->payload(['flat_no' => '1A']))->assertOk();
+        $old = Flat::query()->where('flat_no', '1A')->firstOrFail();
+        $this->actingAs($this->user)->ajax()->delete(route('flats.destroy', $old))->assertOk();
+        $this->assertSoftDeleted($old);
+
+        $this->actingAs($this->user)->ajax()->post(route('flats.store'), $this->payload(['flat_no' => '1A']))->assertOk();
+        $this->actingAs($this->user)->ajax()->post(route('flats.store'), $this->payload(['flat_no' => '1a']))->assertStatus(422)->assertJsonValidationErrors('flat_no');
+
+        $bulk = ['building' => $this->floor->building->public_id, 'floors' => [$this->floor->public_id], 'per_floor' => 2, 'pattern' => '{floor}{L}',
+            'start_index' => 1, 'saleable_area' => '1200', 'area_unit' => 'sqft', 'idempotency_key' => '8f1f2b9e-6a6f-4c4f-9a59-6f2b5b8c1d13'];
+        Flat::query()->where('flat_no', '1A')->firstOrFail()->delete();
+        $html = $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.preview', $this->project), $bulk)->assertOk()->json('data.html');
+        $this->assertStringNotContainsString('conflict', strtolower($html));
+        $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $bulk)->assertOk();
+        $this->assertSame(['1A', '1B'], Flat::query()->orderBy('flat_no')->pluck('flat_no')->all());
+        $this->assertSame(3, Flat::withTrashed()->where('flat_no', '1A')->count());
+
+        $this->expectException(UniqueConstraintViolationException::class);
+        Flat::factory()->forFloor($this->floor)->create(['flat_no' => '1A']);
     }
 }

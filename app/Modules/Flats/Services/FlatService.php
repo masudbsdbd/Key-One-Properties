@@ -171,7 +171,7 @@ class FlatService
             throw ValidationException::withMessages(['per_floor' => 'A batch can create at most '.self::BULK_LIMIT.' units.']);
         }
 
-        $existing = Flat::withTrashed()->where('building_id', $building->id)
+        $existing = Flat::query()->where('building_id', $building->id)
             ->whereIn('flat_no', $plan->pluck('flat_no'))->pluck('flat_no')->map(fn ($n) => mb_strtoupper($n))->all();
         $counts = $plan->countBy(fn ($row) => mb_strtoupper($row['flat_no']));
 

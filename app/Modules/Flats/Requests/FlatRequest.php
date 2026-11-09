@@ -100,7 +100,7 @@ class FlatRequest extends FormRequest
                 $buildingId = $building->id;
             }
 
-            $taken = Flat::withTrashed()->where('building_id', $buildingId)->where('flat_no', $this->input('flat_no'))
+            $taken = Flat::query()->where('building_id', $buildingId)->where('flat_no', $this->input('flat_no'))
                 ->when($flat, fn ($q) => $q->whereKeyNot($flat->id))->exists();
             if ($taken) {
                 $validator->errors()->add('flat_no', 'This unit number already exists in the building.');
