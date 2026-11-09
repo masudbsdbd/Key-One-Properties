@@ -23,7 +23,7 @@
     </div>
 
     <div class="mt-6 grid gap-6 xl:grid-cols-3">
-        <x-card title="Details" @class(['xl:col-span-2' => $sales, 'xl:col-span-3' => ! $sales])>
+        <x-card title="Details" class="xl:col-span-3">
             <dl class="grid gap-5 sm:grid-cols-3">
                 <div><dt class="detail-label">Project</dt><dd class="detail-value"><a href="{{ route('projects.show', $flat->project) }}" class="text-accent-700 hover:underline">{{ $flat->project->name }}</a></dd></div>
                 <div><dt class="detail-label">Building</dt><dd class="detail-value">{{ $flat->building->name }} ({{ $flat->building->code }})</dd></div>
@@ -38,10 +38,11 @@
                 @endif
             </dl>
         </x-card>
-        @if ($sales)
-            @include('flats._sales')
-        @endif
     </div>
+
+    @if ($deal)
+        @include('flats._deal')
+    @endif
 
     <div class="mt-6 grid gap-6 xl:grid-cols-2">
         <x-card title="Price History" :padded="false">

@@ -30,7 +30,15 @@ class RecordPagesSalesTest extends TestCase
 
         $this->actingAs($admin)->get(route('flats.show', $this->sale->flat))->assertOk()
             ->assertSee($this->sale->sale_no)->assertSee($this->sale->customer->full_name)
-            ->assertSee(Format::money($paid))->assertDontSee('Coming in Phase');
+            ->assertSee(Format::money($paid))->assertDontSee('Coming in Phase')
+            ->assertSee('Sold To')->assertSee('Agreement Signed')->assertSee('Down Payment')
+            ->assertSee(route('customers.show', $this->sale->customer), false);
+        CustomerPayment::query()->where('sale_id', $this->sale->id)->where('status', 'posted')->pluck('payment_no')
+            ->each(fn ($no) => $this->actingAs($admin)->get(route('flats.show', $this->sale->flat))->assertSee($no));
+
+        $salesOnly = $this->userWith(['flats.view', 'projects.view_all', 'sales.sale.view']);
+        $this->actingAs($salesOnly)->get(route('flats.show', $this->sale->flat))->assertOk()
+            ->assertSee('Sold To')->assertDontSee('id="deal-tab-payments"', false)->assertDontSee('id="deal-tab-ledger"', false);
 
         $viewer = $this->userWith(['flats.view', 'projects.view_all']);
         $this->actingAs($viewer)->get(route('flats.show', $this->sale->flat))->assertOk()
