@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureStaffAccount;
 use App\Http\Middleware\EnsureTwoFactorIsConfigured;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\ThrottlePerRoute;
 use App\Modules\Portal\Services\PortalAccess;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.changed' => EnsurePasswordIsChanged::class,
             'staff' => EnsureStaffAccount::class,
             'portal' => EnsurePortalAccess::class,
+            'throttle' => ThrottlePerRoute::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
