@@ -12,6 +12,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen">
+    <div class="page-progress is-loading" data-page-progress aria-hidden="true"></div>
     <div class="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
         <aside class="relative hidden overflow-hidden bg-sidebar lg:flex lg:flex-col lg:justify-between p-12 text-white">
             <div class="flex items-center gap-3">

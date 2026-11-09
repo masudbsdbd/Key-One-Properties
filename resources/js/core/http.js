@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import { progress } from '../components/progress';
 import { toast } from '../components/toast';
 
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
@@ -59,6 +60,10 @@ export function request({ method = 'GET', url, data, signal, silent = false }) {
         });
 
         signal?.addEventListener('abort', () => jqXHR.abort());
+        if (!silent) {
+            progress.start();
+            jqXHR.always(() => progress.done());
+        }
 
         jqXHR
             .done((body) => resolve(body))
