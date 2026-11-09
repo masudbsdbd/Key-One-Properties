@@ -119,13 +119,22 @@ browser checks for 13–14, and an empty-state check for 17.
 - Progress shows only approved updates with investor visibility and a publish date; photos are served from those
   updates only.
 
-## 9. Implementation checklist
+## 9. Customer portal notes
+
+- A unit's figures include the money paid against the booking the sale came from (booking money is posted to the
+  booking in Phase 3). Paid = posted payments; balance = statement charges less credits for the sale and its booking;
+  a negative balance is shown as advance. The Phase 3 portal contract now uses the same service.
+- Pending and rejected payments are not shown; reversed payments are shown as Reversed. Waived late fees stay visible
+  as Waived. Rescheduled items stay in the schedule, dimmed.
+- Every customer route is GET only; internal write endpoints answer 404 to portal accounts.
+
+## 10. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
 - [x] P2 Portal UI foundation: layouts, navigation, shared components
 - [x] P3 Investor overview, investments, investment detail
 - [x] P4 Investor project progress, project financials, flat financials
-- [ ] P5 Customer portal
+- [x] P5 Customer portal
 - [ ] P6 Executive dashboard and report catalog
 - [ ] P7 Queued exports, report runs and files
 - [ ] P8 Integration QA and release

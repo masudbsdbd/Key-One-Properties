@@ -10,11 +10,9 @@ use App\Models\Project;
 use App\Modules\Collections\Services\PaymentService;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
-use App\Support\Export\Document;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
-use App\Support\Format;
 use App\Support\Money;
-use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -142,21 +140,9 @@ class CustomerPaymentController extends Controller
     public function receipt(Request $request, CustomerPayment $payment): Response
     {
         $this->authorizeRecord($request, 'collections.payment.receipt.view', $payment);
-        $payment->load(['customer', 'project', 'booking.flat', 'sale.flat', 'allocations.item', 'receipt', 'receiver']);
         abort_unless($payment->receipt, 404);
-        $c = $payment->customer;
-        $unit = ($payment->sale ?? $payment->booking)->flat->flat_no;
 
-        return Document::make('Money Receipt', $payment->receipt->receipt_no)->stamp($payment->receipt->voided_at ? 'VOID' : null)
-            ->parties(['Received From' => [$c->full_name, $c->customer_code, Phone::display($c->primary_mobile)], 'For' => [$payment->project->name, 'Unit '.$unit, $payment->sale?->sale_no ?? $payment->booking?->booking_no]])
-            ->meta(['Payment No' => $payment->payment_no, 'Date' => $payment->payment_date, 'Method' => CustomerPayment::METHODS[$payment->method] ?? $payment->method, 'Reference' => $payment->reference_no, 'Received By' => $payment->receiver->name])
-            ->lines(['Applied To' => 'text', 'Amount' => 'money'], $payment->allocations->whereNull('reversal_of_id')->filter(fn ($a) => Money::isPositive($a->amount))->map(fn ($a) => [
-                match ($a->allocation_type) {
-                    'booking' => 'Booking money', 'unapplied_advance' => 'Advance', 'late_fee' => 'Late fee · installment #'.$a->item?->sequence_no, default => 'Installment #'.$a->item?->sequence_no.' · due '.Format::date($a->item?->due_date)
-                },
-                $a->amount]))
-            ->summary(['Amount Received' => $payment->amount])
-            ->signatures(['Customer', 'Received by', 'Authorised signatory'])
+        return Documents::moneyReceipt($payment)
             ->respond($request);
     }
 

@@ -6,13 +6,13 @@ use App\Models\Customer;
 use App\Models\CustomerStatementEntry;
 use App\Models\FlatBooking;
 use App\Models\FlatSale;
-use App\Models\InstallmentPlan;
 use App\Models\Investor;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorLedgerEntry;
 use App\Models\InvestorProfitAllocation;
 use App\Modules\Collections\Services\CustomerStatement;
 use App\Modules\Investors\Services\InvestorLedger;
+use App\Modules\Portal\Services\CustomerPortal;
 use App\Support\Money;
 
 /**
@@ -27,22 +27,20 @@ class PortalReadModel
         $sales = FlatSale::query()->where('customer_id', $customer->id)->whereIn('status', FlatSale::ACTIVE)->with(['flat', 'project.stages'])->get();
         $bookings = FlatBooking::query()->where('customer_id', $customer->id)->where('status', 'confirmed')->whereDoesntHave('sale')->with(['flat', 'project.stages'])->get();
         $units = [];
+        $portal = new CustomerPortal($customer);
         foreach ($sales as $sale) {
-            $plan = InstallmentPlan::query()->where('sale_id', $sale->id)->where('status', 'active')->with('items')->first();
-            $items = $plan?->items->where('status', '!=', 'rescheduled')->sortBy('due_date')->values() ?? collect();
-            $next = $items->first(fn ($i) => $i->isOpen());
-            $balance = CustomerStatement::balance($customer, $sale->id);
+            $pos = $portal->position($sale);
+            $items = $pos['plan']?->items->where('status', '!=', 'rescheduled')->sortBy('due_date')->values() ?? collect();
             $units[] = new CustomerUnit($sale->sale_no, 'sale', FlatSale::STATUSES[$sale->status], $sale->project->name, $sale->flat->flat_no,
-                Money::amount((string) $sale->net_contract_value), Money::amount(Money::sub((string) $sale->net_contract_value, $balance)), $balance,
-                $next?->due_date->toDateString(), $next ? Money::amount($next->outstanding()) : null, $sale->project->overallProgress(),
+                $pos['contract'], $pos['paid'], $pos['balance'], $pos['next']?->due_date->toDateString(), $pos['next'] ? Money::amount($pos['next']->outstanding()) : null,
+                $sale->project->overallProgress(),
                 $items->map(fn ($i) => ['sequence' => $i->sequence_no, 'due_date' => $i->due_date->toDateString(), 'amount' => Money::amount(Money::add((string) $i->principal_due, (string) $i->fee_due)),
                     'paid' => Money::amount(Money::add((string) $i->principal_paid, (string) $i->fee_paid)), 'status' => $i->status])->all());
         }
         foreach ($bookings as $b) {
-            $paid = Money::amount(Money::neg(CustomerStatementEntry::query()->where('customer_id', $customer->id)->where('booking_id', $b->id)->whereNull('sale_id')
-                ->selectRaw('COALESCE(SUM(charge_amount - credit_amount),0) AS b')->value('b') ?? '0'));
+            $pos = $portal->position($b);
             $units[] = new CustomerUnit($b->booking_no, 'booking', FlatBooking::STATUSES[$b->status], $b->project->name, $b->flat->flat_no,
-                Money::amount((string) $b->agreed_price), $paid, Money::amount(Money::sub((string) $b->booking_amount_expected, $paid)), null, null, $b->project->overallProgress(), []);
+                $pos['contract'], $pos['paid'], Money::amount(Money::sub((string) $b->booking_amount_expected, $pos['paid'])), null, null, $b->project->overallProgress(), []);
         }
 
         $running = '0';

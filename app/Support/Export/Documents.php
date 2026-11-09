@@ -5,6 +5,7 @@ namespace App\Support\Export;
 use App\Models\ContractorBill;
 use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
+use App\Models\CustomerPayment;
 use App\Models\Expense;
 use App\Models\GoodsReceipt;
 use App\Models\InvestorCapitalTransaction;
@@ -227,5 +228,23 @@ class Documents
             ->meta(['Date' => $payout->paid_at, 'Method' => CapitalController::METHODS[$payout->payment_method] ?? null, 'Reference' => $payout->payment_reference, 'Posted By' => $payout->poster->name])
             ->summary(['Amount Paid' => $payout->amount])
             ->signatures(['Received by', 'Prepared by', 'Authorised signatory']);
+    }
+
+    public static function moneyReceipt(CustomerPayment $payment): Document
+    {
+        $payment->loadMissing(['customer', 'project', 'booking.flat', 'sale.flat', 'allocations.item', 'receipt', 'receiver']);
+        $c = $payment->customer;
+        $unit = ($payment->sale ?? $payment->booking)->flat->flat_no;
+
+        return Document::make('Money Receipt', $payment->receipt->receipt_no)->stamp($payment->receipt->voided_at ? 'VOID' : null)
+            ->parties(['Received From' => [$c->full_name, $c->customer_code, Phone::display($c->primary_mobile)], 'For' => [$payment->project->name, 'Unit '.$unit, $payment->sale?->sale_no ?? $payment->booking?->booking_no]])
+            ->meta(['Payment No' => $payment->payment_no, 'Date' => $payment->payment_date, 'Method' => CustomerPayment::METHODS[$payment->method] ?? $payment->method, 'Reference' => $payment->reference_no, 'Received By' => $payment->receiver->name])
+            ->lines(['Applied To' => 'text', 'Amount' => 'money'], $payment->allocations->whereNull('reversal_of_id')->filter(fn ($a) => Money::isPositive($a->amount))->map(fn ($a) => [
+                match ($a->allocation_type) {
+                    'booking' => 'Booking money', 'unapplied_advance' => 'Advance', 'late_fee' => 'Late fee · installment #'.$a->item?->sequence_no, default => 'Installment #'.$a->item?->sequence_no.' · due '.Format::date($a->item?->due_date)
+                },
+                $a->amount]))
+            ->summary(['Amount Received' => $payment->amount])
+            ->signatures(['Customer', 'Received by', 'Authorised signatory']);
     }
 }
