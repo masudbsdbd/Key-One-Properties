@@ -165,9 +165,7 @@ class SampleDataSeeder extends Seeder
             ['received_at' => now()->toDateString(), 'source' => 'opening'], $admin, (string) Str::uuid());
 
         Project::query()->get()->each(function (Project $project, int $i) use ($materials, $service, $admin) {
-            $wh = new Warehouse(['code' => 'WH-'.substr($project->code, -4), 'name' => $project->name.' Site Store', 'is_active' => true]);
-            $wh->project_id = $project->id;
-            $wh->save();
+            $wh = Warehouse::query()->where('project_id', $project->id)->first() ?? Warehouse::openSiteStore($project);
             $service->receive($wh, $materials->take(4)->map(fn ($p) => ['material' => $p[0], 'quantity' => (string) (500 + $i * 100), 'unit_cost' => $p[1]])->all(),
                 ['received_at' => now()->toDateString(), 'source' => 'opening'], $admin, (string) Str::uuid());
         });

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -35,6 +36,21 @@ class Warehouse extends Model
     public function balances(): HasMany
     {
         return $this->hasMany(StockBalance::class);
+    }
+
+    /** Every project starts with its own store; the code follows the project code and stays unique. */
+    public static function openSiteStore(Project $project): self
+    {
+        $base = Str::limit('WH-'.preg_replace('/[^A-Z0-9\-]/', '', mb_strtoupper((string) $project->code)), 20, '');
+        $code = $base;
+        for ($n = 2; static::query()->where('code', $code)->exists(); $n++) {
+            $code = Str::limit($base, 20 - strlen("-{$n}"), '')."-{$n}";
+        }
+        $store = new static(['code' => $code, 'name' => Str::limit($project->name.' Site Store', 120, ''), 'address' => $project->location_text, 'is_active' => true]);
+        $store->project_id = $project->id;
+        $store->save();
+
+        return $store;
     }
 
     public function isCompany(): bool

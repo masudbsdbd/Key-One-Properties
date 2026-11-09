@@ -83,6 +83,11 @@ class Project extends Model
         return $this->belongsToMany(User::class)->withPivot(['membership_role', 'is_primary'])->withTimestamps();
     }
 
+    public function warehouses(): HasMany
+    {
+        return $this->hasMany(Warehouse::class);
+    }
+
     public function stages(): HasMany
     {
         return $this->hasMany(ProjectStage::class)->orderBy('sequence');

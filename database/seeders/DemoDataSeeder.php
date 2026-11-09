@@ -224,9 +224,8 @@ class DemoDataSeeder extends Seeder
 
         $this->central = new Warehouse(['code' => 'WH-CEN', 'name' => 'Central Store', 'is_active' => true]);
         $this->central->save();
-        $this->site = new Warehouse(['code' => 'WH-LV', 'name' => 'Lake View Site Store', 'is_active' => true]);
-        $this->site->project_id = $this->project->id;
-        $this->site->save();
+        $this->site = Warehouse::query()->where('project_id', $this->project->id)->firstOrFail();
+        $this->site->update(['code' => 'WH-LV', 'name' => 'Lake View Site Store']);
 
         $service = app(InventoryService::class);
         $service->receive($this->central, $materials->map(fn ($p) => ['material' => $p[0], 'quantity' => '1500', 'unit_cost' => $p[1]])->all(),

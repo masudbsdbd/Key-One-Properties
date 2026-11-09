@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectProgressUpdate;
 use App\Models\ProjectStage;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,7 @@ class ProjectService
             foreach (Project::defaultStages() as $i => $name) {
                 $project->stages()->create(['name' => $name, 'sequence' => $i + 1, 'status' => 'not_started']);
             }
+            Warehouse::openSiteStore($project);
 
             // The creator is always a member so they keep access without projects.view_all.
             $project->members()->attach($creator->id, ['membership_role' => 'Owner', 'is_primary' => true]);
