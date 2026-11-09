@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\Portal\Services\PortalAccess;
 use App\Services\Auth\LoginThrottle;
 use App\Services\Auth\SecurityLog;
 use App\Support\Ajax;
@@ -77,7 +78,7 @@ class LoginController extends Controller
 
         self::completeLogin($request, $user, $request->boolean('remember'));
 
-        return $this->redirectResponse($request, redirect()->intended(route('dashboard'))->getTargetUrl());
+        return $this->redirectResponse($request, ($user->isStaff() ? redirect()->intended(route('dashboard'))->getTargetUrl() : PortalAccess::homeRoute($user)));
     }
 
     public function destroy(Request $request): RedirectResponse

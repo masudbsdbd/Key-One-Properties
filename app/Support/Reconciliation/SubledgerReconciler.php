@@ -92,7 +92,7 @@ class SubledgerReconciler
         $expected = collect();
         FlatSale::query()->whereIn('status', FlatSale::ACTIVE)->each(fn ($s) => $expected->put($this->key($s), Money::amount($s->net_contract_value)));
         CustomerPayment::query()->where('status', 'posted')->each(fn ($p) => $expected->put($this->key($p), Money::neg(Money::amount($p->amount))));
-        CustomerRefund::query()->where('status', 'paid')->each(fn ($r) => $expected->put($this->key($r), Money::amount($r->amount)));
+        CustomerRefund::query()->where('status', 'paid')->each(fn ($r) => $expected->put($this->key($r), Money::amount($r->payable())));
         LateFeeAssessment::query()->where('status', 'posted')->each(fn ($a) => $expected->put($this->key($a), Money::amount($a->amount)));
 
         return $this->compare('Customer statement', $expected, $actual);

@@ -11,6 +11,8 @@ use App\Support\DocumentNumber;
 use App\Support\FinancialEvents\FinancialEventRecorder;
 use App\Support\Money;
 use App\Support\Workflow\Approval;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -41,14 +43,28 @@ class RefundService
         });
     }
 
-    public function approve(CustomerRefund $refund, User $user): void
+    /** The approver may keep a percentage of the request (default none). */
+    public function approve(CustomerRefund $refund, User $user, string $deductionPercent = '0'): void
     {
-        DB::transaction(function () use ($refund, $user) {
+        DB::transaction(function () use ($refund, $user, $deductionPercent) {
             $refund = CustomerRefund::query()->lockForUpdate()->findOrFail($refund->id);
             Approval::ensureStatus($refund->status, 'pending', 'This refund was already decided.');
             Approval::ensureNotSelf($user, $refund->requested_by, 'a refund');
-            $refund->forceFill(['status' => 'approved', 'approved_by' => $user->id, 'approved_at' => now()])->save();
+            $percent = Money::rate($deductionPercent);
+            if (Money::cmp($percent, '0') < 0 || Money::cmp($percent, '100') > 0) {
+                throw ValidationException::withMessages(['deduction_percent' => 'Deduction must be between 0 and 100%.']);
+            }
+            $deduction = self::deduction((string) $refund->amount, $percent);
+            $refund->forceFill([
+                'status' => 'approved', 'approved_by' => $user->id, 'approved_at' => now(),
+                'deduction_percent' => $percent, 'deduction_amount' => $deduction, 'net_amount' => Money::amount(Money::sub((string) $refund->amount, $deduction)),
+            ])->save();
         });
+    }
+
+    public static function deduction(string $amount, string $percent): string
+    {
+        return (string) BigDecimal::of($amount)->multipliedBy($percent)->dividedBy(100, 2, RoundingMode::HalfUp);
     }
 
     public function reject(CustomerRefund $refund, string $reason, User $user): void
@@ -70,9 +86,9 @@ class RefundService
                 'status' => 'paid', 'paid_by' => $user->id, 'paid_at' => now(), 'paid_on' => $data['paid_on'],
                 'payment_method' => $data['payment_method'], 'payment_reference' => $data['payment_reference'] ?? null,
             ])->save();
-            $this->statement->post($refund->customer, 'refund', $refund, $refund->paid_on, 'Refund '.$refund->refund_no, $refund->amount, '0', $refund->sale_id, $refund->booking_id);
-            $this->events->record('sales', $refund, 'collection.refunded', $refund->amount, $refund->paid_on,
-                ['refund_no' => $refund->refund_no, 'method' => $refund->payment_method], project: $refund->project, customer: $refund->customer, user: $user);
+            $this->statement->post($refund->customer, 'refund', $refund, $refund->paid_on, 'Refund '.$refund->refund_no, $refund->payable(), '0', $refund->sale_id, $refund->booking_id);
+            $this->events->record('sales', $refund, 'collection.refunded', Money::amount($refund->payable()), $refund->paid_on,
+                ['refund_no' => $refund->refund_no, 'method' => $refund->payment_method, 'requested' => (string) $refund->amount, 'deduction' => (string) $refund->deduction_amount], project: $refund->project, customer: $refund->customer, user: $user);
         });
     }
 

@@ -25,9 +25,9 @@
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <x-card class="min-w-0 xl:col-span-2">
             <div class="grid gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                <div><p class="detail-label">From</p><p class="detail-value font-semibold">{{ $transfer->sourceWarehouse->name }}</p><p class="text-[13px] text-ink-500">{{ $transfer->sourceWarehouse->project?->name ?? 'Company' }}</p></div>
+                <div><p class="detail-label">From</p><p class="detail-value font-semibold">{{ $transfer->sourceWarehouse->name }}</p><x-ref :to="$transfer->sourceWarehouse->project" class="block text-[13px] text-ink-500">{{ $transfer->sourceWarehouse->project?->name ?? 'Company' }}</x-ref></div>
                 <span class="icon-tile icon-tile-md tone-accent mx-auto"><x-icon name="arrow-right" /></span>
-                <div><p class="detail-label">To</p><p class="detail-value font-semibold">{{ $transfer->destinationWarehouse->name }}</p><p class="text-[13px] text-ink-500">{{ $transfer->destinationWarehouse->project?->name ?? 'Company' }}</p></div>
+                <div><p class="detail-label">To</p><p class="detail-value font-semibold">{{ $transfer->destinationWarehouse->name }}</p><x-ref :to="$transfer->destinationWarehouse->project" class="block text-[13px] text-ink-500">{{ $transfer->destinationWarehouse->project?->name ?? 'Company' }}</x-ref></div>
             </div>
             <div class="mt-6 overflow-x-auto">
                 <table class="data-table">

@@ -81,8 +81,6 @@ class SampleDataSeeder extends Seeder
 
         foreach ([
             ['Key One Lake View', 'Gulshan 2, Dhaka', 'active', 12, 180000000],
-            ['Key One Green Court', 'Bashundhara R/A, Dhaka', 'active', 10, 140000000],
-            ['Key One Harmony', 'Uttara Sector 7, Dhaka', 'planned', 8, 95000000],
         ] as [$name, $location, $status, $floors, $budget]) {
             $project = $projects->create([
                 'name' => $name, 'location_text' => $location, 'status' => $status,

@@ -5,12 +5,15 @@ namespace Tests\Feature\Phase3;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\CustomerRefund;
+use App\Models\CustomerStatementEntry;
+use App\Models\FinancialEvent;
 use App\Models\Flat;
 use App\Models\FlatBooking;
 use App\Models\FlatSale;
 use App\Models\Project;
 use App\Models\SalesCancellation;
 use App\Models\User;
+use App\Support\Reconciliation\SubledgerReconciler;
 use Database\Factories\FlatFactory;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -109,9 +112,17 @@ class SalesHttpTest extends TestCase
 
         $refund = CustomerRefund::query()->firstOrFail();
         $this->assertSame('pending', $refund->status);
-        $this->actingAs($this->manager)->ajax()->post(route('refunds.approve', $refund))->assertOk();
+        $this->actingAs($this->manager)->ajax()->get(route('refunds.approve.form', $refund))->assertOk()->assertSee('Deduction %');
+        $this->actingAs($this->manager)->ajax()->post(route('refunds.approve', $refund), ['deduction_percent' => '101'])->assertStatus(422)->assertJsonValidationErrors('deduction_percent');
+        $this->actingAs($this->manager)->ajax()->post(route('refunds.approve', $refund), ['deduction_percent' => '12.5%'])->assertOk();
+        $refund->refresh();
+        $this->assertSame(['7.50', '52.50'], [(string) $refund->deduction_amount, (string) $refund->net_amount]);
         $this->actingAs($this->manager)->ajax()->post(route('refunds.pay', $refund), ['paid_on' => now()->toDateString(), 'payment_method' => 'cash'])->assertOk();
         $this->assertSame('paid', $refund->fresh()->status);
+        $this->assertSame('52.50', (string) CustomerStatementEntry::query()->where('entry_type', 'refund')->value('charge_amount'));
+        $this->assertSame('52.50', (string) FinancialEvent::query()->where('event_type', 'collection.refunded')->value('amount'));
+        $this->assertSame([], collect(app(SubledgerReconciler::class)->differences())->filter(fn ($d) => str_contains($d['document'], $refund->refund_no))->values()->all());
+        $this->actingAs($this->manager)->get(route('refunds.show', $refund))->assertSee('12.5%');
         $this->actingAs($this->manager)->get(route('refunds.show', $refund))->assertOk();
         $this->assertStringStartsWith('%PDF', $this->actingAs($this->manager)->get(route('refunds.document', $refund).'?format=pdf')->getContent());
     }

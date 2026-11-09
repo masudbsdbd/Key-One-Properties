@@ -11,9 +11,8 @@ use App\Models\InvestorProfitDistribution;
 use App\Modules\Investors\Services\DistributionService;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Support\Ajax;
-use App\Support\Export\Document;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
-use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -40,7 +39,7 @@ class DistributionController extends Controller
     {
         $rows = TableQuery::paginate($this->payableQuery($request), $request);
         $investors = Investor::query()->whereIn('id', $rows->pluck('investor_id'))->get()->keyBy('id');
-        $flats = Flat::query()->whereIn('id', $rows->pluck('flat_id'))->with(['project:id,code', 'building:id,code'])->get()->keyBy('id');
+        $flats = Flat::query()->whereIn('id', $rows->pluck('flat_id'))->with(['project:id,public_id,code', 'building:id,code'])->get()->keyBy('id');
         $rows->getCollection()->each(function ($r) use ($investors, $flats) {
             $r->investor = $investors[$r->investor_id];
             $r->flat = $flats[$r->flat_id];
@@ -178,15 +177,8 @@ class DistributionController extends Controller
     public function voucher(Request $request, InvestorPayout $payout): Response
     {
         $this->authorizeDistribution($request, $payout->distribution, 'investor.view');
-        $payout->load(['distribution.flat.project', 'investor', 'poster']);
-        $i = $payout->investor;
-        $d = $payout->distribution;
 
-        return Document::make('Profit Payout Voucher', $payout->payout_no)->stamp($payout->status === 'reversed' ? 'REVERSED' : null)
-            ->parties(['Paid To' => [$i->name, $i->investor_code, Phone::display($i->mobile)], 'For' => [$d->flat->project->name, 'Unit '.$d->flat->flat_no, $d->distribution_no]])
-            ->meta(['Date' => $payout->paid_at, 'Method' => CapitalController::METHODS[$payout->payment_method] ?? null, 'Reference' => $payout->payment_reference, 'Posted By' => $payout->poster->name])
-            ->summary(['Amount Paid' => $payout->amount])
-            ->signatures(['Received by', 'Prepared by', 'Authorised signatory'])
+        return Documents::investorPayout($payout)
             ->respond($request);
     }
 
@@ -216,7 +208,7 @@ class DistributionController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.view'), 403);
-        $query = InvestorProfitDistribution::query()->visibleTo($request->user())->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,project_id', 'flat.project:id,code']);
+        $query = InvestorProfitDistribution::query()->visibleTo($request->user())->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,project_id', 'flat.project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), InvestorProfitDistribution::STATUSES)) {
             $query->where('status', $status);
         }

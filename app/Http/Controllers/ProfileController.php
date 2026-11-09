@@ -8,6 +8,7 @@ use App\Services\Auth\TwoFactor;
 use App\Support\Ajax;
 use App\Support\Branding;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,9 +18,13 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    public function edit(Request $request): View
+    public function edit(Request $request): View|RedirectResponse
     {
         $user = $request->user();
+        $portal = $request->routeIs('investor.profile', 'customer.profile') ? $user->account_type : null;
+        if (! $portal && ! $user->isStaff()) {
+            return redirect()->route($user->account_type.'.profile');
+        }
 
         $sessions = DB::table('sessions')
             ->where('user_id', $user->id)
@@ -32,7 +37,7 @@ class ProfileController extends Controller
                 'last_active' => now()->setTimestamp($s->last_activity),
             ]);
 
-        return view('profile.edit', ['user' => $user, 'sessions' => $sessions]);
+        return view('profile.edit', ['user' => $user, 'sessions' => $sessions, 'portal' => $portal]);
     }
 
     public function update(Request $request): JsonResponse

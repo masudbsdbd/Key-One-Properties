@@ -8,6 +8,7 @@ use App\Models\Flat;
 use App\Models\Floor;
 use App\Models\Project;
 use App\Modules\Flats\Requests\FlatRequest;
+use App\Modules\Flats\Services\FlatDeal;
 use App\Modules\Flats\Services\FlatService;
 use App\Modules\Sales\Services\PriceRevisionService;
 use App\Support\Ajax;
@@ -128,7 +129,7 @@ class FlatController extends Controller
         $activity = Activity::query()->where('subject_type', $flat->getMorphClass())->where('subject_id', $flat->id)
             ->with('causer')->latest()->latest('id')->limit(50)->get();
 
-        return view('flats.show', ['flat' => $flat, 'activity' => $activity]);
+        return view('flats.show', ['flat' => $flat, 'activity' => $activity, 'deal' => FlatDeal::for($flat, auth()->user())]);
     }
 
     public function history(Request $request, Flat $flat): JsonResponse

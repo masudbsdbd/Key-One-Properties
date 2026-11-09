@@ -5,14 +5,21 @@ namespace App\Support\Export;
 use App\Models\ContractorBill;
 use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
+use App\Models\CustomerPayment;
 use App\Models\Expense;
 use App\Models\GoodsReceipt;
+use App\Models\InvestorCapitalTransaction;
+use App\Models\InvestorFlatAgreement;
+use App\Models\InvestorPayout;
 use App\Models\MaterialBorrow;
 use App\Models\MaterialTransfer;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
 use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
+use App\Modules\Investors\Controllers\AgreementController;
+use App\Modules\Investors\Controllers\CapitalController;
+use App\Modules\Investors\Services\InvestorService;
 use App\Support\Format;
 use App\Support\Money;
 use App\Support\Phone;
@@ -179,5 +186,65 @@ class Documents
                 $b->lines->map(fn ($l) => [$l->material->name, $l->material->unit->code, $l->approved_qty, $l->issued_qty, $l->returned_qty, $l->converted_qty, $l->outstanding()]))
             ->notes($b->notes)
             ->signatures(['Issued by', 'Received by', 'Approved by']);
+    }
+
+    public static function investorAgreement(InvestorFlatAgreement $agreement): Document
+    {
+        $agreement->loadMissing(['investor', 'flat.building', 'project', 'creator', 'approver']);
+        $i = $agreement->investor;
+
+        return Document::make('Investment Agreement', $agreement->agreement_no)->stamp(InvestorFlatAgreement::STATUSES[$agreement->status])
+            ->parties(['Investor' => [$i->name, $i->investor_code, Phone::display($i->mobile), $i->address], 'Unit' => [$agreement->project->name, $agreement->flat->building->name.' · Unit '.$agreement->flat->flat_no, number_format((float) $agreement->flat->saleable_area).' '.$agreement->flat->area_unit]])
+            ->meta(['Version' => (string) $agreement->version, 'Effective From' => $agreement->effective_from, 'Effective To' => $agreement->effective_to ?? 'Open', 'Prepared By' => $agreement->creator->name, 'Approved By' => $agreement->approver?->name])
+            ->lines(['Term' => 'text', 'Value' => 'text'], [['Profit share', AgreementController::pct($agreement->profit_share_percent)], ['Capital contributed to date', Format::money(InvestorService::capitalBalance($agreement->investor_id, $agreement->flat_id))]])
+            ->summary(['Committed Capital' => $agreement->committed_capital])
+            ->notes($agreement->terms)
+            ->signatures(['Investor', 'Prepared by', 'Authorised signatory']);
+    }
+
+    public static function capitalTransaction(InvestorCapitalTransaction $transaction): Document
+    {
+        $transaction->loadMissing(['investor', 'agreement', 'flat.building', 'project', 'creator', 'approver']);
+        $i = $transaction->investor;
+        $in = $transaction->transaction_type === 'contribution';
+
+        return Document::make($in ? 'Capital Receipt' : 'Capital Return Voucher', $transaction->transaction_no)
+            ->stamp($transaction->status === 'posted' ? null : InvestorCapitalTransaction::STATUSES[$transaction->status])
+            ->parties([($in ? 'Received From' : 'Paid To') => [$i->name, $i->investor_code, Phone::display($i->mobile)], 'Investment' => [$transaction->project->name, 'Unit '.$transaction->flat->flat_no, $transaction->agreement->agreement_no]])
+            ->meta(['Date' => $transaction->transaction_date, 'Method' => CapitalController::METHODS[$transaction->payment_method] ?? null, 'Reference' => $transaction->reference_no, 'Prepared By' => $transaction->creator->name, 'Posted By' => $transaction->approver?->name])
+            ->summary([($in ? 'Amount Received' : 'Amount Paid') => $transaction->amount])
+            ->notes($transaction->notes)
+            ->signatures([$in ? 'Investor' : 'Received by', 'Prepared by', 'Authorised signatory']);
+    }
+
+    public static function investorPayout(InvestorPayout $payout): Document
+    {
+        $payout->loadMissing(['distribution.flat.project', 'investor', 'poster']);
+        $i = $payout->investor;
+        $d = $payout->distribution;
+
+        return Document::make('Profit Payout Voucher', $payout->payout_no)->stamp($payout->status === 'reversed' ? 'REVERSED' : null)
+            ->parties(['Paid To' => [$i->name, $i->investor_code, Phone::display($i->mobile)], 'For' => [$d->flat->project->name, 'Unit '.$d->flat->flat_no, $d->distribution_no]])
+            ->meta(['Date' => $payout->paid_at, 'Method' => CapitalController::METHODS[$payout->payment_method] ?? null, 'Reference' => $payout->payment_reference, 'Posted By' => $payout->poster->name])
+            ->summary(['Amount Paid' => $payout->amount])
+            ->signatures(['Received by', 'Prepared by', 'Authorised signatory']);
+    }
+
+    public static function moneyReceipt(CustomerPayment $payment): Document
+    {
+        $payment->loadMissing(['customer', 'project', 'booking.flat', 'sale.flat', 'allocations.item', 'receipt', 'receiver']);
+        $c = $payment->customer;
+        $unit = ($payment->sale ?? $payment->booking)->flat->flat_no;
+
+        return Document::make('Money Receipt', $payment->receipt->receipt_no)->stamp($payment->receipt->voided_at ? 'VOID' : null)
+            ->parties(['Received From' => [$c->full_name, $c->customer_code, Phone::display($c->primary_mobile)], 'For' => [$payment->project->name, 'Unit '.$unit, $payment->sale?->sale_no ?? $payment->booking?->booking_no]])
+            ->meta(['Payment No' => $payment->payment_no, 'Date' => $payment->payment_date, 'Method' => CustomerPayment::METHODS[$payment->method] ?? $payment->method, 'Reference' => $payment->reference_no, 'Received By' => $payment->receiver->name])
+            ->lines(['Applied To' => 'text', 'Amount' => 'money'], $payment->allocations->whereNull('reversal_of_id')->filter(fn ($a) => Money::isPositive($a->amount))->map(fn ($a) => [
+                match ($a->allocation_type) {
+                    'booking' => 'Booking money', 'unapplied_advance' => 'Advance', 'late_fee' => 'Late fee · installment #'.$a->item?->sequence_no, default => 'Installment #'.$a->item?->sequence_no.' · due '.Format::date($a->item?->due_date)
+                },
+                $a->amount]))
+            ->summary(['Amount Received' => $payment->amount])
+            ->signatures(['Customer', 'Received by', 'Authorised signatory']);
     }
 }

@@ -15,12 +15,12 @@ class EnsurePasswordIsChanged
     {
         $user = $request->user();
 
-        if ($user && $user->must_change_password && ! $request->routeIs('profile.*', 'logout')) {
+        if ($user && $user->must_change_password && ! $request->routeIs('profile.*', 'investor.profile', 'customer.profile', 'logout')) {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Change your password to continue.'], 403);
             }
 
-            return redirect()->to(route('profile.edit').'#security')->with('error', 'Change your password to continue.');
+            return redirect()->to(($user->isStaff() ? route('profile.edit') : route($user->account_type.'.profile')).'#security')->with('error', 'Change your password to continue.');
         }
 
         return $next($request);

@@ -38,9 +38,9 @@
         <div class="min-w-0 space-y-6 xl:col-span-2">
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                    <div><p class="detail-label">From</p><p class="detail-value font-semibold">{{ $borrow->sourceProject->name }}</p><p class="text-[13px] text-ink-500">{{ $borrow->sourceWarehouse->name }} · owner</p></div>
+                    <div><p class="detail-label">From</p><x-ref :to="$borrow->sourceProject" class="detail-value block font-semibold">{{ $borrow->sourceProject->name }}</x-ref><p class="text-[13px] text-ink-500">{{ $borrow->sourceWarehouse->name }} · owner</p></div>
                     <span class="icon-tile icon-tile-md tone-accent mx-auto"><x-icon name="arrow-right" /></span>
-                    <div><p class="detail-label">To</p><p class="detail-value font-semibold">{{ $borrow->destinationProject->name }}</p><p class="text-[13px] text-ink-500">{{ $borrow->destinationWarehouse->name }} · custody</p></div>
+                    <div><p class="detail-label">To</p><x-ref :to="$borrow->destinationProject" class="detail-value block font-semibold">{{ $borrow->destinationProject->name }}</x-ref><p class="text-[13px] text-ink-500">{{ $borrow->destinationWarehouse->name }} · custody</p></div>
                 </div>
                 <div class="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4 text-[13px] text-ink-500">
                     <x-status-badge :status="$borrow->status" /><span>Requested by {{ $borrow->requester->name }}</span><span>{{ App\Support\Format::datetime($borrow->created_at) }}</span>

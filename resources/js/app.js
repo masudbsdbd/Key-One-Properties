@@ -31,6 +31,7 @@ import { initPurchasingPages, initExpenseForms } from './pages/purchasing';
 import { initContractorPages } from './pages/contractors';
 import { initCollectionPages } from './pages/collections';
 import { initInvestorPages } from './pages/investors';
+import { initReportPages } from './pages/reports';
 
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
 
@@ -58,6 +59,7 @@ $(() => {
     initContractorPages();
     initCollectionPages();
     initInvestorPages();
+    initReportPages();
     initExpenseForms();
 
     const params = new URLSearchParams(window.location.search);

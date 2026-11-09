@@ -152,3 +152,31 @@ Notes:
   are append-only; reversals add rows linked by `reversal_of_id`.
 - `project_cost_allocations` and `expenses` gained a nullable `flat_id` (direct unit cost);
   `users` gained `preferences` (JSON, whitelisted keys).
+
+# Phase 4 ERD
+
+```mermaid
+erDiagram
+    users ||--o| investor_user_links : "portal account"
+    investors ||--o{ investor_user_links : accounts
+    users ||--o| customer_user_links : "portal account"
+    customers ||--o{ customer_user_links : accounts
+    users ||--o{ portal_access_grants : grants
+    portal_access_grants }o--|| projects : "resource (project)"
+    portal_access_grants }o--|| flats : "resource (flat)"
+    users ||--o{ portal_access_audits : audits
+    users ||--o{ report_runs : requests
+    report_runs ||--o| report_files : file
+```
+
+Notes:
+
+- `users.account_type` is `staff`, `investor` or `customer`; portal accounts never pass the `staff` middleware.
+- A link is usable only when active, verified by a second user and not revoked. Revoking deletes the user's sessions.
+- `portal_access_grants` add one capability on one project or flat, optionally until an expiry date
+  (polymorphic `resource_type`/`resource_id`).
+- `portal_access_audits` record portal sign-ins, downloads, exports and denied attempts.
+- `attachments` gained `portal_visible`; only flagged files of the investor's own agreements and capital entries
+  are shown in the portal.
+- `report_runs` keep the requester, report key, filters, status, row count and expiry; `report_files` point to
+  a private file on the `local` disk. Report definitions live in code (`ReportRegistry`), not in a table.

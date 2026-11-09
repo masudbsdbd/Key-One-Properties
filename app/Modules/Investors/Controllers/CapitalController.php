@@ -10,9 +10,8 @@ use App\Models\Project;
 use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
-use App\Support\Export\Document;
+use App\Support\Export\Documents;
 use App\Support\Export\Report;
-use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -142,17 +141,8 @@ class CapitalController extends Controller
     public function document(Request $request, InvestorCapitalTransaction $transaction): Response
     {
         $this->authorizeRecord($request, 'investor.view', $transaction);
-        $transaction->load(['investor', 'agreement', 'flat.building', 'project', 'creator', 'approver']);
-        $i = $transaction->investor;
-        $in = $transaction->transaction_type === 'contribution';
 
-        return Document::make($in ? 'Capital Receipt' : 'Capital Return Voucher', $transaction->transaction_no)
-            ->stamp($transaction->status === 'posted' ? null : InvestorCapitalTransaction::STATUSES[$transaction->status])
-            ->parties([($in ? 'Received From' : 'Paid To') => [$i->name, $i->investor_code, Phone::display($i->mobile)], 'Investment' => [$transaction->project->name, 'Unit '.$transaction->flat->flat_no, $transaction->agreement->agreement_no]])
-            ->meta(['Date' => $transaction->transaction_date, 'Method' => self::METHODS[$transaction->payment_method] ?? null, 'Reference' => $transaction->reference_no, 'Prepared By' => $transaction->creator->name, 'Posted By' => $transaction->approver?->name])
-            ->summary([($in ? 'Amount Received' : 'Amount Paid') => $transaction->amount])
-            ->notes($transaction->notes)
-            ->signatures([$in ? 'Investor' : 'Received by', 'Prepared by', 'Authorised signatory'])
+        return Documents::capitalTransaction($transaction)
             ->respond($request);
     }
 
@@ -160,7 +150,7 @@ class CapitalController extends Controller
     {
         abort_unless($request->user()->can('investor.view'), 403);
         $query = InvestorCapitalTransaction::query()->visibleTo($request->user())
-            ->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no', 'project:id,code', 'agreement:id,public_id,agreement_no']);
+            ->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,project_id', 'project:id,public_id,code', 'agreement:id,public_id,agreement_no']);
         foreach (['status' => InvestorCapitalTransaction::STATUSES, 'type' => InvestorCapitalTransaction::TYPES] as $key => $allowed) {
             if (array_key_exists($value = (string) $request->input($key), $allowed)) {
                 $query->where($key === 'type' ? 'transaction_type' : 'status', $value);

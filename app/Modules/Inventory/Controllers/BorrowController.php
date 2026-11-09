@@ -37,7 +37,7 @@ class BorrowController extends Controller
         abort_unless($request->user()->can('materials.view'), 403);
         $visible = Project::query()->visibleTo($request->user())->select('id');
 
-        $query = MaterialBorrow::query()->with(['sourceProject:id,name,code', 'destinationProject:id,name,code', 'lines'])
+        $query = MaterialBorrow::query()->with(['sourceProject:id,public_id,name,code', 'destinationProject:id,public_id,name,code', 'lines'])
             ->where(fn ($q) => $q->whereIn('source_project_id', $visible)->orWhereIn('destination_project_id', $visible));
         if (array_key_exists($status = (string) $request->input('status'), MaterialBorrow::STATUSES)) {
             $query->where('status', $status);

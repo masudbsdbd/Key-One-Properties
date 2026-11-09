@@ -148,7 +148,9 @@ class ProfitController extends Controller
         $calculation->load(['flat.building', 'project', 'sale.customer', 'calculator', 'approver', 'allocations.investor']);
         $c = $calculation;
         $cats = $c->basis_snapshot['cost_categories'] ?? [];
-        $lines = [['Revenue · '.($c->basis_snapshot['sale_no'] ?? ''), $c->revenue_amount]];
+        $lines = isset($c->basis_snapshot['late_fees'])
+            ? [['Contract · '.($c->basis_snapshot['sale_no'] ?? ''), $c->basis_snapshot['contract_value']], ['Late fees', $c->basis_snapshot['late_fees']]]
+            : [['Revenue · '.($c->basis_snapshot['sale_no'] ?? ''), $c->revenue_amount]];
         foreach (ProjectCostAllocation::CATEGORIES as $key => $label) {
             $shared = $cats[$key]['shared'] ?? '0';
             $direct = $cats[$key]['direct'] ?? '0';
@@ -176,7 +178,7 @@ class ProfitController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.cost.view'), 403);
-        $query = FlatProfitCalculation::query()->visibleTo($request->user())->with(['project:id,code,name', 'flat:id,public_id,flat_no,building_id', 'flat.building:id,code']);
+        $query = FlatProfitCalculation::query()->visibleTo($request->user())->with(['project:id,public_id,code,name', 'flat:id,public_id,flat_no,building_id,project_id', 'flat.building:id,code']);
         if (array_key_exists($status = (string) $request->input('status'), FlatProfitCalculation::STATUSES)) {
             $query->where('status', $status);
         }

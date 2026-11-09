@@ -20,8 +20,10 @@ use App\Modules\Sales\Policies\SalesAccess;
 use App\Support\Attachments\AttachableRegistry;
 use App\Support\Branding;
 use App\Support\Settings;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        RateLimiter::for('report-queue', fn ($request) => Limit::perMinute(10)->by('report-queue:'.$request->user()?->id));
         // Super Admin holds every named permission ("module.action"); everyone else is deny-by-default.
         // Policy abilities (no dot) still run so record-level rules apply to Super Admin too.
         Gate::before(fn ($user, string $ability) => str_contains($ability, '.') && $user->isSuperAdmin() ? true : null);

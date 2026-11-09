@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\Portal\Services\PortalAccess;
 use App\Services\Auth\SecurityLog;
 use App\Services\Auth\TwoFactor;
 use App\Support\Ajax;
@@ -61,7 +62,7 @@ class TwoFactorChallengeController extends Controller
         $remember = (bool) ($request->session()->pull('auth.two_factor')['remember'] ?? false);
         LoginController::completeLogin($request, $user, $remember);
 
-        return Ajax::success(null, ['redirect' => redirect()->intended(route('dashboard'))->getTargetUrl()]);
+        return Ajax::success(null, ['redirect' => ($user->isStaff() ? redirect()->intended(route('dashboard'))->getTargetUrl() : PortalAccess::homeRoute($user))]);
     }
 
     private function pendingUser(Request $request): ?User

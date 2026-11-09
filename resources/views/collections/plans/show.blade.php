@@ -83,7 +83,7 @@
         <x-card title="Plan">
             <dl class="space-y-3 text-sm">
                 <div><dt class="detail-label">Customer</dt><dd><a href="{{ route('customers.statement', $plan->customer) }}" class="font-medium text-accent-700 hover:underline">{{ $plan->customer->full_name }}</a></dd></div>
-                <div><dt class="detail-label">Sale</dt><dd><a href="{{ route('sales.show', $plan->sale) }}" class="text-accent-700 hover:underline">{{ $plan->sale->sale_no }}</a> · {{ $plan->sale->project->code }} · Unit {{ $plan->sale->flat->flat_no }}</dd></div>
+                <div><dt class="detail-label">Sale</dt><dd><a href="{{ route('sales.show', $plan->sale) }}" class="text-accent-700 hover:underline">{{ $plan->sale->sale_no }}</a> · <x-ref :to="$plan->sale->project">{{ $plan->sale->project->code }}</x-ref> · <x-ref :to="$plan->sale->flat">Unit {{ $plan->sale->flat->flat_no }}</x-ref></dd></div>
                 <div class="flex justify-between border-t border-line pt-3"><dt class="text-ink-500">Contract Value</dt><dd><x-money :value="$plan->contract_value" /></dd></div>
                 <div class="flex justify-between"><dt class="text-ink-500">Booking Money</dt><dd><x-money :value="'-'.$plan->booking_credit" /></dd></div>
                 <div class="flex justify-between font-semibold"><dt>Scheduled</dt><dd><x-money :value="$plan->principal_amount" /></dd></div>

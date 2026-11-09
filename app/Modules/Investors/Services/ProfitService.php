@@ -7,8 +7,11 @@ use App\Models\FlatHandover;
 use App\Models\FlatProfitCalculation;
 use App\Models\FlatRegistration;
 use App\Models\FlatSale;
+use App\Models\InstallmentPlan;
+use App\Models\InstallmentScheduleItem;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorProfitAllocation;
+use App\Models\LateFeeAssessment;
 use App\Models\User;
 use App\Modules\Collections\Services\CustomerStatement;
 use App\Support\DocumentNumber;
@@ -23,7 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Flat profit = contract revenue − direct cost − shared cost (latest approved run) − other cost.
+ * Flat profit = contract value + posted late fees − direct cost − shared cost (latest approved run) − other cost.
  * Investor amounts are rounded down to the paisa; the company keeps the explicit remainder.
  * A loss gives investors zero; they are never charged. Approval posts only the change against what
  * was already approved for that investor and unit, so recalculations never double count.
@@ -63,6 +66,14 @@ class ProfitService
             ->orderBy('id')->get()->filter(fn (InvestorFlatAgreement $a) => $a->coversDate($date))->values();
     }
 
+    /** Posted (not waived) late fees of the sale; they count as unit revenue. */
+    public static function lateFeeRevenue(FlatSale $sale): string
+    {
+        return Money::amount((string) LateFeeAssessment::query()->where('status', 'posted')
+            ->whereIn('schedule_item_id', InstallmentScheduleItem::query()->whereIn('plan_id', InstallmentPlan::query()->where('sale_id', $sale->id)->select('id'))->select('id'))
+            ->sum('amount'));
+    }
+
     public static function investorAmount(string $net, string $share): string
     {
         if (! Money::isPositive($net)) {
@@ -84,7 +95,8 @@ class ProfitService
             $asOf = Carbon::parse($data['as_of']);
             $cost = CostAllocationService::flatCost($run, $flat->id);
             $other = Money::amount($data['other_cost'] ?? '0');
-            $revenue = Money::amount((string) $sale->net_contract_value);
+            $lateFees = self::lateFeeRevenue($sale);
+            $revenue = Money::amount(Money::add((string) $sale->net_contract_value, $lateFees));
             $net = Money::amount(Money::sub(Money::sub(Money::sub($revenue, $cost['direct']), $cost['shared']), $other));
             $eligibility = $this->eligibility($sale);
             $agreements = self::agreementsOn($flat, $asOf);
@@ -99,7 +111,7 @@ class ProfitService
                 'company_share_amount' => Money::isPositive($net) ? Money::amount(Money::sub($net, $investorTotal)) : '0.00',
                 'recognition_basis' => $eligibility['basis'], 'revenue_eligible' => $eligibility['eligible'],
                 'basis_snapshot' => [
-                    'as_of' => $asOf->toDateString(), 'sale_no' => $sale->sale_no, 'sale_status' => $sale->status, 'run_no' => $run->run_no, 'run_version' => $run->calculation_version,
+                    'as_of' => $asOf->toDateString(), 'sale_no' => $sale->sale_no, 'contract_value' => Money::amount((string) $sale->net_contract_value), 'late_fees' => $lateFees, 'sale_status' => $sale->status, 'run_no' => $run->run_no, 'run_version' => $run->calculation_version,
                     'cost_categories' => $cost['categories'], 'other_cost_note' => $data['other_cost_note'] ?? null, 'eligibility' => $eligibility['detail'],
                     'cost_policy' => $this->policy->costPolicy(), 'agreements' => $agreements->map(fn ($a) => ['id' => $a->id, 'no' => $a->agreement_no, 'share' => (string) $a->profit_share_percent])->all(),
                 ],
@@ -143,6 +155,9 @@ class ProfitService
         }
         if (CostAllocationService::latestApproved($calc->project_id)?->id !== $calc->cost_run_id) {
             return 'A newer cost allocation run was approved; recalculate';
+        }
+        if (isset($calc->basis_snapshot['late_fees']) && Money::cmp(self::lateFeeRevenue($calc->sale), $calc->basis_snapshot['late_fees']) !== 0) {
+            return 'Late fees changed after this calculation; recalculate';
         }
         if ($calc->costRun?->isStale()) {
             return 'Cost changed after the cost allocation run; run allocation again';

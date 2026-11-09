@@ -3,7 +3,7 @@
     @php($canApprove = $actor->can('construction:labour-approve', $entry->project))
     <tr>
         <td class="whitespace-nowrap"><p class="font-medium text-ink-900">{{ $entry->entry_no }}</p><p class="text-[13px] text-ink-500">{{ $entry->creator?->name }}</p></td>
-        @if ($showProject)<td class="whitespace-nowrap text-ink-600">{{ $entry->project->name }}</td>@endif
+        @if ($showProject)<td class="whitespace-nowrap text-ink-600"><x-ref :to="$entry->project">{{ $entry->project->name }}</x-ref></td>@endif
         <td class="whitespace-nowrap">{{ App\Support\Format::date($entry->work_date) }}</td>
         <td class="whitespace-nowrap">{{ App\Models\LabourEntry::TYPES[$entry->labour_type] ?? $entry->labour_type }}<span class="block text-[13px] text-ink-500">{{ $entry->headcount }} × {{ rtrim(rtrim($entry->units, '0'), '.') }} @ {{ App\Support\Format::money($entry->rate, false) }}</span></td>
         <td class="text-ink-600">{{ $entry->workPackage?->code ?? '—' }}</td>

@@ -10,4 +10,5 @@ Schedule::command('queue:prune-failed --hours=720')->daily();
 Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
 Schedule::command('keyone:reconcile')->dailyAt('03:10')->withoutOverlapping()->onOneServer()
     ->appendOutputTo(storage_path('logs/reconcile.log'));
+Schedule::command('keyone:prune-report-exports')->dailyAt('04:10')->withoutOverlapping();
 Schedule::command('keyone:collections-daily')->dailyAt('01:20')->withoutOverlapping()->onOneServer();

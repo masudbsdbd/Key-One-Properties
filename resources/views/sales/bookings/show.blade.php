@@ -44,7 +44,7 @@
     <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="grid gap-6 xl:grid-cols-3">
         <x-card class="min-w-0 xl:col-span-2">
             <div class="grid gap-5 sm:grid-cols-2">
-                <div><p class="detail-label">Unit</p><p class="detail-value font-semibold">{{ $booking->project->name }} · Unit {{ $booking->flat->flat_no }}</p><p class="text-[13px] text-ink-500">{{ $booking->flat->building->name }} · {{ $booking->flat->floor->label }} · {{ number_format((float) $booking->flat->saleable_area) }} {{ $booking->flat->area_unit }}</p></div>
+                <div><p class="detail-label">Unit</p><p class="detail-value font-semibold"><x-ref :to="$booking->project">{{ $booking->project->name }}</x-ref> · <x-ref :to="$booking->flat">Unit {{ $booking->flat->flat_no }}</x-ref></p><p class="text-[13px] text-ink-500">{{ $booking->flat->building->name }} · {{ $booking->flat->floor->label }} · {{ number_format((float) $booking->flat->saleable_area) }} {{ $booking->flat->area_unit }}</p></div>
                 <div><p class="detail-label">Customer</p><a href="{{ route('customers.show', $booking->customer) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $booking->customer->full_name }}</a><p class="text-[13px] text-ink-500">{{ $booking->customer->customer_code }} · {{ App\Support\Phone::display($booking->customer->primary_mobile) }}</p></div>
                 <div><p class="detail-label">Booking Date</p><p class="detail-value">{{ App\Support\Format::date($booking->booking_date) }}</p></div>
                 <div><p class="detail-label">Hold Until</p><p class="detail-value">{{ App\Support\Format::date($booking->booking_expires_at) }}</p></div>
@@ -67,7 +67,7 @@
         <x-card :padded="false">
             @forelse ($booking->payments as $p)
                 <div class="flex items-center gap-3 border-b border-line px-5 py-3 last:border-0">
-                    <span class="min-w-0 flex-1"><span class="block font-medium text-ink-900">{{ $p->payment_no }}</span><span class="block text-[13px] text-ink-500">{{ App\Support\Format::date($p->payment_date) }} · {{ App\Models\CustomerPayment::METHODS[$p->method] ?? $p->method }}</span></span>
+                    <span class="min-w-0 flex-1"><x-ref :to="$p" class="block font-medium text-ink-900">{{ $p->payment_no }}</x-ref><span class="block text-[13px] text-ink-500">{{ App\Support\Format::date($p->payment_date) }} · {{ App\Models\CustomerPayment::METHODS[$p->method] ?? $p->method }}</span></span>
                     <x-money :value="$p->amount" class="font-medium" />
                     <x-status-badge :status="$p->status" />
                 </div>

@@ -66,7 +66,10 @@ class AuthorizationRegressionTest extends TestCase
 
             $response = $this->actingAs($user)->ajax()->get($this->uri($route));
 
-            if (str_starts_with($name, 'options.')) {
+            if (str_starts_with($name, 'investor.') || str_starts_with($name, 'customer.')) {
+                // Portal pages exist only for portal accounts; staff are told nothing.
+                $this->assertContains($response->getStatusCode(), [403, 404], "Portal route [{$name}] answers a staff user.");
+            } elseif (str_starts_with($name, 'options.')) {
                 // Option sources answer 403 or an empty, authorisation-filtered list.
                 $this->assertTrue(
                     $response->getStatusCode() === 403 || $response->json('results') === [],

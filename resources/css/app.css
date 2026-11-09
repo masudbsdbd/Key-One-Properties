@@ -62,7 +62,8 @@
     [data-allocate-full],
     [data-plan-preview],
     [data-plan-add-line],
-    [data-table-view] {
+    [data-table-view],
+    [data-queue-export] {
         cursor: pointer;
     }
 

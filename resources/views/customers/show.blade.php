@@ -47,15 +47,16 @@
             <p class="mt-6 border-t border-line pt-4 text-[13px] text-ink-500">{{ $customer->creator?->name }} · {{ App\Support\Format::datetime($customer->created_at) }}</p>
         </x-card>
 
-        <div>
+        <div class="min-w-0">
             <div class="mb-6 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
                 <button type="button" role="tab" class="tab" id="tab-addresses" data-tab="addresses" aria-controls="panel-addresses">Addresses</button>
                 <button type="button" role="tab" class="tab" id="tab-notes" data-tab="notes" aria-controls="panel-notes">Notes</button>
                 @can('manageDocuments', $customer)
                     <button type="button" role="tab" class="tab" id="tab-documents" data-tab="documents" aria-controls="panel-documents">Documents</button>
                 @endcan
-                <button type="button" role="tab" class="tab" id="tab-bookings" data-tab="bookings" aria-controls="panel-bookings">Bookings</button>
-                <button type="button" role="tab" class="tab" id="tab-payments" data-tab="payments" aria-controls="panel-payments">Payments</button>
+                @canany(['sales.sale.view', 'sales.booking.view'])<button type="button" role="tab" class="tab" id="tab-sales" data-tab="sales" aria-controls="panel-sales">Sales</button>@endcanany
+                @can('collections.payment.view')<button type="button" role="tab" class="tab" id="tab-payments" data-tab="payments" aria-controls="panel-payments">Payments</button>@endcan
+                @canany(['portal.links.manage', 'portal.grants.manage'])<button type="button" role="tab" class="tab" id="tab-portal" data-tab="portal" aria-controls="panel-portal">Portal</button>@endcanany
                 <button type="button" role="tab" class="tab" id="tab-activity" data-tab="activity" aria-controls="panel-activity">Activity</button>
             </div>
 
@@ -101,13 +102,33 @@
                 </section>
             @endcan
 
-            <section id="panel-bookings" role="tabpanel" aria-labelledby="tab-bookings" hidden>
-                <x-card :padded="false"><x-empty-state icon="calendar" title="Coming in Phase 3" /></x-card>
-            </section>
-            <section id="panel-payments" role="tabpanel" aria-labelledby="tab-payments" hidden>
-                <x-card :padded="false"><x-empty-state icon="tag" title="Coming in Phase 3" /></x-card>
-            </section>
+            @canany(['sales.sale.view', 'sales.booking.view'])
+                <section id="panel-sales" role="tabpanel" aria-labelledby="tab-sales" hidden class="space-y-6">
+                    @can('sales.sale.view')
+                        <x-data-table :url="route('sales.table', ['customer' => $customer->public_id])" :search="false" sort="date" dir="desc" :columns="[
+                            ['label' => 'Sale', 'sort' => 'date'], ['label' => 'Unit'], ['label' => 'Customer'], ['label' => 'Contract Value', 'class' => 'text-right', 'sort' => 'value'], ['label' => 'Status'],
+                        ]" />
+                    @endcan
+                    @can('sales.booking.view')
+                        <x-data-table :url="route('bookings.table', ['customer' => $customer->public_id])" :search="false" sort="date" dir="desc" :columns="[
+                            ['label' => 'Booking', 'sort' => 'date'], ['label' => 'Unit'], ['label' => 'Customer'], ['label' => 'Agreed Price', 'class' => 'text-right', 'sort' => 'price'], ['label' => 'Booking Money', 'class' => 'text-right'], ['label' => 'Status'],
+                        ]" />
+                    @endcan
+                </section>
+            @endcanany
+            @can('collections.payment.view')
+                <section id="panel-payments" role="tabpanel" aria-labelledby="tab-payments" hidden>
+                    <x-data-table :url="route('customer-payments.table', ['customer' => $customer->public_id])" :search="false" sort="date" dir="desc" :columns="[
+                        ['label' => 'Payment', 'sort' => 'date'], ['label' => 'Customer'], ['label' => 'For'], ['label' => 'Method'], ['label' => 'Amount', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Status'],
+                    ]" />
+                </section>
+            @endcan
 
+            @canany(['portal.links.manage', 'portal.grants.manage'])
+                <section id="panel-portal" role="tabpanel" aria-labelledby="tab-portal" hidden>
+                    <div data-partial-url="{{ route('portal-access.panel', ['customer', $customer->public_id]) }}" data-lazy><x-card><div class="skeleton h-14 w-full"></div></x-card></div>
+                </section>
+            @endcanany
             <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
                 <x-card title="Activity" :padded="false">
                     <div data-partial-url="{{ route('customers.activity', $customer) }}" data-lazy>

@@ -30,7 +30,7 @@
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-4">
                     <div class="sm:col-span-2"><p class="detail-label">Contractor</p><a href="{{ route('contractors.show', $bill->contractor) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $bill->contractor->name }}</a><p class="text-[13px] text-ink-500">{{ $bill->contractor->contractor_code }}</p></div>
-                    <div class="sm:col-span-2"><p class="detail-label">Work Order</p><a href="{{ route('work-orders.show', $bill->workOrder) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $bill->workOrder->wo_no }}</a><p class="text-[13px] text-ink-500">{{ $bill->workOrder->title }} · {{ $bill->project->code }}</p></div>
+                    <div class="sm:col-span-2"><p class="detail-label">Work Order</p><a href="{{ route('work-orders.show', $bill->workOrder) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $bill->workOrder->wo_no }}</a><p class="text-[13px] text-ink-500">{{ $bill->workOrder->title }} · <x-ref :to="$bill->project">{{ $bill->project->code }}</x-ref></p></div>
                     <div><p class="detail-label">Type</p><p class="detail-value">{{ App\Models\ContractorBill::KINDS[$bill->kind] }}</p></div>
                     <div><p class="detail-label">Bill Date</p><p class="detail-value">{{ App\Support\Format::date($bill->bill_date) }}</p></div>
                     <div><p class="detail-label">Status</p><x-status-badge :status="$bill->status" /></div>

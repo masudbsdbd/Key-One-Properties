@@ -24,9 +24,6 @@ Route::middleware('guest')->group(function () {
 Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
 Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'])->group(function () {
-    Route::get('/', DashboardController::class)->name('dashboard');
-    Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('search');
-
     Route::prefix('profile')->name('profile.')->controller(ProfileController::class)->group(function () {
         Route::get('/', 'edit')->name('edit');
         Route::put('/', 'update')->name('update');
@@ -38,14 +35,23 @@ Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'
         Route::post('sessions/logout-others', 'logoutOtherSessions')->name('sessions.logout-others');
     });
 
+    Route::prefix('investor')->name('investor.')->middleware('portal:investor')->group(__DIR__.'/portal-investor.php');
+    Route::prefix('customer')->name('customer.')->middleware('portal:customer')->group(__DIR__.'/portal-customer.php');
+});
+
+Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured', 'staff'])->group(function () {
+    Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('search');
+
     Route::prefix('attachments')->name('attachments.')->controller(AttachmentController::class)->group(function () {
         Route::get('file/{attachment}', 'show')->name('show');
         Route::delete('file/{attachment}', 'destroy')->name('destroy');
+        Route::post('file/{attachment}/portal', 'portal')->name('portal');
         Route::get('{type}/{owner}', 'index')->name('index');
         Route::post('{type}/{owner}', 'store')->middleware('throttle:30,1')->name('store');
     });
 
-    foreach (['core', 'projects', 'flats', 'customers', 'construction', 'inventory', 'purchasing', 'contractors', 'expenses', 'sales', 'collections', 'investors'] as $module) {
+    foreach (['core', 'projects', 'flats', 'customers', 'construction', 'inventory', 'purchasing', 'contractors', 'expenses', 'sales', 'collections', 'investors', 'portal-admin', 'reports'] as $module) {
         if (is_file($file = __DIR__."/{$module}.php")) {
             require $file;
         }

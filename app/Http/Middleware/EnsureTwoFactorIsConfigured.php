@@ -13,12 +13,12 @@ class EnsureTwoFactorIsConfigured
         $user = $request->user();
 
         if ($user && $user->two_factor_required && ! $user->hasTwoFactorEnabled()
-            && ! $request->routeIs('profile.*', 'logout')) {
+            && ! $request->routeIs('profile.*', 'investor.profile', 'customer.profile', 'logout')) {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Two-factor authentication must be set up first.'], 403);
             }
 
-            return redirect()->to(route('profile.edit').'#security')->with('error', 'Set up two-factor authentication to continue.');
+            return redirect()->to(($user->isStaff() ? route('profile.edit') : route($user->account_type.'.profile')).'#security')->with('error', 'Set up two-factor authentication to continue.');
         }
 
         return $next($request);

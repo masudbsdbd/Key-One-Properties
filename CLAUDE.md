@@ -133,10 +133,16 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
 
 ## Confirmed decisions (override the blueprint where they differ)
 
-- Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md`, `KEY_ONE_PHASE_2_BLUEPRINT.md`, `KEY_ONE_PHASE_3_BLUEPRINT.md`.
-  Implementation decisions live in `docs/decisions/phase-2.md` and `docs/decisions/phase-3.md`.
-- Current phase: Phase 3 (Booking & Sales, Installment & Collection, Investor Management).
-  Profit approval stays blocked until the client sets the revenue recognition policy.
+- Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md` … `KEY_ONE_PHASE_4_BLUEPRINT.md`.
+  Implementation decisions live in `docs/decisions/phase-2.md`, `phase-3.md` and `phase-4.md`.
+- Current phase: Phase 4 (Investor Portal, Customer Portal, Dashboard & Reports). Phase 3 is complete.
+- Portals live at `/investor` and `/customer`; internal pages keep their paths (the admin panel is not on `/admin`).
+- Phase 3 policies (client, 2026-11-09): revenue recognised after sale approval when an admin approves the
+  profit calculation; loss gives investors zero; refunds have no deduction by default but the approver may
+  deduct a percentage; late fees default 0 and count as unit revenue; payment order oldest due first, fee
+  before principal; investors share by percentage only; payment methods cash, bank, cheque, mobile banking.
+  Cost policy (client, 2026-11-09): unit-tagged project expenses are direct, all other project cost is shared
+  by saleable area; material, labour and contractor cost are not unit-taggable for now.
 - Stack: PHP 8.3, Laravel 13, MySQL 8, Blade, Tailwind, jQuery AJAX, Select2.
 - IDs: BIGINT internal `id` never leaves the server. URLs, AJAX payloads and
   Select2 results use the random `public_id`. Business codes are display-only.

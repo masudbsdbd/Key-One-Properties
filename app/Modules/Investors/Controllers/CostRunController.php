@@ -105,7 +105,7 @@ class CostRunController extends Controller
     {
         $this->authorizeRecord($request, 'investor.cost.view', $run);
         $query = ProjectCostAllocation::query()->where('project_id', $run->project_id)->where('id', '<=', $run->sourceMaxId())
-            ->whereDate('effective_at', '<=', $run->cost_cutoff)->with(['source', 'flat:id,flat_no']);
+            ->whereDate('effective_at', '<=', $run->cost_cutoff)->with(['source', 'flat:id,public_id,flat_no,project_id']);
         if (array_key_exists($category = (string) $request->input('category'), ProjectCostAllocation::CATEGORIES)) {
             $query->where('cost_category', $category);
         }

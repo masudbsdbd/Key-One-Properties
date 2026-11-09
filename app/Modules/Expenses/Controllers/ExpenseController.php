@@ -36,7 +36,7 @@ class ExpenseController extends Controller
     public function table(Request $request): JsonResponse
     {
         abort_unless($request->user()->canAny(['expenses.view.general', 'expenses.view.project']), 403);
-        $query = $this->filtered($request)->with(['project:id,code,name', 'category:id,code,name,parent_id', 'category.parent:id,name']);
+        $query = $this->filtered($request)->with(['project:id,public_id,code,name', 'category:id,code,name,parent_id', 'category.parent:id,name']);
         $totals = (clone $this->filtered($request))->selectRaw("
             COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN amount END),0) AS approved_total,
             COALESCE(SUM(CASE WHEN status = 'paid' THEN amount END),0) AS paid_total,

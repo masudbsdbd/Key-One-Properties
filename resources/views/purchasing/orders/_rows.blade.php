@@ -1,8 +1,8 @@
 @forelse ($orders as $order)
     <tr>
         <td class="whitespace-nowrap"><a href="{{ route('purchase-orders.show', $order) }}" class="font-medium text-ink-900 hover:text-accent-700">{{ $order->po_no }}</a><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($order->order_date) }}</p></td>
-        @if ($showSupplier)<td class="text-ink-700">{{ $order->supplier->name }}</td>@endif
-        <td class="text-ink-700">{{ $order->warehouse->code }}<span class="block text-[13px] text-ink-400">{{ $order->project?->code ?? 'Company' }}</span></td>
+        @if ($showSupplier)<td class="text-ink-700"><x-ref :to="$order->supplier">{{ $order->supplier->name }}</x-ref></td>@endif
+        <td class="text-ink-700">{{ $order->warehouse->code }}<x-ref :to="$order->project" class="block text-[13px] text-ink-400">{{ $order->project?->code ?? 'Company' }}</x-ref></td>
         <td class="text-right"><x-money :value="$order->total_amount" /></td>
         <td class="min-w-32">
             @php($pct = (float) $order->ordered_qty > 0 ? min(100, round((float) $order->received_qty / (float) $order->ordered_qty * 100)) : 0)

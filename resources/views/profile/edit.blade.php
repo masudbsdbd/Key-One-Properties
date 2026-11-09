@@ -1,5 +1,5 @@
-<x-layouts.app title="Profile">
-    <x-page-header title="Profile" :breadcrumbs="['Dashboard' => route('dashboard'), 'Profile' => null]" />
+<x-dynamic-component :component="$portal ? 'layouts.portal' : 'layouts.app'" title="Profile" :portal="$portal">
+    <x-page-header title="Profile" :breadcrumbs="[($portal ? 'Overview' : 'Dashboard') => route($portal ? $portal.'.dashboard' : 'dashboard'), 'Profile' => null]" />
 
     <div class="mb-6 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
         <button type="button" role="tab" class="tab" id="tab-account" data-tab="account" aria-controls="panel-account">Account</button>
@@ -23,7 +23,7 @@
             <div class="flex flex-col items-center text-center">
                 <x-avatar :name="$user->name" size="h-20 w-20 text-2xl" />
                 <p class="mt-3 text-lg font-semibold text-ink-900">{{ $user->name }}</p>
-                <p class="text-sm text-ink-500">{{ $user->roleLabel() }}</p>
+                <p class="text-sm text-ink-500">{{ $portal ? App\Models\User::ACCOUNT_TYPES[$portal] : $user->roleLabel() }}</p>
             </div>
             <dl class="mt-6 space-y-4 border-t border-line pt-5">
                 <div class="flex justify-between gap-4"><dt class="text-sm text-ink-500">Last sign-in</dt><dd class="text-sm text-ink-900">{{ $user->last_login_at ? $user->last_login_at->timezone(config('app.display_timezone'))->format('d M Y, h:i A') : '—' }}</dd></div>
@@ -130,4 +130,4 @@
             </x-modal>
         @endif
     @endpush
-</x-layouts.app>
+</x-dynamic-component>

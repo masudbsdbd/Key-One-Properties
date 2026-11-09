@@ -42,7 +42,7 @@
     <section id="panel-worksheet" role="tabpanel" aria-labelledby="tab-worksheet" class="grid gap-6 xl:grid-cols-4">
         <x-card title="Run" class="min-w-0">
             <dl class="space-y-3 text-sm">
-                <div><dt class="detail-label">Project</dt><dd class="detail-value">{{ $run->project->name }}</dd></div>
+                <div><dt class="detail-label">Project</dt><dd class="detail-value"><x-ref :to="$run->project">{{ $run->project->name }}</x-ref></dd></div>
                 <div><dt class="detail-label">Cost Up To</dt><dd class="detail-value">{{ App\Support\Format::date($run->cost_cutoff) }}</dd></div>
                 <div><dt class="detail-label">Version</dt><dd class="detail-value">v{{ $run->calculation_version }} · {{ $run->snapshot_json['source_rows'] ?? 0 }} cost rows</dd></div>
                 <div><dt class="detail-label">Status</dt><dd><x-status-badge :status="$s" :labels="App\Models\FlatCostAllocationRun::STATUSES" /></dd></div>

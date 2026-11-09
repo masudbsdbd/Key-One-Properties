@@ -15,7 +15,7 @@
             <x-document-menu :url="route('refunds.document', $refund)" />
             @if ($s === 'pending')
                 @can('sales.refund.approve')
-                    <x-button icon="check" data-action="post" data-url="{{ route('refunds.approve', $refund) }}" data-reload data-confirm="Approve {{ $refund->refund_no }}?" data-confirm-message="{{ App\Support\Format::money($refund->amount) }} to {{ $refund->customer->full_name }}. Payment is recorded separately." data-confirm-text="Approve" data-tone="primary">Approve</x-button>
+                    <x-button icon="check" data-remote-modal="{{ route('refunds.approve.form', $refund) }}" data-size="max-w-md">Approve</x-button>
                     <x-button variant="ghost" data-remote-modal="{{ route('refunds.reason', [$refund, 'reject']) }}" data-size="max-w-md">Reject</x-button>
                 @endcan
             @endif
@@ -32,10 +32,12 @@
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-2">
                     <div><p class="detail-label">Customer</p><a href="{{ route('customers.show', $refund->customer) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $refund->customer->full_name }}</a><p class="text-[13px] text-ink-500">{{ $refund->customer->customer_code }}</p></div>
-                    <div><p class="detail-label">Amount</p><p class="text-xl font-semibold text-ink-900"><x-money :value="$refund->amount" /></p><x-status-badge :status="$s" /></div>
+                    <div><p class="detail-label">{{ $refund->net_amount !== null ? 'Refund' : 'Requested' }}</p><p class="text-xl font-semibold text-ink-900"><x-money :value="$refund->payable()" /></p><x-status-badge :status="$s" />
+                        @if ((float) $refund->deduction_amount)<p class="mt-1 text-[13px] text-ink-500">Requested <x-money :value="$refund->amount" /> · {{ rtrim(rtrim((string) $refund->deduction_percent, '0'), '.') }}% deduction <x-money :value="$refund->deduction_amount" /></p>@endif
+                    </div>
                     <div><p class="detail-label">Against</p>
                         @if ($refund->sale)<a href="{{ route('sales.show', $refund->sale) }}" class="detail-value text-accent-700 hover:underline">{{ $refund->sale->sale_no }}</a>@elseif ($refund->booking)<a href="{{ route('bookings.show', $refund->booking) }}" class="detail-value text-accent-700 hover:underline">{{ $refund->booking->booking_no }}</a>@endif
-                        <p class="text-[13px] text-ink-500">{{ $refund->project->name }}</p>
+                        <p class="text-[13px] text-ink-500"><x-ref :to="$refund->project">{{ $refund->project->name }}</x-ref></p>
                     </div>
                     <div><p class="detail-label">Cancellation</p><p class="detail-value">{{ $refund->cancellation?->cancellation_no ?? '—' }}</p></div>
                 </div>

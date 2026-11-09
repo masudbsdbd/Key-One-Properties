@@ -44,7 +44,7 @@
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-4">
                     <div class="sm:col-span-2"><p class="detail-label">Supplier</p><a href="{{ route('suppliers.show', $order->supplier) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $order->supplier->name }}</a><p class="text-[13px] text-ink-500">{{ $order->supplier->supplier_code }}</p></div>
-                    <div class="sm:col-span-2"><p class="detail-label">Deliver To</p><p class="detail-value font-semibold">{{ $order->warehouse->name }}</p><p class="text-[13px] text-ink-500">{{ $order->project?->name ?? 'Company' }}</p></div>
+                    <div class="sm:col-span-2"><p class="detail-label">Deliver To</p><p class="detail-value font-semibold">{{ $order->warehouse->name }}</p><x-ref :to="$order->project" class="block text-[13px] text-ink-500">{{ $order->project?->name ?? 'Company' }}</x-ref></div>
                     <div><p class="detail-label">Order Date</p><p class="detail-value">{{ App\Support\Format::date($order->order_date) }}</p></div>
                     <div><p class="detail-label">Expected</p><p class="detail-value">{{ App\Support\Format::date($order->expected_date) }}</p></div>
                     <div><p class="detail-label">Status</p><x-status-badge :status="$s" /></div>

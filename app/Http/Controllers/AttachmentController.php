@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attachment;
+use App\Models\FlatBooking;
+use App\Models\FlatSale;
+use App\Models\InvestorCapitalTransaction;
+use App\Models\InvestorFlatAgreement;
 use App\Support\Ajax;
 use App\Support\Attachments\AttachableRegistry;
 use App\Support\Attachments\AttachmentStore;
@@ -15,6 +19,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttachmentController extends Controller
 {
+    /** Owners whose files may be shown in a portal (investor agreements and capital, customer sales and bookings). */
+    public const PORTAL_SHAREABLE = [InvestorFlatAgreement::class, InvestorCapitalTransaction::class, FlatSale::class, FlatBooking::class];
+
+    public function portal(Attachment $attachment): JsonResponse
+    {
+        $config = $this->configFor($attachment);
+        Gate::authorize($config['manage'], $attachment->attachable);
+        abort_unless(in_array($attachment->attachable_type, array_map(fn ($c) => (new $c)->getMorphClass(), self::PORTAL_SHAREABLE), true), 404);
+        $attachment->forceFill(['portal_visible' => ! $attachment->portal_visible])->save();
+        activity('portal')->causedBy(request()->user())->performedOn($attachment->attachable)->event($attachment->portal_visible ? 'file_shared' : 'file_unshared')
+            ->withProperties(['file' => $attachment->original_name])->log($attachment->portal_visible ? 'file_shared' : 'file_unshared');
+
+        return Ajax::success($attachment->portal_visible ? 'Shared with the portal.' : 'Hidden from the portal.');
+    }
+
     public function index(string $type, string $owner): JsonResponse
     {
         [$model, $config] = $this->owner($type, $owner);
@@ -24,6 +43,7 @@ class AttachmentController extends Controller
             'owner' => $model,
             'attachments' => $model->attachments()->with('uploader:id,name')->latest()->get(),
             'canManage' => Gate::allows($config['manage'], $model),
+            'shareable' => in_array($model::class, self::PORTAL_SHAREABLE, true),
         ])->render()]);
     }
 

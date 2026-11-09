@@ -1,6 +1,7 @@
 import $ from 'jquery';
 import { http } from '../core/http';
 import { clearErrors, showErrors, setPending } from '../components/form';
+import { Decimal } from './decimal';
 
 let previewTimer;
 
@@ -49,6 +50,18 @@ export function initCollectionPages() {
         } finally {
             setPending(button, false);
         }
+    });
+
+    document.addEventListener('input', (event) => {
+        if (!event.target.matches('[data-deduction-percent]')) return;
+        const form = event.target.closest('[data-refund-deduction]');
+        const pct = String(event.target.value).replace(/[%,\s]/g, '');
+        if (!/^\d{1,3}(\.\d{0,4})?$/.test(pct) || Number(pct) > 100) return;
+        const amount = form.dataset.amount;
+        const deduction = Decimal.product([amount, pct || '0', '0.01'], 2);
+        const fmt = (v) => Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        form.querySelector('[data-deduction-amount]').textContent = fmt(deduction);
+        form.querySelector('[data-deduction-net]').textContent = fmt(Decimal.sum([amount, `-${deduction}`]));
     });
 
     document.addEventListener('input', (event) => {

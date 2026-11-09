@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -83,6 +84,23 @@ class User extends Authenticatable
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    public const ACCOUNT_TYPES = ['staff' => 'Staff', 'investor' => 'Investor', 'customer' => 'Customer'];
+
+    public function isStaff(): bool
+    {
+        return ($this->account_type ?? 'staff') === 'staff';
+    }
+
+    public function investorLinks(): HasMany
+    {
+        return $this->hasMany(InvestorUserLink::class);
+    }
+
+    public function customerLinks(): HasMany
+    {
+        return $this->hasMany(CustomerUserLink::class);
     }
 
     public function isActive(): bool

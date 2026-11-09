@@ -31,7 +31,7 @@ class LateFeeController extends Controller
     public function policies(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('collections.latefee.view'), 403);
-        $query = CustomerLateFeePolicy::query()->whereIn('customer_id', Customer::query()->visibleTo($request->user())->select('id'))->with(['customer:id,public_id,full_name,customer_code', 'sale:id,sale_no']);
+        $query = CustomerLateFeePolicy::query()->whereIn('customer_id', Customer::query()->visibleTo($request->user())->select('id'))->with(['customer:id,public_id,full_name,customer_code', 'sale:id,public_id,sale_no,project_id']);
         $rows = TableQuery::apply($query, $request, ['customer.full_name'], ['from' => 'effective_from'], 'from', 'desc');
 
         return Ajax::table(view('collections.late-fees._policies', ['policies' => $rows])->render(), $rows);

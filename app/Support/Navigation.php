@@ -9,6 +9,12 @@ use Illuminate\Support\Str;
 
 class Navigation
 {
+    private const GROUP_ICONS = [
+        'Construction' => 'stairs', 'Inventory' => 'layers', 'Purchasing' => 'briefcase', 'Contractors' => 'user',
+        'Expenses' => 'note', 'Sales' => 'tag', 'Collections' => 'calendar-check', 'Investors' => 'users',
+        'Reports' => 'bar-chart', 'Administration' => 'settings',
+    ];
+
     /**
      * @return array<int, array{title: ?string, items: array<int, array<string, mixed>>}>
      */
@@ -101,6 +107,13 @@ class Navigation
                 ],
             ],
             [
+                'title' => 'Reports',
+                'items' => [
+                    ['label' => 'Executive', 'icon' => 'bar-chart', 'route' => 'executive.index', 'active' => 'executive.*', 'can' => 'dashboard.executive.view'],
+                    ['label' => 'Reports', 'icon' => 'file', 'route' => 'reports.index', 'active' => 'reports.*', 'can' => 'reports.view'],
+                ],
+            ],
+            [
                 'title' => 'Administration',
                 'items' => [
                     ['label' => 'Users', 'icon' => 'user', 'route' => 'users.index', 'active' => 'users.*', 'can' => 'users.view'],
@@ -129,7 +142,11 @@ class Navigation
                 return $section;
             })
             ->filter(fn (array $section) => $section['items'] !== [])
-            ->map(fn (array $section) => $section + ['key' => $section['title'] ? Str::slug($section['title']) : 'main', 'open' => collect($section['items'])->contains('current', true)])
+            ->map(fn (array $section) => $section + [
+                'key' => $section['title'] ? Str::slug($section['title']) : 'main',
+                'icon' => self::GROUP_ICONS[$section['title']] ?? 'grid',
+                'open' => collect($section['items'])->contains('current', true),
+            ])
             ->values()
             ->all();
     }

@@ -49,8 +49,8 @@ class RefundController extends Controller
         abort_unless($request->user()->can('sales.export'), 403);
 
         return Report::make('Customer Refunds')->meta(['Status' => CustomerRefund::STATUSES[(string) $request->input('status')] ?? null])
-            ->columns(['Refund No' => 'text', 'Requested' => 'date', 'Customer' => 'text', 'Against' => 'text', 'Amount' => 'money', 'Paid On' => 'date', 'Status' => 'text'])
-            ->rows(fn () => $this->listing($request)->lazy()->map(fn (CustomerRefund $r) => [$r->refund_no, $r->created_at, $r->customer->full_name, $r->sale?->sale_no ?? $r->booking?->booking_no, $r->amount, $r->paid_on, CustomerRefund::STATUSES[$r->status]]))
+            ->columns(['Refund No' => 'text', 'Requested' => 'date', 'Customer' => 'text', 'Against' => 'text', 'Requested Amount' => 'money', 'Deduction' => 'money', 'Refund' => 'money', 'Paid On' => 'date', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (CustomerRefund $r) => [$r->refund_no, $r->created_at, $r->customer->full_name, $r->sale?->sale_no ?? $r->booking?->booking_no, $r->amount, $r->deduction_amount, $r->payable(), $r->paid_on, CustomerRefund::STATUSES[$r->status]]))
             ->respond($request);
     }
 
@@ -88,9 +88,18 @@ class RefundController extends Controller
     public function approve(Request $request, CustomerRefund $refund): JsonResponse
     {
         $this->authorizeRecord($request, 'sales.refund.approve', $refund);
-        $this->service->approve($refund, $request->user());
+        $request->merge(['deduction_percent' => str_replace('%', '', (string) ($request->input('deduction_percent') ?: '0'))]);
+        $percent = $request->validate(['deduction_percent' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,4']])['deduction_percent'];
+        $this->service->approve($refund, $request->user(), (string) $percent);
 
         return Ajax::success('Refund approved.');
+    }
+
+    public function approveForm(Request $request, CustomerRefund $refund): JsonResponse
+    {
+        $this->authorizeRecord($request, 'sales.refund.approve', $refund);
+
+        return Ajax::success(null, ['title' => 'Approve '.$refund->refund_no, 'html' => view('sales.refunds._approve', ['refund' => $refund->load('customer')])->render()]);
     }
 
     public function reasonForm(Request $request, CustomerRefund $refund, string $action): JsonResponse
@@ -147,7 +156,7 @@ class RefundController extends Controller
         return Document::make('Refund Voucher', $refund->refund_no)->stamp(CustomerRefund::STATUSES[$refund->status])
             ->parties(['Paid To' => [$c->full_name, $c->customer_code, Phone::display($c->primary_mobile)], 'Against' => [$refund->sale?->sale_no ?? $refund->booking?->booking_no, $refund->project->name, 'Unit '.($refund->sale?->flat->flat_no ?? $refund->booking?->flat->flat_no)]])
             ->meta(['Reason' => $refund->reason, 'Paid On' => $refund->paid_on, 'Method' => $refund->payment_method ? CustomerPayment::METHODS[$refund->payment_method] : null, 'Reference' => $refund->payment_reference, 'Requested By' => $refund->requester->name])
-            ->summary(['Amount' => $refund->amount])
+            ->summary((float) $refund->deduction_amount ? ['Requested' => $refund->amount, 'Deduction ('.rtrim(rtrim((string) $refund->deduction_percent, '0'), '.').'%)' => '-'.$refund->deduction_amount, 'Refund' => $refund->payable()] : ['Amount' => $refund->payable()])
             ->signatures(['Prepared by', 'Approved by', 'Received by'])
             ->respond($request);
     }
@@ -165,7 +174,7 @@ class RefundController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.refund.view'), 403);
-        $query = CustomerRefund::query()->visibleTo($request->user())->with(['customer:id,public_id,full_name', 'booking:id,public_id,booking_no', 'sale:id,public_id,sale_no', 'project:id,code']);
+        $query = CustomerRefund::query()->visibleTo($request->user())->with(['customer:id,public_id,full_name,created_by', 'booking:id,public_id,booking_no,project_id', 'sale:id,public_id,sale_no,project_id', 'project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), CustomerRefund::STATUSES)) {
             $query->where('status', $status);
         }

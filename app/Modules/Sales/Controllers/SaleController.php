@@ -209,7 +209,7 @@ class SaleController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.sale.view'), 403);
-        $query = FlatSale::query()->visibleTo($request->user())->with(['flat:id,public_id,flat_no', 'customer:id,public_id,full_name,customer_code', 'project:id,code']);
+        $query = FlatSale::query()->visibleTo($request->user())->with(['flat:id,public_id,flat_no,project_id', 'customer:id,public_id,full_name,customer_code,created_by', 'project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), FlatSale::STATUSES)) {
             $query->where('status', $status);
         }

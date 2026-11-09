@@ -13,6 +13,7 @@
 --}}
 @php $cards = $viewKey && $view === 'cards'; @endphp
 <div {{ $attributes->merge(['class' => 'card overflow-hidden']) }} data-ajax-table data-url="{{ $url }}" @if ($viewKey) data-view-key="{{ $viewKey }}" data-view-url="{{ route('profile.preferences') }}" @endif @if ($sort) data-default-sort="{{ $sort }}" data-default-dir="{{ $dir }}" @endif>
+    @if ($search !== false || isset($filters) || isset($toolbar) || $viewKey)
     <div class="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-center">
         @if ($search !== false)
             <label class="relative block md:w-72">
@@ -36,6 +37,7 @@
             </div>
         @endif
     </div>
+    @endif
     @isset($stats)<div class="border-b border-line p-4" data-table-stats>{{ $stats }}</div>@endisset
     @if ($viewKey)
         <div class="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" data-table-cards aria-live="polite" @unless ($cards) hidden @endunless></div>

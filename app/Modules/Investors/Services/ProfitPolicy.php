@@ -10,7 +10,7 @@ use App\Support\Settings;
 class ProfitPolicy
 {
     public const RECOGNITION = [
-        'sale_approved' => 'Sale approved',
+        'sale_approved' => 'After sale approval, when admin approves',
         'registered' => 'Registration completed',
         'handed_over' => 'Handover completed',
         'fully_collected' => 'Fully collected',
