@@ -128,13 +128,23 @@ browser checks for 13–14, and an empty-state check for 17.
   as Waived. Rescheduled items stay in the schedule, dimmed.
 - Every customer route is GET only; internal write endpoints answer 404 to portal accounts.
 
-## 10. Implementation checklist
+## 10. Dashboard and reports notes
+
+- Executive dashboard at `/executive` (permission `dashboard.executive.view`); each widget needs its own module
+  permission, loads over AJAX, follows the project and period filters and is cached per user and filter set for five
+  minutes. Charts are bars that print their numbers, so no separate table is needed for screen readers.
+- Report catalog at `/reports`: twelve reports in ten groups, each declaring its basis, filters and columns; permissions
+  `reports.view` plus `reports.<group>`, exports need `reports.export` and are written to the activity log.
+- General expenses never enter project cost (they carry no project); the project budget report reads posted project cost.
+- Filters stay in the address bar so back/forward and shared links reopen the same view.
+
+## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
 - [x] P2 Portal UI foundation: layouts, navigation, shared components
 - [x] P3 Investor overview, investments, investment detail
 - [x] P4 Investor project progress, project financials, flat financials
 - [x] P5 Customer portal
-- [ ] P6 Executive dashboard and report catalog
+- [x] P6 Executive dashboard and report catalog
 - [ ] P7 Queued exports, report runs and files
 - [ ] P8 Integration QA and release

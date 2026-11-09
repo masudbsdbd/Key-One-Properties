@@ -1,0 +1,1 @@
+<div class="rounded-card bg-surface-muted px-4 py-3"><p class="text-[13px] text-ink-500">{{ $label }}</p><p class="mt-0.5 font-semibold tabular-nums text-ink-900">{{ $value }}</p>@if (! empty($note))<p class="text-[12px] text-ink-500">{{ $note }}</p>@endif</div>

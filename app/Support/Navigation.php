@@ -101,6 +101,13 @@ class Navigation
                 ],
             ],
             [
+                'title' => 'Reports',
+                'items' => [
+                    ['label' => 'Executive', 'icon' => 'bar-chart', 'route' => 'executive.index', 'active' => 'executive.*', 'can' => 'dashboard.executive.view'],
+                    ['label' => 'Reports', 'icon' => 'file', 'route' => 'reports.index', 'active' => 'reports.*', 'can' => 'reports.view'],
+                ],
+            ],
+            [
                 'title' => 'Administration',
                 'items' => [
                     ['label' => 'Users', 'icon' => 'user', 'route' => 'users.index', 'active' => 'users.*', 'can' => 'users.view'],

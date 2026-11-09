@@ -17,6 +17,7 @@ import { toast } from './toast';
  *   [data-table-view]        Table / Cards switch; html goes to [data-table-cards] in card view and the
  *                            choice is saved to the user's preferences (data-view-key, data-view-url)
  *   [data-table-stats]       receives data.stats when the endpoint sends it
+ *   [data-table-history]     keeps the filters in the address bar (back/forward and shared links restore them)
  * Row actions:
  *   [data-row-action="delete|post"] with data-url, optional data-confirm.
  * Other scripts can call el.reload() or dispatch "table:reload".
@@ -72,6 +73,11 @@ function setup(table) {
         try {
             const res = await http.get(table.dataset.url, params(), { signal: state.controller.signal });
             target().innerHTML = res.data.html;
+            if (table.hasAttribute('data-table-history')) {
+                const url = new URL(window.location.href);
+                url.search = new URLSearchParams(Object.entries(params()).filter(([k, v]) => k !== 'page' && v !== '')).toString();
+                window.history.replaceState(null, '', url);
+            }
             if (stats && res.data.stats !== undefined) stats.innerHTML = res.data.stats;
             renderMeta(res.meta || {});
             table.dispatchEvent(new CustomEvent('table:loaded', { bubbles: true, detail: res }));
