@@ -66,7 +66,7 @@ class ExpenseHttpTest extends TestCase
 
         $html = $this->actingAs($this->clerk)->ajax()->get(route('expenses.table', ['project' => $this->project->public_id, 'status' => 'paid']))->assertOk()->json('data.html');
         $this->assertStringContainsString($expense->expense_no, $html);
-        $this->assertStringContainsString('2,500.00', $html);
+        $this->assertStringContainsString('2,500', $html);
         $csv = $this->actingAs($this->clerk)->get(route('expenses.export', ['scope' => 'project']))->assertOk()->streamedContent();
         $this->assertStringContainsString($expense->expense_no, $csv);
 

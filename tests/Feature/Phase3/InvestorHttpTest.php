@@ -84,7 +84,7 @@ class InvestorHttpTest extends TestCase
         $this->assertStringStartsWith('%PDF', $this->actingAs($this->officer)->get(route('investor-agreements.document', $a).'?format=pdf')->getContent());
 
         $ledger = $this->actingAs($this->officer)->ajax()->get(route('investors.ledger', $karim))->assertOk()->json('data.html');
-        $this->assertStringContainsString('2,50,000.00', $ledger);
+        $this->assertStringContainsString('2,50,000', $ledger);
         $this->assertStringContainsString('Investor Ledger', $this->actingAs($this->officer)->get(route('investors.ledger.export', $karim).'?format=print')->getContent());
         $this->actingAs($this->officer)->get(route('investors.show', $karim))->assertOk()->assertSee('2,50,000');
 

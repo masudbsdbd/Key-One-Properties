@@ -99,7 +99,7 @@ class CostAllocationTest extends TestCase
         $this->actingAs($maker)->ajax()->post(route('cost-runs.store'), ['project' => $this->project->public_id, 'cost_cutoff' => now()->toDateString()])->assertOk();
         $run = FlatCostAllocationRun::query()->firstOrFail();
         $this->actingAs($maker)->ajax()->post(route('cost-runs.approve', $run))->assertForbidden();
-        $this->actingAs($checker)->get(route('cost-runs.show', $run))->assertOk()->assertSee('50,000.00');
+        $this->actingAs($checker)->get(route('cost-runs.show', $run))->assertOk()->assertSee('50,000');
         $this->actingAs($checker)->ajax()->get(route('cost-runs.sources', $run))->assertOk();
         $this->actingAs($maker)->get(route('cost-runs.worksheet', [$run, 'format' => 'csv']))->assertOk();
         $this->actingAs($checker)->ajax()->post(route('cost-runs.approve', $run))->assertOk();

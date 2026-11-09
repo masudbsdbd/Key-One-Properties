@@ -28,7 +28,7 @@ class ExportTest extends TestCase
             $this->actingAs($user)->get($url.'?format=print')->assertOk()->assertSee('data-print', false);
         }
 
-        $this->actingAs($user)->get(route('suppliers.ledger.export', $supplier).'?format=print')->assertSee('Acme Cement')->assertSee('৳ 12,500.00');
+        $this->actingAs($user)->get(route('suppliers.ledger.export', $supplier).'?format=print')->assertSee('Acme Cement')->assertSee('৳ 12,500');
         $this->actingAs($user)->get(route('expenses.export').'?format=print')->assertSee('Office tea')->assertSee('EXP-T-1');
         $this->assertFalse(Format::$plainSymbol);
     }

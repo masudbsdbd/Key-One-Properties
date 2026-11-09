@@ -7,7 +7,7 @@
         @endcan
     </x-page-header>
 
-    <x-data-table summary :url="route('projects.table')" sort="name" search="Search name, code or location" data-view="table" data-project-table :columns="[
+    <x-data-table summary :url="route('projects.table')" sort="name" search="Search name, code or location" view-key="projects.view" :view="App\Support\Preferences::get(auth()->user(), 'projects.view')" :columns="[
         ['label' => 'Project', 'sort' => 'name'],
         ['label' => 'Location'],
         ['label' => 'Status'],
@@ -30,11 +30,6 @@
         </x-slot:filters>
         <x-slot:toolbar>
             @can('projects.export')<x-export-menu :url="route('projects.export')" />@endcan
-            <input type="hidden" name="view" value="table" data-table-filter data-view-input>
-            <div class="inline-flex rounded-control border border-line-strong p-0.5" role="group" aria-label="Layout">
-                <button type="button" class="btn btn-sm btn-ghost h-8 aria-pressed:bg-accent-50 aria-pressed:text-accent-700" data-view-toggle="table" aria-pressed="true" aria-label="Table view"><x-icon name="list" size="h-4 w-4" /></button>
-                <button type="button" class="btn btn-sm btn-ghost h-8 aria-pressed:bg-accent-50 aria-pressed:text-accent-700" data-view-toggle="cards" aria-pressed="false" aria-label="Card view"><x-icon name="grid" size="h-4 w-4" /></button>
-            </div>
         </x-slot:toolbar>
     </x-data-table>
 </x-layouts.app>

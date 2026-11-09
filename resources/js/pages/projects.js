@@ -3,38 +3,6 @@ import { http } from '../core/http';
 import { toast } from '../components/toast';
 import { reloadPartials } from '../components/partials';
 
-function initViewToggle() {
-    const table = document.querySelector('[data-project-table]');
-    if (!table) return;
-    const input = table.querySelector('[data-view-input]');
-    const thead = table.querySelector('thead');
-
-    let saved = 'table';
-    try {
-        saved = localStorage.getItem('keyone.projects.view') || 'table';
-    } catch {
-        /* storage unavailable */
-    }
-
-    const apply = (view, reload) => {
-        input.value = view;
-        thead.hidden = view === 'cards';
-        table.querySelectorAll('[data-view-toggle]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.viewToggle === view)));
-        try {
-            localStorage.setItem('keyone.projects.view', view);
-        } catch {
-            /* storage unavailable */
-        }
-        if (reload) table.reload?.();
-    };
-
-    apply(saved, false);
-    table.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-view-toggle]');
-        if (button) apply(button.dataset.viewToggle, true);
-    });
-}
-
 async function saveOrder(list) {
     const order = [...list.querySelectorAll('[data-stage-id]')].map((el) => el.dataset.stageId);
     const container = list.closest('[data-reorder-url]');
@@ -92,7 +60,6 @@ function initAutoSubmit() {
 }
 
 export function initProjectPages() {
-    initViewToggle();
     initStageReorder();
     initAutoSubmit();
 }

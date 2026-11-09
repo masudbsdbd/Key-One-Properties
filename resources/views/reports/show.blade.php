@@ -16,11 +16,7 @@
                 <div class="w-56"><select name="project" class="form-control" data-table-filter data-select data-select-url="{{ route('options.projects') }}" data-placeholder="All projects" aria-label="Project"><option value=""></option>@if ($p = App\Modules\Reports\BaseReport::project(request(), auth()->user()))<option value="{{ $p->public_id }}" selected>{{ $p->name }}</option>@endif</select></div>
             @endif
             @if (in_array('period', $filters, true))
-                <select class="form-control w-36" data-period-preset aria-label="Period">
-                    <option value="">Any period</option><option value="this-month">This month</option><option value="last-month">Last month</option><option value="this-quarter">This quarter</option><option value="this-year">This year</option><option value="custom">Custom</option>
-                </select>
-                <input type="date" name="from" class="form-control w-40" data-table-filter aria-label="From">
-                <input type="date" name="to" class="form-control w-40" data-table-filter aria-label="To">
+                <x-period />
             @endif
             @if (in_array('status', $filters, true) && $report->statuses())
                 <select name="status" class="form-control w-40" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach ($report->statuses() as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>

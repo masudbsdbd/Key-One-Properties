@@ -86,6 +86,13 @@ class TableQuery
     {
         $term = trim((string) $request->input('q', ''));
 
+        // Restoring a filter after a reload: look up one record by public id inside the same scoped query.
+        if (is_string($selected = $request->input('selected')) && $selected !== '') {
+            $item = $query->where($query->getModel()->qualifyColumn('public_id'), $selected)->first();
+
+            return [$item ? [$map($item)] : [], false];
+        }
+
         if ($term !== '') {
             $like = '%'.addcslashes(mb_substr($term, 0, 100), '%_\\').'%';
             $query->where(fn (Builder $q) => collect($searchColumns)->each(fn ($c) => $q->orWhere($c, 'like', $like)));

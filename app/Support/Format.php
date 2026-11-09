@@ -12,6 +12,7 @@ class Format
     /**
      * Money with South Asian digit grouping, e.g. ৳ 1,23,45,678.00.
      */
+    /** "৳ 7,50,000" for whole amounts, "৳ 7,50,000.53" when there are paisa. */
     public static function money(string|float|int|null $amount, bool $decimals = true): string
     {
         if ($amount === null || $amount === '') {
@@ -27,7 +28,7 @@ class Format
 
         $symbol = config('app.currency') === 'BDT' ? (self::$plainSymbol ? 'Tk' : '৳') : config('app.currency');
 
-        return ($negative ? '-' : '').$symbol.' '.$grouped.($decimals ? '.'.$fraction : '');
+        return ($negative ? '-' : '').$symbol.' '.$grouped.($decimals && $fraction !== '00' ? '.'.$fraction : '');
     }
 
     /** Quantity without trailing zeros, e.g. 12.500 -> 12.5. */
