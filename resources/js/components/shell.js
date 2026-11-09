@@ -24,19 +24,45 @@ function initNavGroups() {
         button?.setAttribute('aria-expanded', String(expanded));
     });
 
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-nav-group]');
-        if (!button) return;
-        const key = button.dataset.navGroup;
-        const list = document.querySelector(`[data-nav-list="${key}"]`);
-        list.hidden = !list.hidden;
-        button.setAttribute('aria-expanded', String(!list.hidden));
-        open[key] = !list.hidden;
+    const save = () => {
         try {
             localStorage.setItem('keyone.nav', JSON.stringify(open));
         } catch {
             /* storage unavailable */
         }
+    };
+    const setGroup = (key, expanded) => {
+        const list = document.querySelector(`[data-nav-list="${key}"]`);
+        if (!list) return;
+        list.hidden = !expanded;
+        document.querySelector(`[data-nav-group="${key}"]`)?.setAttribute('aria-expanded', String(expanded));
+        open[key] = expanded;
+    };
+    // One button collapses every group, or expands them all again when none is open.
+    const toggleAll = document.querySelector('[data-nav-toggle-all]');
+    const syncToggleAll = () => {
+        if (!toggleAll) return;
+        const anyOpen = [...document.querySelectorAll('[data-nav-list]')].some((l) => !l.hidden);
+        toggleAll.setAttribute('aria-label', anyOpen ? 'Collapse all groups' : 'Expand all groups');
+        toggleAll.querySelector('[data-nav-icon="collapse"]').hidden = !anyOpen;
+        toggleAll.querySelector('[data-nav-icon="expand"]').hidden = anyOpen;
+    };
+    syncToggleAll();
+
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('[data-nav-toggle-all]')) {
+            const anyOpen = [...document.querySelectorAll('[data-nav-list]')].some((l) => !l.hidden);
+            document.querySelectorAll('[data-nav-list]').forEach((l) => setGroup(l.dataset.navList, !anyOpen));
+            save();
+            syncToggleAll();
+            return;
+        }
+        const button = event.target.closest('[data-nav-group]');
+        if (!button) return;
+        const key = button.dataset.navGroup;
+        setGroup(key, document.querySelector(`[data-nav-list="${key}"]`).hidden);
+        save();
+        syncToggleAll();
     });
 }
 
