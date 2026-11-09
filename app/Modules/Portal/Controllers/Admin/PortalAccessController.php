@@ -54,8 +54,8 @@ class PortalAccessController extends Controller
         ]);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'required_without:mobile', 'email', 'max:255', Rule::unique('users', 'email')],
-            'mobile' => ['nullable', 'required_without:email', 'string', 'max:20', Rule::unique('users', 'mobile')],
+            'email' => ['nullable', 'required_without:mobile', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
+            'mobile' => ['nullable', 'required_without:email', 'string', 'max:20', Rule::unique('users', 'mobile')->whereNull('deleted_at')],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
         ], ['email.required_without' => 'Enter an email or a mobile number.', 'mobile.required_without' => 'Enter an email or a mobile number.']);
         $this->service->createAccount($record, $data, $request->user());

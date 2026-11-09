@@ -50,8 +50,8 @@ class ProfileController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email', 'max:191', 'required_without:mobile', Rule::unique('users')->ignore($user->id)],
-            'mobile' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', 'required_without:email', Rule::unique('users')->ignore($user->id)],
+            'email' => ['nullable', 'email', 'max:191', 'required_without:mobile', Rule::unique('users')->whereNull('deleted_at')->ignore($user->id)],
+            'mobile' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', 'required_without:email', Rule::unique('users')->whereNull('deleted_at')->ignore($user->id)],
         ]);
 
         $user->update($data);

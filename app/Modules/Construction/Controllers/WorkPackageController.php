@@ -102,7 +102,7 @@ class WorkPackageController extends Controller
         ]);
 
         return $request->validate([
-            'code' => ['required', 'string', 'max:30', 'regex:/^[A-Z0-9\-\.]+$/', Rule::unique('construction_work_packages')->where('project_id', $project->id)->ignore($package?->id)],
+            'code' => ['required', 'string', 'max:30', 'regex:/^[A-Z0-9\-\.]+$/', Rule::unique('construction_work_packages')->where('project_id', $project->id)->whereNull('deleted_at')->ignore($package?->id)],
             'name' => ['required', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:2000'],
             'budget_amount' => ['required', 'numeric', 'min:0', 'max:9999999999999999.99'],

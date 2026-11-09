@@ -224,7 +224,7 @@ class MaterialController extends Controller
             'reorder_level' => str_replace(',', '', (string) ($request->input('reorder_level') ?: '0')),
         ]);
         $data = $request->validate([
-            'sku' => ['required', 'string', 'max:40', 'regex:/^[A-Z0-9\-\.]+$/', Rule::unique('materials')->ignore($material->id)],
+            'sku' => ['required', 'string', 'max:40', 'regex:/^[A-Z0-9\-\.]+$/', Rule::unique('materials')->whereNull('deleted_at')->ignore($material->id)],
             'name' => ['required', 'string', 'max:160'],
             'category' => ['required', 'string', Rule::exists('material_categories', 'public_id')],
             'unit' => ['required', 'string', Rule::exists('material_units', 'public_id')],

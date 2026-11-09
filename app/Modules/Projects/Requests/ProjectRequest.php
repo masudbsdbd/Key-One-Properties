@@ -5,6 +5,7 @@ namespace App\Modules\Projects\Requests;
 use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class ProjectRequest extends FormRequest
 {
@@ -49,5 +50,22 @@ class ProjectRequest extends FormRequest
             'code.regex' => 'Use letters, numbers and dashes only.',
             'actual_completion_date.required' => 'Enter the completion date for a completed project.',
         ];
+    }
+
+    /** An archived project keeps its code (it can be restored); say so instead of a bare "taken". */
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            if (! $validator->errors()->has('code')) {
+                return;
+            }
+            $archived = Project::onlyTrashed()->where('code', $this->input('code'))->first();
+            if ($archived) {
+                $validator->errors()->forget('code');
+                $validator->errors()->add('code', $archived->isVisibleTo($this->user())
+                    ? 'Used by the archived project '.$archived->name.'. Restore it or choose another code.'
+                    : 'Used by an archived project. Choose another code.');
+            }
+        }];
     }
 }

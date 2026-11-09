@@ -35,8 +35,8 @@ class UserRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email', 'max:191', 'required_without:mobile', Rule::unique('users')->ignore($ignore)],
-            'mobile' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', 'required_without:email', Rule::unique('users')->ignore($ignore)],
+            'email' => ['nullable', 'email', 'max:191', 'required_without:mobile', Rule::unique('users')->whereNull('deleted_at')->ignore($ignore)],
+            'mobile' => ['nullable', 'string', 'regex:/^\+?\d{10,15}$/', 'required_without:email', Rule::unique('users')->whereNull('deleted_at')->ignore($ignore)],
             'designation' => ['nullable', 'string', 'max:120'],
             'role' => ['required', 'string', Rule::exists('roles', 'public_id')],
             'departments' => ['nullable', 'array'],
