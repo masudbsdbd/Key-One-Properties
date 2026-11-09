@@ -6,7 +6,7 @@
                 <x-form.select name="project" id="board-project" label="Project" :url="route('options.projects')" :options="$project ? [$project->public_id => $project->name] : []" :selected="$project?->public_id" placeholder="Select a project" required />
             </div>
             <div class="flex flex-wrap gap-3 text-[13px] text-ink-600">
-                @foreach (['available' => 'bg-success-600', 'booked' => 'bg-info-600', 'sold' => 'bg-violet-600', 'unavailable' => 'bg-ink-500', 'maintenance' => 'bg-warning-600'] as $status => $dot)
+                @foreach (['not_released' => 'bg-ink-300', 'available' => 'bg-success-600', 'booked' => 'bg-info-600', 'sold' => 'bg-violet-600', 'unavailable' => 'bg-ink-500', 'maintenance' => 'bg-warning-600'] as $status => $dot)
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full {{ $dot }}"></span>{{ App\Models\Flat::STATUSES[$status] }}</span>
                 @endforeach
             </div>

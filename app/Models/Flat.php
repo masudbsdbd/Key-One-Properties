@@ -19,6 +19,7 @@ class Flat extends Model
     use HasFactory, HasPublicId, LogsActivity, LogsProjectActivity, SoftDeletes;
 
     public const STATUSES = [
+        'not_released' => 'Not Released',
         'available' => 'Available',
         'unavailable' => 'Unavailable',
         'maintenance' => 'Maintenance',
@@ -27,9 +28,9 @@ class Flat extends Model
     ];
 
     /** Statuses a user may set by hand. Booked and sold come from the Phase 3 sales workflow. */
-    public const MANUAL_STATUSES = ['available', 'unavailable', 'maintenance'];
+    public const MANUAL_STATUSES = ['not_released', 'available', 'unavailable', 'maintenance'];
 
-    public const STATUS_TONES = ['available' => 'success', 'unavailable' => 'neutral', 'maintenance' => 'warning', 'booked' => 'info', 'sold' => 'violet'];
+    public const STATUS_TONES = ['not_released' => 'accent', 'available' => 'success', 'unavailable' => 'neutral', 'maintenance' => 'warning', 'booked' => 'info', 'sold' => 'violet'];
 
     public const TYPES = ['Studio' => 'Studio', '1 Bed' => '1 Bed', '2 Bed' => '2 Bed', '3 Bed' => '3 Bed', '4 Bed' => '4 Bed', 'Duplex' => 'Duplex', 'Penthouse' => 'Penthouse', 'Commercial' => 'Commercial', 'Parking' => 'Parking'];
 

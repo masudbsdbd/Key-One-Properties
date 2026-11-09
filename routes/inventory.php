@@ -21,6 +21,12 @@ Route::prefix('materials')->name('materials.')->controller(MaterialController::c
     Route::get('catalog', 'catalog')->name('catalog');
     Route::post('categories', 'storeCategory')->name('categories.store');
     Route::post('units', 'storeUnit')->name('units.store');
+    Route::get('categories/{category}/edit', 'editCategory')->name('categories.edit');
+    Route::put('categories/{category}', 'updateCategory')->name('categories.update');
+    Route::delete('categories/{category}', 'destroyCategory')->name('categories.destroy');
+    Route::get('units/{unit}/edit', 'editUnit')->name('units.edit');
+    Route::put('units/{unit}', 'updateUnit')->name('units.update');
+    Route::delete('units/{unit}', 'destroyUnit')->name('units.destroy');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{material}/edit', 'edit')->name('edit');

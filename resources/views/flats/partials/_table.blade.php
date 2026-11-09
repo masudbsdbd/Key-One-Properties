@@ -1,5 +1,5 @@
 @php($scope = $project ? 'p' : 'all')
-<x-data-table :url="route('flats.table', $project ? ['project' => $project->public_id] : [])" sort="flat_no" search="Search unit number" view-key="flats.view" :view="App\Support\Preferences::get(auth()->user(), 'flats.view')" :columns="array_values(array_filter([
+<x-data-table :url="route('flats.table', $project ? ['project' => $project->public_id] : [])" sort="flat_no" search="Search unit number" view-key="flats.view" :view="App\Support\Preferences::get(auth()->user(), 'flats.view')" :selectable="auth()->user()->can('flats.change_status')" :columns="array_values(array_filter([
     ['label' => 'Unit', 'sort' => 'flat_no'],
     $project ? null : ['label' => 'Project'],
     ['label' => 'Building / Floor', 'sort' => 'floor'],
@@ -34,6 +34,17 @@
             </select>
         </div>
     </x-slot:filters>
+    <x-slot:bulk>
+        <x-button size="sm" icon="check" data-bulk-action data-url="{{ route('flats.bulk-status') }}" data-status="available" data-confirm="Release the selected units for sale?" data-confirm-text="Release" data-tone="warning">Release for Sale</x-button>
+        <div class="relative">
+            <x-button size="sm" variant="secondary" data-menu-button aria-controls="{{ $scope }}-bulk-status" aria-expanded="false">Set Status<x-icon name="chevron-down" size="h-4 w-4" /></x-button>
+            <div id="{{ $scope }}-bulk-status" data-menu hidden class="absolute right-0 z-20 mt-2 w-48 rounded-card border border-line bg-surface p-1.5 shadow-raised">
+                @foreach (['not_released', 'unavailable', 'maintenance'] as $status)
+                    <button type="button" class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink-700 hover:bg-surface-muted" data-bulk-action data-url="{{ route('flats.bulk-status') }}" data-status="{{ $status }}">{{ App\Models\Flat::STATUSES[$status] }}</button>
+                @endforeach
+            </div>
+        </div>
+    </x-slot:bulk>
     <x-slot:stats><div class="h-[74px] animate-pulse rounded-card bg-surface-muted"></div></x-slot:stats>
     <x-slot:toolbar>
         @can('flats.export')<x-export-menu :url="route('flats.export', $project ? ['project' => $project->public_id] : [])" />@endcan

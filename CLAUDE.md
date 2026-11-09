@@ -155,6 +155,9 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
   administrators (`users.reset_password`); an admin sets a new password and the user must
   change it at next sign-in.
 - Flat number unique within a building: UQ(building_id, flat_no).
+- Unit release (client, 2026-11-09): new units start as "Not Released" and cannot be booked; they are released
+  for sale one by one or in bulk from the Units list. A unit without a list price cannot be released. Units that
+  existed before this rule keep their status.
 - Customer `primary_mobile` is unique.
 - Customer NID/passport: optional field, stored encrypted, shown masked.
 - Project overall progress: average of stage progress.

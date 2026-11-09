@@ -39,7 +39,7 @@ class UnitStatusReport extends BaseReport
 
     public function columns(): array
     {
-        return ['Project' => 'text', 'Building' => 'text', 'Units' => 'number', 'Available' => 'number', 'Booked' => 'number', 'Sold' => 'number', 'Unavailable' => 'number',
+        return ['Project' => 'text', 'Building' => 'text', 'Units' => 'number', 'Not Released' => 'number', 'Available' => 'number', 'Booked' => 'number', 'Sold' => 'number', 'Unavailable' => 'number',
             'Available List Value' => 'money', 'Sold Value' => 'money'];
     }
 
@@ -48,7 +48,7 @@ class UnitStatusReport extends BaseReport
         $sold = FlatSale::query()->whereColumn('flat_id', 'flats.id')->whereIn('status', FlatSale::ACTIVE)->selectRaw('COALESCE(SUM(net_contract_value),0)')->toRawSql();
         $query = Flat::query()->visibleTo($user)->join('projects', 'projects.id', '=', 'flats.project_id')->join('buildings', 'buildings.id', '=', 'flats.building_id')
             ->selectRaw("projects.code AS project_code, buildings.name AS building_name, COUNT(*) AS units,
-                SUM(flats.status = 'available') AS available, SUM(flats.status = 'booked') AS booked, SUM(flats.status = 'sold') AS sold,
+                SUM(flats.status = 'not_released') AS not_released, SUM(flats.status = 'available') AS available, SUM(flats.status = 'booked') AS booked, SUM(flats.status = 'sold') AS sold,
                 SUM(flats.status IN ('unavailable', 'maintenance')) AS unavailable,
                 SUM(CASE WHEN flats.status = 'available' THEN flats.list_price ELSE 0 END) AS available_value,
                 SUM(({$sold})) AS sold_value")
@@ -62,7 +62,7 @@ class UnitStatusReport extends BaseReport
 
     public function row(mixed $r): array
     {
-        return [$r->project_code, $r->building_name, (int) $r->units, (int) $r->available, (int) $r->booked, (int) $r->sold, (int) $r->unavailable,
+        return [$r->project_code, $r->building_name, (int) $r->units, (int) $r->not_released, (int) $r->available, (int) $r->booked, (int) $r->sold, (int) $r->unavailable,
             Money::amount((string) $r->available_value), Money::amount((string) $r->sold_value)];
     }
 }

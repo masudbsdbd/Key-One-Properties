@@ -52,7 +52,8 @@ class FlatInventoryTest extends TestCase
         $this->assertSame('14500000.00', $flat->list_price);
         $this->assertSame($this->project->id, $flat->project_id);
         $this->assertCount(1, $flat->priceHistory);
-        $this->assertSame('available', $flat->statusHistory->first()->to_status);
+        $this->assertSame('not_released', $flat->status);
+        $this->assertSame('not_released', $flat->statusHistory->first()->to_status);
     }
 
     public function test_duplicate_unit_number_in_same_building_is_rejected(): void

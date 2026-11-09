@@ -104,6 +104,7 @@ class SampleDataSeeder extends Seeder
             $residential = $building->floors()->where('floor_number', '>', 0)->get();
             $plan = $flats->bulkPlan($building, $residential, 4, '{floor}{L}');
             $flats->bulkCreate($plan, ['flat_type' => '3 Bed', 'bedrooms' => 3, 'bathrooms' => 3, 'saleable_area' => 1450, 'area_unit' => 'sqft'], (string) ($budget / 30), $admin);
+            $flats->bulkChangeStatus(Flat::query()->where('building_id', $building->id)->get(), 'available', 'Released for sale', $admin);
         }
 
         $this->inventory($admin);

@@ -1,4 +1,5 @@
 @php($actor = auth()->user())
+@php($selectable = $actor->can('flats.change_status'))
 @forelse ($flats as $flat)
     <article class="unit-card">
         <svg class="pointer-events-none absolute right-3 top-9 h-14 w-20 opacity-[0.12]" viewBox="0 0 120 90" aria-hidden="true">
@@ -9,7 +10,10 @@
                 <a href="{{ route('flats.show', $flat) }}" class="block text-2xl font-semibold leading-7 text-ink-900 hover:text-accent-700">{{ $flat->flat_no }}</a>
                 <p class="truncate text-sm text-ink-600"><x-ref :to="$flat->project">{{ $flat->project->name }}</x-ref></p>
             </div>
-            <x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge>
+            <span class="flex shrink-0 items-center gap-2">
+                <x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge>
+                @if ($selectable)<input type="checkbox" class="form-check" value="{{ $flat->public_id }}" data-select-row aria-label="Select {{ $flat->flat_no }}">@endif
+            </span>
         </div>
         <dl class="relative mt-4 grid grid-cols-2 gap-x-3 gap-y-2.5 text-sm text-ink-700">
             <div class="col-span-2 flex items-center gap-2"><x-icon name="layers" size="h-4 w-4" class="shrink-0 text-ink-500" /><dt class="sr-only">Floor</dt><dd class="truncate">{{ $flat->building->code }} · {{ $flat->floor->label }}</dd></div>

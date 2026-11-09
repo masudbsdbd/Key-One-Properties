@@ -108,6 +108,7 @@ function setup(table) {
     };
 
     const renderMeta = (meta) => {
+        state.total = meta.total || 0;
         if (summary) summary.textContent = meta.total ? `${meta.from}–${meta.to} of ${meta.total}` : '';
         if (!pager) return;
         pager.innerHTML = '';
@@ -137,6 +138,62 @@ function setup(table) {
         pager.append(button('Next', meta.current_page + 1, meta.current_page >= meta.last_page));
     };
 
+    // Row selection for bulk actions: ids are kept across pages; "select all" switches to every matching row.
+    const bulk = table.querySelector('[data-table-bulk]');
+    const selection = { ids: new Set(), all: false };
+    const syncSelection = () => {
+        const boxes = [...table.querySelectorAll('[data-select-row]')];
+        boxes.forEach((cb) => { cb.checked = selection.all || selection.ids.has(cb.value); });
+        const page = table.querySelector('[data-select-page]');
+        if (page) page.checked = boxes.length > 0 && boxes.every((cb) => cb.checked);
+        if (!bulk) return;
+        const count = selection.all ? state.total : selection.ids.size;
+        bulk.hidden = count === 0;
+        bulk.querySelector('[data-bulk-count]').textContent = `${count} selected`;
+        const all = bulk.querySelector('[data-bulk-all]');
+        all.hidden = selection.all || state.total <= selection.ids.size;
+        all.textContent = `Select all ${state.total}`;
+    };
+    const clearSelection = () => {
+        selection.ids.clear();
+        selection.all = false;
+        syncSelection();
+    };
+    table.addEventListener('table:loaded', syncSelection);
+    table.addEventListener('change', (event) => {
+        if (event.target.matches('[data-select-row]')) {
+            if (selection.all) {
+                selection.all = false;
+                table.querySelectorAll('[data-select-row]').forEach((cb) => selection.ids.add(cb.value));
+            }
+            if (event.target.checked) selection.ids.add(event.target.value); else selection.ids.delete(event.target.value);
+            syncSelection();
+        } else if (event.target.matches('[data-select-page]')) {
+            selection.all = false;
+            table.querySelectorAll('[data-select-row]').forEach((cb) => (event.target.checked ? selection.ids.add(cb.value) : selection.ids.delete(cb.value)));
+            syncSelection();
+        }
+    });
+    bulk?.addEventListener('click', async (event) => {
+        if (event.target.closest('[data-bulk-all]')) { selection.all = true; syncSelection(); return; }
+        if (event.target.closest('[data-bulk-clear]')) { clearSelection(); return; }
+        const action = event.target.closest('[data-bulk-action]');
+        if (!action) return;
+        if (action.dataset.confirm && !(await confirmDialog({ title: action.dataset.confirm, confirmText: action.dataset.confirmText || 'Confirm', tone: action.dataset.tone || 'danger' }))) return;
+        const payload = selection.all ? { ...params(), all: 1 } : { ids: [...selection.ids] };
+        payload.to_status = action.dataset.status;
+        delete payload.page;
+        action.disabled = true;
+        try {
+            const res = await http.post(action.dataset.url, payload);
+            if (res.message) toast.success(res.message);
+            clearSelection();
+            load();
+        } finally {
+            action.disabled = false;
+        }
+    });
+
     let timer;
     table.querySelectorAll('[data-table-search]').forEach((input) =>
         input.addEventListener('input', () => {
@@ -148,6 +205,8 @@ function setup(table) {
         }),
     );
     $(table).on('change', '[data-table-filter]', () => {
+        selection.ids.clear();
+        selection.all = false;
         state.page = 1;
         load();
     });

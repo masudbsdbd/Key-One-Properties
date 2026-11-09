@@ -13,6 +13,7 @@ use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -138,6 +139,71 @@ class MaterialController extends Controller
         ]));
 
         return Ajax::success('Unit added.');
+    }
+
+    public function editCategory(Request $request, MaterialCategory $category): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+
+        return Ajax::success(null, ['title' => 'Edit Category', 'html' => view('inventory.materials._catalog-form', [
+            'action' => route('materials.categories.update', $category), 'record' => $category, 'kind' => 'category',
+        ])->render()]);
+    }
+
+    public function updateCategory(Request $request, MaterialCategory $category): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+        $request->merge(['code' => mb_strtoupper(trim((string) $request->input('code')))]);
+        $category->update($request->validate([
+            'code' => ['required', 'string', 'max:20', 'alpha_dash', Rule::unique('material_categories', 'code')->ignore($category->id)],
+            'name' => ['required', 'string', 'max:120'],
+        ]));
+
+        return Ajax::success('Category saved.');
+    }
+
+    public function destroyCategory(Request $request, MaterialCategory $category): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+        if ($category->materials()->exists()) {
+            throw ValidationException::withMessages(['category' => 'This category is used by materials.']);
+        }
+        $category->delete();
+
+        return Ajax::success('Category deleted.');
+    }
+
+    public function editUnit(Request $request, MaterialUnit $unit): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+
+        return Ajax::success(null, ['title' => 'Edit Unit', 'html' => view('inventory.materials._catalog-form', [
+            'action' => route('materials.units.update', $unit), 'record' => $unit, 'kind' => 'unit',
+        ])->render()]);
+    }
+
+    public function updateUnit(Request $request, MaterialUnit $unit): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+        $request->merge(['code' => mb_strtoupper(trim((string) $request->input('code')))]);
+        $unit->update($request->validate([
+            'code' => ['required', 'string', 'max:20', 'alpha_dash', Rule::unique('material_units', 'code')->ignore($unit->id)],
+            'name' => ['required', 'string', 'max:60'],
+            'precision' => ['required', 'integer', 'between:0,3'],
+        ]));
+
+        return Ajax::success('Unit saved.');
+    }
+
+    public function destroyUnit(Request $request, MaterialUnit $unit): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+        if ($unit->materials()->exists()) {
+            throw ValidationException::withMessages(['unit' => 'This unit is used by materials.']);
+        }
+        $unit->delete();
+
+        return Ajax::success('Unit deleted.');
     }
 
     public function catalog(Request $request): JsonResponse

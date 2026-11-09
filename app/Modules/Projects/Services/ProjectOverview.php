@@ -72,7 +72,7 @@ class ProjectOverview
         $counts = Flat::query()->where('project_id', $project->id)->selectRaw('status, COUNT(*) AS n, SUM(list_price) AS v')->groupBy('status')->get()->keyBy('status');
         $n = fn ($s) => (int) ($counts[$s]->n ?? 0);
 
-        return ['total' => (int) $counts->sum('n'), 'sold' => $n('sold'), 'booked' => $n('booked'), 'available' => $n('available'),
+        return ['total' => (int) $counts->sum('n'), 'sold' => $n('sold'), 'booked' => $n('booked'), 'available' => $n('available'), 'not_released' => $n('not_released'),
             'other' => $n('unavailable') + $n('maintenance'), 'available_value' => Money::amount((string) ($counts['available']->v ?? 0))];
     }
 

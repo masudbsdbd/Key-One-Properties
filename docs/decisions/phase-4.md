@@ -167,6 +167,15 @@ browser checks for 13–14, and an empty-state check for 17.
 - A page's only table keeps filters, search, sort and searchable dropdowns in the address bar; card/table choice is
   saved per user.
 
+## 10b. Unit release (client, 2026-11-09)
+
+- New status `not_released` ("Not Released"): every unit created by hand or by bulk create starts here, is excluded from
+  bookings, the availability board's bookable units and the "Available" counts, and shows as its own tile.
+- Units list: checkboxes, "select all N matching", **Release for Sale** and **Set Status** (Not Released, Unavailable,
+  Maintenance). Booked or sold units, units without a list price (when releasing) and units already in that status are
+  skipped and counted in the message. Each change is in the unit's status history ("Released for sale") and the
+  activity log. Existing units kept their status.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
