@@ -111,7 +111,7 @@ browser checks for 13–14, and an empty-state check for 17.
 
 ## 8. Implementation checklist
 
-- [ ] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
+- [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
 - [ ] P2 Portal UI foundation: layouts, navigation, shared components
 - [ ] P3 Investor overview, investments, investment detail
 - [ ] P4 Investor project progress, project financials, flat financials

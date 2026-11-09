@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Middleware\EnsurePasswordIsChanged;
+use App\Http\Middleware\EnsurePortalAccess;
+use App\Http\Middleware\EnsureStaffAccount;
 use App\Http\Middleware\EnsureTwoFactorIsConfigured;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SecurityHeaders;
+use App\Modules\Portal\Services\PortalAccess;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -26,10 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureUserIsActive::class,
             'two-factor.configured' => EnsureTwoFactorIsConfigured::class,
             'password.changed' => EnsurePasswordIsChanged::class,
+            'staff' => EnsureStaffAccount::class,
+            'portal' => EnsurePortalAccess::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
-        $middleware->redirectUsersTo(fn () => route('dashboard'));
+        $middleware->redirectUsersTo(fn (Request $request) => $request->user() ? PortalAccess::homeRoute($request->user()) : route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

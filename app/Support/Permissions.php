@@ -217,6 +217,31 @@ class Permissions
                 'activity.view' => 'View activity log',
                 'settings.manage' => 'Manage settings',
             ],
+            'Portal Access' => [
+                'portal.links.manage' => 'Manage portal accounts and links',
+                'portal.grants.manage' => 'Manage investor portal grants',
+            ],
+            'Investor Portal' => [
+                'investor.portal.view' => 'Use the investor portal',
+                'investor.portal.investments.view' => 'See own investments',
+                'investor.portal.project.progress.view' => 'See project progress',
+                'investor.portal.project.financials.view' => 'See project financials',
+                'investor.portal.flat.financials.view' => 'See unit financials',
+                'investor.portal.cost.material.view' => 'See material cost',
+                'investor.portal.cost.labour.view' => 'See labour cost',
+                'investor.portal.cost.contractor.view' => 'See contractor cost',
+                'investor.portal.cost.expense.view' => 'See project expenses',
+                'investor.portal.profit.view' => 'See profit',
+                'investor.portal.documents.download' => 'Download documents',
+                'investor.portal.statements.export' => 'Export statements',
+            ],
+            'Customer Portal' => [
+                'customer.portal.view' => 'Use the customer portal',
+                'customer.portal.flats.view' => 'See own units',
+                'customer.portal.installments.view' => 'See installments',
+                'customer.portal.payments.view' => 'See payments',
+                'customer.portal.statements.download' => 'Download receipts and statements',
+            ],
         ];
     }
 
@@ -238,7 +263,7 @@ class Permissions
         $all = self::all();
 
         return [
-            'Admin' => $all,
+            'Admin' => array_values(array_filter($all, fn ($p) => ! str_starts_with($p, 'investor.portal.') && ! str_starts_with($p, 'customer.portal.'))),
             'Project Manager' => [
                 'dashboard.view', 'departments.view',
                 'projects.view', 'projects.update', 'projects.manage_stages', 'projects.update_progress', 'projects.manage_media', 'projects.manage_members',
@@ -256,6 +281,13 @@ class Permissions
             ],
             'Viewer' => [
                 'dashboard.view', 'projects.view', 'flats.view', 'customers.view',
+            ],
+            'Investor' => [
+                'investor.portal.view', 'investor.portal.investments.view', 'investor.portal.project.progress.view', 'investor.portal.flat.financials.view',
+                'investor.portal.profit.view', 'investor.portal.documents.download', 'investor.portal.statements.export',
+            ],
+            'Customer' => [
+                'customer.portal.view', 'customer.portal.flats.view', 'customer.portal.installments.view', 'customer.portal.payments.view', 'customer.portal.statements.download',
             ],
         ];
     }

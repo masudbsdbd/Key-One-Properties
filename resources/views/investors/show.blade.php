@@ -19,6 +19,7 @@
         <button type="button" role="tab" class="tab" id="tab-overview" data-tab="overview" aria-controls="panel-overview">Overview</button>
         <button type="button" role="tab" class="tab" id="tab-capital" data-tab="capital" aria-controls="panel-capital">Capital</button>
         @can('investor.ledger.view')<button type="button" role="tab" class="tab" id="tab-ledger" data-tab="ledger" aria-controls="panel-ledger">Ledger</button>@endcan
+        @canany(['portal.links.manage', 'portal.grants.manage'])<button type="button" role="tab" class="tab" id="tab-portal" data-tab="portal" aria-controls="panel-portal">Portal</button>@endcanany
         <button type="button" role="tab" class="tab" id="tab-files" data-tab="files" aria-controls="panel-files">Files</button>
         <button type="button" role="tab" class="tab" id="tab-history" data-tab="history" aria-controls="panel-history">History</button>
     </div>
@@ -71,6 +72,11 @@
         </section>
     @endcan
 
+    @canany(['portal.links.manage', 'portal.grants.manage'])
+        <section id="panel-portal" role="tabpanel" aria-labelledby="tab-portal" hidden>
+            <div data-partial-url="{{ route('portal-access.panel', ['investor', $investor->public_id]) }}" data-lazy><x-card><div class="skeleton h-14 w-full"></div></x-card></div>
+        </section>
+    @endcanany
     <section id="panel-files" role="tabpanel" aria-labelledby="tab-files" hidden>
         <x-attachments :owner="$investor" type="investor" />
     </section>

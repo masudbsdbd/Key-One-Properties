@@ -32,7 +32,7 @@ class UserController extends Controller
     {
         Gate::authorize('viewAny', User::class);
 
-        $query = User::query()->with(['roles:id,name', 'departments:id,name']);
+        $query = User::query()->where('account_type', 'staff')->with(['roles:id,name', 'departments:id,name']);
 
         if ($role = Role::findByPublicId($request->input('role'))) {
             $query->whereHas('roles', fn ($q) => $q->whereKey($role->id));

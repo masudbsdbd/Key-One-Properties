@@ -56,6 +56,7 @@
                 @endcan
                 <button type="button" role="tab" class="tab" id="tab-bookings" data-tab="bookings" aria-controls="panel-bookings">Bookings</button>
                 <button type="button" role="tab" class="tab" id="tab-payments" data-tab="payments" aria-controls="panel-payments">Payments</button>
+                @canany(['portal.links.manage', 'portal.grants.manage'])<button type="button" role="tab" class="tab" id="tab-portal" data-tab="portal" aria-controls="panel-portal">Portal</button>@endcanany
                 <button type="button" role="tab" class="tab" id="tab-activity" data-tab="activity" aria-controls="panel-activity">Activity</button>
             </div>
 
@@ -108,6 +109,11 @@
                 <x-card :padded="false"><x-empty-state icon="tag" title="Coming in Phase 3" /></x-card>
             </section>
 
+            @canany(['portal.links.manage', 'portal.grants.manage'])
+                <section id="panel-portal" role="tabpanel" aria-labelledby="tab-portal" hidden>
+                    <div data-partial-url="{{ route('portal-access.panel', ['customer', $customer->public_id]) }}" data-lazy><x-card><div class="skeleton h-14 w-full"></div></x-card></div>
+                </section>
+            @endcanany
             <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
                 <x-card title="Activity" :padded="false">
                     <div data-partial-url="{{ route('customers.activity', $customer) }}" data-lazy>
