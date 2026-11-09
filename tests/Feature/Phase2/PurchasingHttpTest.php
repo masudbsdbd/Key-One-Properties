@@ -68,6 +68,27 @@ class PurchasingHttpTest extends TestCase
         return Supplier::query()->where('name', 'Shah Traders')->firstOrFail();
     }
 
+    public function test_a_purchase_order_opened_from_a_project_stays_in_that_project(): void
+    {
+        $supplier = $this->supplier();
+        $central = new Warehouse(['code' => 'WH-CEN', 'name' => 'Central Store']);
+        $central->save();
+        $hidden = Project::factory()->create();
+
+        $html = $this->actingAs($this->buyer)->ajax()->get(route('purchase-orders.create', ['project' => $this->project->public_id]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('name="project" value="'.$this->project->public_id.'"', $html);
+        $this->assertStringContainsString('value="'.$this->warehouse->public_id.'" selected', $html);
+        $this->assertStringNotContainsString($central->public_id, $html);
+        $this->actingAs($this->buyer)->ajax()->get(route('purchase-orders.create', ['project' => $hidden->public_id]))->assertNotFound();
+
+        $payload = ['supplier' => $supplier->public_id, 'project' => $this->project->public_id, 'order_date' => now()->toDateString(),
+            'lines' => [['material' => $this->cement->public_id, 'quantity' => '10', 'unit_cost' => '500', 'discount' => '', 'tax' => '']]];
+        $this->actingAs($this->buyer)->ajax()->post(route('purchase-orders.store'), [...$payload, 'warehouse' => $central->public_id])
+            ->assertStatus(422)->assertJsonPath('errors.warehouse.0', 'Select a store of '.$this->project->name.'.');
+        $this->actingAs($this->buyer)->ajax()->post(route('purchase-orders.store'), [...$payload, 'warehouse' => $this->warehouse->public_id])->assertOk();
+        $this->assertSame($this->project->id, PurchaseOrder::query()->latest('id')->value('project_id'));
+    }
+
     private function approvedOrder(Supplier $supplier): PurchaseOrder
     {
         $this->actingAs($this->buyer)->ajax()->post(route('purchase-orders.store'), [

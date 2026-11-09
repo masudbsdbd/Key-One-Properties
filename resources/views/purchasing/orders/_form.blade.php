@@ -6,9 +6,13 @@
 <form method="POST" action="{{ $order->exists ? route('purchase-orders.update', $order) : route('purchase-orders.store') }}" data-ajax-form class="space-y-5">
     @csrf
     @if ($order->exists) @method('PUT') @endif
+    @isset($project)<input type="hidden" name="project" value="{{ $project->public_id }}">@endisset
     <div class="grid gap-5 sm:grid-cols-4">
+        @isset($project)
+            <div class="sm:col-span-4"><p class="detail-label">Project</p><p class="detail-value">{{ $project->name }} · {{ $project->code }}</p></div>
+        @endisset
         <x-form.select name="supplier" label="Supplier" :url="route('options.suppliers')" :options="$supplierOptions" :selected="$supplier?->public_id" required placeholder="Search suppliers" wrapper-class="sm:col-span-2" />
-        <x-form.select name="warehouse" id="po-warehouse" label="Deliver To" :url="route('options.warehouses')" :options="$warehouseOptions" :selected="$order->warehouse?->public_id" required placeholder="Search warehouses" wrapper-class="sm:col-span-2" />
+        <x-form.select name="warehouse" id="po-warehouse" label="Deliver To" :url="isset($project) ? route('options.warehouses', ['project' => $project->public_id]) : route('options.warehouses')" :options="$warehouseOptions" :selected="$order->warehouse?->public_id" required placeholder="Search warehouses" wrapper-class="sm:col-span-2" />
         <x-form.input name="order_date" type="date" label="Order Date" :value="$order->order_date?->toDateString() ?? $today" required />
         <x-form.input name="expected_date" type="date" label="Expected Delivery" :value="$order->expected_date?->toDateString()" />
     </div>

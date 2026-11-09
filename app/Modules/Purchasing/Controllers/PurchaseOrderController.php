@@ -123,8 +123,14 @@ class PurchaseOrderController extends Controller
     {
         abort_unless($request->user()->can('purchases.create'), 403);
         $supplier = Supplier::findByPublicId($request->input('supplier'));
+        $order = new PurchaseOrder(['order_date' => now(config('app.display_timezone'))]);
+        $project = $this->projectFrom($request);
+        if ($project) {
+            $stores = Warehouse::query()->where('project_id', $project->id)->where('is_active', true)->limit(2)->get();
+            $order->setRelation('warehouse', $stores->count() === 1 ? $stores->first() : null);
+        }
 
-        return $this->form(new PurchaseOrder(['order_date' => now(config('app.display_timezone'))]), $supplier, 'New Purchase Order');
+        return $this->form($order, $supplier, 'New Purchase Order', $project);
     }
 
     public function store(Request $request): JsonResponse
@@ -285,11 +291,24 @@ class PurchaseOrderController extends Controller
             ?? throw ValidationException::withMessages(['supplier' => 'Select an active supplier.']);
         $warehouse = Warehouse::query()->visibleTo($request->user())->where('is_active', true)->where('public_id', $data['warehouse'])->first()
             ?? throw ValidationException::withMessages(['warehouse' => 'Select a warehouse you can use.']);
+        if (($project = $this->projectFrom($request)) && $warehouse->project_id !== $project->id) {
+            throw ValidationException::withMessages(['warehouse' => 'Select a store of '.$project->name.'.']);
+        }
 
         return [$supplier, $warehouse, InventoryLines::from($request, pricing: true), $data];
     }
 
-    private function form(PurchaseOrder $order, ?Supplier $supplier, string $title): JsonResponse
+    /** A PO opened from a project page stays inside that project. */
+    private function projectFrom(Request $request): ?Project
+    {
+        if (! $request->filled('project')) {
+            return null;
+        }
+
+        return Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first() ?? abort(404);
+    }
+
+    private function form(PurchaseOrder $order, ?Supplier $supplier, string $title, ?Project $project = null): JsonResponse
     {
         $lines = $order->exists ? $order->lines->map(fn ($l) => [
             'material' => $l->material->public_id, 'text' => $l->material->label().' ('.$l->material->unit->code.')',
@@ -297,6 +316,6 @@ class PurchaseOrderController extends Controller
             'discount' => (float) $l->discount_amount ? $l->discount_amount : null, 'tax' => (float) $l->tax_amount ? $l->tax_amount : null,
         ])->all() : [];
 
-        return Ajax::success(null, ['title' => $title, 'html' => view('purchasing.orders._form', ['order' => $order, 'supplier' => $supplier, 'lines' => $lines])->render()]);
+        return Ajax::success(null, ['title' => $title, 'html' => view('purchasing.orders._form', ['order' => $order, 'supplier' => $supplier, 'lines' => $lines, 'project' => $project])->render()]);
     }
 }

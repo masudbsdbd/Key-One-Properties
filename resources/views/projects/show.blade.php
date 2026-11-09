@@ -206,7 +206,7 @@
             <x-data-table :url="route('purchase-orders.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search PO number" :columns="[
                 ['label' => 'Order', 'sort' => 'date'], ['label' => 'Supplier'], ['label' => 'Warehouse'], ['label' => 'Total', 'class' => 'text-right', 'sort' => 'total'], ['label' => 'Received'], ['label' => 'Status'],
             ]">
-                <x-slot:toolbar>@can('purchases.create')<x-button icon="plus" data-remote-modal="{{ route('purchase-orders.create') }}" data-size="max-w-5xl">Purchase Order</x-button>@endcan</x-slot:toolbar>
+                <x-slot:toolbar>@can('purchases.create')<x-button icon="plus" data-remote-modal="{{ route('purchase-orders.create', ['project' => $project->public_id]) }}" data-size="max-w-5xl">Purchase Order</x-button>@endcan</x-slot:toolbar>
             </x-data-table>
         </section>
     @endisset
