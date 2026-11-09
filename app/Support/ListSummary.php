@@ -63,19 +63,19 @@ final class ListSummary
         return implode(', ', array_fill(0, count($values), '?'));
     }
 
-    public function money(string $label, mixed $value, string $icon = 'tag', string $tone = 'info', ?array $preset = null, ?string $note = null): self
+    public function money(string $label, mixed $value, string $icon = 'tag', string $tone = 'info', ?array $preset = null, ?string $note = null, ?string $href = null): self
     {
-        return $this->add($label, Format::money(Money::amount((string) ($value ?? 0)), false), $icon, $tone, $preset, $note);
+        return $this->add($label, Format::money(Money::amount((string) ($value ?? 0)), false), $icon, $tone, $preset, $note, $href);
     }
 
-    public function count(string $label, mixed $value, string $icon = 'list', string $tone = 'info', ?array $preset = null, ?string $note = null): self
+    public function count(string $label, mixed $value, string $icon = 'list', string $tone = 'info', ?array $preset = null, ?string $note = null, ?string $href = null): self
     {
-        return $this->add($label, number_format((float) ($value ?? 0)), $icon, $tone, $preset, $note);
+        return $this->add($label, number_format((float) ($value ?? 0)), $icon, $tone, $preset, $note, $href);
     }
 
-    public function text(string $label, string $value, string $icon = 'info', string $tone = 'info', ?array $preset = null, ?string $note = null): self
+    public function text(string $label, string $value, string $icon = 'info', string $tone = 'info', ?array $preset = null, ?string $note = null, ?string $href = null): self
     {
-        return $this->add($label, $value, $icon, $tone, $preset, $note);
+        return $this->add($label, $value, $icon, $tone, $preset, $note, $href);
     }
 
     public function when(bool $condition, callable $callback): self
@@ -87,10 +87,10 @@ final class ListSummary
         return $this;
     }
 
-    private function add(string $label, string $value, string $icon, string $tone, ?array $preset, ?string $note): self
+    private function add(string $label, string $value, string $icon, string $tone, ?array $preset, ?string $note, ?string $href = null): self
     {
         $active = $preset && $this->request && collect($preset)->every(fn ($v, $k) => (string) $this->request->input($k) === (string) $v);
-        $this->tiles[] = compact('label', 'value', 'icon', 'tone', 'preset', 'note', 'active');
+        $this->tiles[] = compact('label', 'value', 'icon', 'tone', 'preset', 'note', 'active', 'href');
 
         return $this;
     }

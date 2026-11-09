@@ -14,6 +14,7 @@ use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Modules\Purchasing\Services\PurchasingService;
+use App\Modules\Purchasing\Services\Unbilled;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -106,6 +107,44 @@ class PurchasingHttpTest extends TestCase
         $this->actingAs($this->approver)->ajax()->post(route('purchase-orders.approve', $po))->assertOk();
 
         return $po->fresh();
+    }
+
+    public function test_received_goods_without_a_bill_show_as_not_billed(): void
+    {
+        $supplier = $this->supplier();
+        $po = $this->approvedOrder($supplier);
+        $this->actingAs($this->buyer)->ajax()->post(route('purchase-orders.receive', $po), [
+            'received_at' => now()->toDateString(), 'idempotency_key' => (string) Str::uuid(), 'quantities' => [0 => ['received' => '40', 'accepted' => '38'], 1 => ['received' => '50']],
+        ])->assertOk();
+        $grn = GoodsReceipt::query()->firstOrFail();
+        $this->actingAs($this->buyer)->ajax()->post(route('purchase-orders.return', [$po, $grn]), [
+            'quantities' => [1 => '5'], 'reason' => 'Bent rods', 'idempotency_key' => (string) Str::uuid(),
+        ])->assertOk();
+
+        // 38 x 490 + 45 x 90; the payable is untouched until a bill is approved.
+        $this->assertSame(['amount' => '22670.00', 'receipts' => 1], Unbilled::totals(Unbilled::lines($this->buyer)));
+        $this->assertSame('not_billed', Unbilled::status($grn->load('lines')));
+        $this->assertSame('1000.00', $supplier->balance());
+        $this->assertSame(['amount' => '0.00', 'receipts' => 0], Unbilled::totals(Unbilled::lines($this->userWith(['purchases.view']))));
+
+        $table = fn (array $q) => $this->actingAs($this->buyer)->ajax()->get(route('purchase-orders.table', $q))->assertOk()->json('data');
+        $this->assertStringContainsString($po->po_no, $table(['unbilled' => 'any'])['html']);
+        $this->assertStringContainsString('22,670', $table([])['stats']);
+        $this->assertStringNotContainsString($po->po_no, $table(['unbilled' => 'late'])['html']);
+        $grn->forceFill(['received_at' => now()->subDays(Unbilled::ALERT_DAYS + 1)->toDateString()])->save();
+        $this->assertStringContainsString($po->po_no, $table(['unbilled' => 'late'])['html']);
+
+        $this->actingAs($this->buyer)->get(route('suppliers.show', $supplier))->assertOk()->assertSee('Not Billed')->assertSee('22,670');
+        $this->assertStringContainsString('22,670', $this->actingAs($this->buyer)->ajax()->get(route('suppliers.table'))->json('data.stats'));
+        $this->assertStringContainsString('22,670', $this->actingAs($this->buyer)->ajax()->get(route('supplier-bills.table'))->json('data.stats'));
+
+        // A draft bill for the cement takes it out of Not Billed; cancelling the bill puts it back.
+        $this->actingAs($this->buyer)->ajax()->post(route('supplier-bills.store'), [
+            'supplier' => $supplier->public_id, 'invoice_date' => now()->toDateString(), 'tax_amount' => '0', 'receipt_lines' => [$grn->public_id.':0'],
+        ])->assertOk();
+        $this->assertSame(['amount' => '4050.00', 'receipts' => 1], Unbilled::totals(Unbilled::lines($this->buyer)));
+        $this->assertSame('partly_billed', Unbilled::status($grn->fresh()->load('lines')));
+        $this->assertStringNotContainsString($po->po_no, $table(['unbilled' => 'any', 'search' => 'none'])['html']);
     }
 
     public function test_full_purchase_cycle_over_http(): void

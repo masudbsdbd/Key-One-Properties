@@ -8,8 +8,11 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div @class(['mb-6 grid gap-4 sm:grid-cols-2', 'xl:grid-cols-4' => ! $unbilled, 'lg:grid-cols-3 2xl:grid-cols-5' => $unbilled])>
         <x-stat-card label="Payable" :value="App\Support\Format::money($balance)" icon="tag" tone="warning" />
+        @if ($unbilled)
+            <x-stat-card label="Not Billed" :value="App\Support\Format::money($unbilled['amount'])" icon="file" tone="info" :href="route('purchase-orders.index', ['supplier' => $supplier->public_id, 'unbilled' => 'any'])" />
+        @endif
         <x-stat-card label="Billed" :value="App\Support\Format::money($billed)" icon="file" tone="info" />
         <x-stat-card label="Paid" :value="App\Support\Format::money($paid)" icon="check" tone="success" />
         <x-stat-card label="Open Orders" :value="$openOrders" icon="note" tone="accent" />

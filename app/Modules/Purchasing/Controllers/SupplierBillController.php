@@ -7,6 +7,7 @@ use App\Models\GoodsReceipt;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Modules\Purchasing\Services\PurchasingService;
+use App\Modules\Purchasing\Services\Unbilled;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
@@ -73,7 +74,9 @@ class SupplierBillController extends Controller
             ->money('Unpaid', $row->unpaid, 'clock', 'warning', ['status' => 'approved'])
             ->money('Past Due Date', $row->overdue, 'alert', 'danger', ['overdue' => '1'])
             ->money('Paid', $row->paid, 'check', 'success', ['status' => 'paid'])
-            ->count('Drafts', $row->draft, 'edit', 'accent', ['status' => 'draft']);
+            ->count('Drafts', $row->draft, 'edit', 'accent', ['status' => 'draft'])
+            ->money('Not Billed', ($unbilled = Unbilled::totals(Unbilled::lines($request->user())))['amount'], 'download', 'info',
+                note: ListSummary::many($unbilled['receipts'], 'receipt'), href: route('purchase-orders.index', ['unbilled' => 'any']));
     }
 
     private function listing(Request $request): Builder

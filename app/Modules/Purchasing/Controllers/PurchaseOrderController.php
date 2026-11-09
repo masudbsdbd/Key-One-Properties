@@ -12,6 +12,7 @@ use App\Models\SupplierBill;
 use App\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Modules\Purchasing\Services\PurchasingService;
+use App\Modules\Purchasing\Services\Unbilled;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
@@ -51,7 +52,7 @@ class PurchaseOrderController extends Controller
     {
         abort_unless($request->user()->can('purchases.export'), 403);
 
-        return Report::make('Purchase Orders')->sumMoney()->meta(['Status' => PurchaseOrder::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
+        return Report::make('Purchase Orders')->sumMoney()->meta(['Status' => PurchaseOrder::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Billing' => Unbilled::FILTERS[(string) $request->input('unbilled')] ?? null, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['PO No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Warehouse' => 'text', 'Project' => 'text', 'Expected' => 'date', 'Total' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (PurchaseOrder $o) => [$o->po_no, $o->order_date, $o->supplier->name, $o->warehouse->code, $o->project?->code ?? 'Company', $o->expected_date, $o->total_amount, PurchaseOrder::STATUSES[$o->status]]))
             ->respond($request);
@@ -83,7 +84,9 @@ class PurchaseOrderController extends Controller
     private function summary(Request $request): ListSummary
     {
         $open = ListSummary::marks(PurchaseOrder::RECEIVABLE);
-        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['status', 'late'])), [
+        $scope = $this->listing(ListSummary::without($request, ['status', 'late', 'unbilled']));
+        $unbilled = Unbilled::totals(Unbilled::lines($request->user())->whereIn('goods_receipts.purchase_order_id', (clone $scope)->reorder()->select('purchase_orders.id')));
+        $row = ListSummary::aggregate($scope, [
             'open' => ["SUM(CASE WHEN purchase_orders.status IN ({$open}) THEN purchase_orders.total_amount ELSE 0 END)", PurchaseOrder::RECEIVABLE],
             'open_n' => ["SUM(CASE WHEN purchase_orders.status IN ({$open}) THEN 1 ELSE 0 END)", PurchaseOrder::RECEIVABLE],
             'submitted' => "SUM(CASE WHEN purchase_orders.status = 'submitted' THEN 1 ELSE 0 END)",
@@ -93,7 +96,8 @@ class PurchaseOrderController extends Controller
         return ListSummary::make($request)
             ->money('Open Orders', $row->open, 'note', 'info', note: ListSummary::many($row->open_n, 'order'))
             ->count('Awaiting Approval', $row->submitted, 'alert', 'accent', ['status' => 'submitted'])
-            ->count('Delivery Overdue', $row->late, 'clock', 'danger', ['late' => '1']);
+            ->count('Delivery Overdue', $row->late, 'clock', 'danger', ['late' => '1'])
+            ->money('Not Billed', $unbilled['amount'], 'file', 'warning', ['unbilled' => 'any'], ListSummary::many($unbilled['receipts'], 'receipt'));
     }
 
     private function listing(Request $request): Builder
@@ -114,6 +118,7 @@ class PurchaseOrderController extends Controller
         if ($request->input('late') === '1') {
             $query->whereIn('status', PurchaseOrder::RECEIVABLE)->whereDate('expected_date', '<', now(config('app.display_timezone'))->toDateString());
         }
+        Unbilled::filter($query, $request->input('unbilled'), $request->user());
         TableQuery::period($query, $request, 'order_date');
 
         return TableQuery::prepare($query, $request, ['po_no', 'notes'], ['date' => 'order_date', 'total' => 'total_amount'], 'date', 'desc');

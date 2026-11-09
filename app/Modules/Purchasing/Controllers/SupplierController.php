@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\SupplierLedgerEntry;
 use App\Modules\Purchasing\Services\PurchasingService;
+use App\Modules\Purchasing\Services\Unbilled;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\Format;
@@ -64,9 +65,15 @@ class SupplierController extends Controller
             'overdue' => ["SUM((SELECT COALESCE(SUM(b.total_amount - {$paid}), 0) FROM supplier_bills b WHERE b.supplier_id = suppliers.id AND b.status = 'approved' AND b.due_date < ?))", [now(config('app.display_timezone'))->toDateString()]],
         ]);
 
+        $user = $request->user();
+
         return ListSummary::make($request)
             ->money('Payable', $row->payable, 'briefcase', 'warning', note: ListSummary::many($row->owing, 'supplier'))
-            ->money('Past Due Date', $row->overdue, 'alert', 'danger');
+            ->money('Past Due Date', $row->overdue, 'alert', 'danger')
+            ->when($user->can('purchases.view'), function (ListSummary $s) use ($user, $request) {
+                $unbilled = Unbilled::totals(Unbilled::lines($user)->whereIn('goods_receipts.supplier_id', (clone $this->listing($request))->reorder()->select('suppliers.id')));
+                $s->money('Not Billed', $unbilled['amount'], 'file', 'info', note: ListSummary::many($unbilled['receipts'], 'receipt'), href: route('purchase-orders.index', ['unbilled' => 'any']));
+            });
     }
 
     private function listing(Request $request): Builder
@@ -137,6 +144,7 @@ class SupplierController extends Controller
             'balance' => $supplier->balance(),
             'billed' => Money::amount((string) $supplier->ledgerEntries()->where('entry_type', 'bill')->sum('charge_amount')),
             'paid' => Money::amount((string) $supplier->ledgerEntries()->where('entry_type', 'payment')->sum('payment_amount')),
+            'unbilled' => $request->user()->can('purchases.view') ? Unbilled::totals(Unbilled::lines($request->user())->where('goods_receipts.supplier_id', $supplier->id)) : null,
             'openOrders' => PurchaseOrder::query()->whereBelongsTo($supplier)->whereIn('status', ['submitted', 'approved', 'partially_received'])->count(),
             'aging' => $aging,
         ]);
