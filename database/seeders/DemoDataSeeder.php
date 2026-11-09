@@ -5,9 +5,6 @@ namespace Database\Seeders;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Jobs\GenerateReportExport;
 use App\Models\ContractorWorkOrder;
-use App\Models\ReportRun;
-use App\Notifications\PasswordResetRequested;
-use Illuminate\Support\Facades\Notification;
 use App\Models\Customer;
 use App\Models\Department;
 use App\Models\ExpenseCategory;
@@ -22,6 +19,7 @@ use App\Models\MaterialUnit;
 use App\Models\Milestone;
 use App\Models\PasswordResetRequest;
 use App\Models\Project;
+use App\Models\ReportRun;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -48,11 +46,14 @@ use App\Modules\Purchasing\Services\PurchasingService;
 use App\Modules\Sales\Services\PriceRevisionService;
 use App\Modules\Sales\Services\RefundService;
 use App\Modules\Sales\Services\SalesService;
+use App\Notifications\PasswordResetRequested;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Local demo data: one project, one two-storey building, two customers and two investors with portal logins.
@@ -190,6 +191,7 @@ class DemoDataSeeder extends Seeder
         $flatService = app(FlatService::class);
         $plan = $flatService->bulkPlan($building, $building->floors()->where('floor_number', '>', 0)->get(), 4, '{floor}{L}');
         $flatService->bulkCreate($plan, ['flat_type' => '3 Bed', 'bedrooms' => 3, 'bathrooms' => 3, 'saleable_area' => 1450, 'area_unit' => 'sqft'], '7500000', $this->admin);
+        $flatService->bulkChangeStatus(Flat::query()->where('building_id', $building->id)->get(), 'available', 'Released for sale', $this->admin);
 
         $this->flats = Flat::query()->where('project_id', $this->project->id)->orderBy('id')->get()->keyBy('flat_no');
         $flatService->changePrice($this->flats['2A'], '7800000', 'Lake-facing unit', $this->admin);
@@ -575,7 +577,7 @@ class DemoDataSeeder extends Seeder
         DB::transaction(function () use ($installments, $plan, $lines) {
             try {
                 $installments->requestReschedule($plan->fresh(), $lines, 'Customer requested monthly instalments', $this->sales);
-            } catch (\Illuminate\Validation\ValidationException) {
+            } catch (ValidationException) {
                 // The service decides which items are open; skip when its total differs.
             }
         });
@@ -721,7 +723,7 @@ class DemoDataSeeder extends Seeder
             ], $this->engineer));
 
             if ($i === 0) {
-                foreach (array_keys(PortalAccess::GRANTABLE) as $capability) {
+                foreach (array_keys(PortalAccess::grantable('investor')) as $capability) {
                     $accounts->grant($link, $this->project, $capability, null, $this->admin);
                 }
             } else {

@@ -49,6 +49,7 @@ class PortalIsolationTest extends TestCase
         parent::setUp();
         config(['keyone.super_admin.password' => 'Admin@12345']);
         $this->seed([SuperAdminSeeder::class, ExpenseCategorySeeder::class, SampleDataSeeder::class, SampleDataSeeder::class]);
+        Project::factory()->create(['name' => 'Key One Green Court']);
         $admin = User::query()->where('email', 'admin@gmail.com')->firstOrFail();
         $checker = User::factory()->create();
 
