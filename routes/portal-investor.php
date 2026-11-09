@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Modules\Portal\Controllers\Investor\DocumentController;
 use App\Modules\Portal\Controllers\Investor\InvestmentController;
 use App\Modules\Portal\Controllers\Investor\OverviewController;
+use App\Modules\Portal\Controllers\Investor\ProjectController;
 use App\Modules\Portal\Controllers\Investor\StatementController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,3 +27,8 @@ Route::prefix('documents')->name('documents.')->controller(DocumentController::c
     Route::get('payouts/{payout}', 'payout')->name('payout');
     Route::get('files/{file}', 'file')->name('file');
 });
+
+Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
+Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+Route::get('projects/{project}/financials', [ProjectController::class, 'financials'])->name('projects.financials');
+Route::get('progress-photos/{file}', [ProjectController::class, 'photo'])->middleware('throttle:120,1')->name('projects.photo');

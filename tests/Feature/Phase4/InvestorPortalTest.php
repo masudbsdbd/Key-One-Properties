@@ -3,6 +3,7 @@
 namespace Tests\Feature\Phase4;
 
 use App\Models\Attachment;
+use App\Models\ConstructionProgressUpdate;
 use App\Models\Customer;
 use App\Models\Flat;
 use App\Models\FlatProfitCalculation;
@@ -184,5 +185,48 @@ class InvestorPortalTest extends TestCase
         $a->save();
 
         return $a;
+    }
+
+    public function test_project_progress_and_financials_follow_publication_and_grants(): void
+    {
+        $project = $this->flat->project;
+        $update = fn (string $note, string $visibility, ?string $status = 'approved') => ConstructionProgressUpdate::query()->forceCreate([
+            'public_id' => Str::lower(Str::random(16)), 'project_id' => $project->id, 'progress_percent' => 40, 'report_date' => now()->toDateString(), 'notes' => $note,
+            'visibility' => $visibility, 'status' => $status, 'submitted_by' => $this->maker->id, 'published_at' => $visibility === 'investor' && $status === 'approved' ? now() : null,
+        ]);
+        $published = $update('Roof slab cast', 'investor');
+        $update('Internal note about the contractor', 'internal');
+        $update('Draft for investors', 'investor', 'submitted');
+
+        $this->actingAs($this->karimUser)->get(route('investor.projects.index'))->assertOk()->assertSee($project->name);
+        $this->actingAs($this->karimUser)->get(route('investor.projects.show', $project->public_id))->assertOk()
+            ->assertSee('Roof slab cast')->assertDontSee('Internal note')->assertDontSee('Draft for investors')->assertDontSee('Financials</a>', false);
+        $foreign = Project::factory()->create();
+        $this->actingAs($this->karimUser)->get(route('investor.projects.show', $foreign->public_id))->assertNotFound();
+
+        Storage::fake('private');
+        Storage::disk('private')->put('p/roof.jpg', 'img');
+        $photo = new Attachment(['original_name' => 'roof.jpg', 'disk' => 'private', 'path' => 'p/roof.jpg', 'mime_type' => 'image/jpeg', 'file_size' => 3, 'uploaded_by' => $this->maker->id]);
+        $photo->attachable()->associate($published);
+        $photo->save();
+        $this->actingAs($this->karimUser)->get(route('investor.projects.photo', $photo->public_id))->assertOk();
+        $hidden = $photo->replicate(['public_id']);
+        $hidden->attachable()->associate(ConstructionProgressUpdate::query()->where('visibility', 'internal')->firstOrFail());
+        $hidden->save();
+        $this->actingAs($this->karimUser)->get(route('investor.projects.photo', $hidden->public_id))->assertNotFound();
+
+        // Project-wide cost needs a grant on the project, then per category.
+        $this->actingAs($this->karimUser)->get(route('investor.projects.financials', $project->public_id))->assertForbidden();
+        $link = $this->karimUser->investorLinks()->firstOrFail();
+        $accounts = app(PortalAccountService::class);
+        $grant = $accounts->grant($link, $project, 'investor.portal.project.financials.view', null, $this->maker);
+        $this->actingAs($this->karimUser)->get(route('investor.projects.financials', $project->public_id))->assertOk()->assertSee('No cost categories shared');
+        $accounts->grant($link, $project, 'investor.portal.cost.material.view', null, $this->maker);
+        $this->actingAs($this->karimUser)->get(route('investor.projects.financials', $project->public_id))->assertOk()
+            ->assertSee('Material')->assertSee('10,00,000')->assertDontSee('Contractor')->assertDontSee('6,00,000');
+        $this->actingAs($this->rahimUser)->get(route('investor.projects.financials', $project->public_id))->assertForbidden();
+
+        $accounts->revokeGrant($grant, $this->maker);
+        $this->actingAs($this->karimUser)->get(route('investor.projects.financials', $project->public_id))->assertForbidden();
     }
 }

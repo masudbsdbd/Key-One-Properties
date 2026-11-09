@@ -109,12 +109,22 @@ browser checks for 13–14, and an empty-state check for 17.
 | Export retention and storage | Private disk, 7-day expiry (configurable), PDFs carry the app branding |
 | Excel | CSV (opens in Excel) until an `.xlsx` library is approved |
 
-## 8. Implementation checklist
+## 8. Investor portal notes
+
+- Unit financials (cost, revenue, profit states) are part of the investment page; there is no separate unit route.
+- Profit states: Estimated = investor share of a draft calculation; Pending Approval = submitted calculation;
+  Approved, Not Yet Paid = approved payable less posted payouts; Paid = posted payouts. They are never added together.
+- Cost categories on the unit page need a category grant on that unit or its project; the direct and shared totals
+  are shown with the unit-financials capability alone. Project financials need a project grant plus category grants.
+- Progress shows only approved updates with investor visibility and a publish date; photos are served from those
+  updates only.
+
+## 9. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
 - [x] P2 Portal UI foundation: layouts, navigation, shared components
 - [x] P3 Investor overview, investments, investment detail
-- [ ] P4 Investor project progress, project financials, flat financials
+- [x] P4 Investor project progress, project financials, flat financials
 - [ ] P5 Customer portal
 - [ ] P6 Executive dashboard and report catalog
 - [ ] P7 Queued exports, report runs and files
