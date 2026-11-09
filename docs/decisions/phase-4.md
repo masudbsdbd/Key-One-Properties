@@ -176,6 +176,16 @@ browser checks for 13–14, and an empty-state check for 17.
   skipped and counted in the message. Each change is in the unit's status history ("Released for sale") and the
   activity log. Existing units kept their status.
 
+### Purchasing: project stores and unbilled goods (client, 2026-11-09)
+
+- Every project has a site store: one is opened when the project is created, existing projects without one got
+  one on upgrade, and the purchase order form can add one when the project has no active store.
+- A purchase order opened from a project page is locked to that project; only its stores can receive the goods.
+- Payable stays bill-based (three-way match: PO, goods receipt, approved supplier bill). Goods received but not on a
+  bill are shown beside the payable as **Not Billed**: supplier list and page, supplier bills list, purchase order
+  list filter, a billing badge and **Create Bill** on each goods receipt, and a dashboard alert after
+  `Unbilled::ALERT_DAYS` (15) days. Phase 5 books this amount as goods received not invoiced.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests

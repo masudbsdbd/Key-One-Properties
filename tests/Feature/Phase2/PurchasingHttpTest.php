@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Modules\Purchasing\Services\Unbilled;
+use App\Support\Dashboard;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -151,6 +152,8 @@ class PurchasingHttpTest extends TestCase
         $this->assertStringNotContainsString($po->po_no, $table(['unbilled' => 'late'])['html']);
         $grn->forceFill(['received_at' => now()->subDays(Unbilled::ALERT_DAYS + 1)->toDateString()])->save();
         $this->assertStringContainsString($po->po_no, $table(['unbilled' => 'late'])['html']);
+        $attention = collect((new Dashboard($this->buyer))->get('attention')['items'])->firstWhere('label', 'Goods not billed for 15+ days');
+        $this->assertSame([1, '22670.00', route('purchase-orders.index', ['unbilled' => 'late'])], [$attention['count'], $attention['amount'], $attention['href']]);
 
         $this->actingAs($this->buyer)->get(route('suppliers.show', $supplier))->assertOk()->assertSee('Not Billed')->assertSee('22,670');
         $this->assertStringContainsString('22,670', $this->actingAs($this->buyer)->ajax()->get(route('suppliers.table'))->json('data.stats'));

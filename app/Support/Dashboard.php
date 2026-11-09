@@ -27,6 +27,7 @@ use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Purchasing\Services\Unbilled;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -138,6 +139,10 @@ class Dashboard
             $late = PurchaseOrder::query()->visibleTo($u)->whereIn('status', PurchaseOrder::RECEIVABLE)->whereDate('expected_date', '<', $this->today)
                 ->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->count();
             $items[] = ['label' => 'Purchase orders past delivery date', 'count' => $late, 'amount' => null, 'href' => route('purchase-orders.index', $this->filters(['late' => '1'])), 'tone' => 'warning', 'icon' => 'note'];
+            $unbilled = Unbilled::totals(Unbilled::late(Unbilled::lines($u))
+                ->when($this->project, fn ($q) => $q->whereIn('goods_receipts.purchase_order_id', PurchaseOrder::query()->where('project_id', $this->project->id)->select('id'))));
+            $items[] = ['label' => 'Goods not billed for '.Unbilled::ALERT_DAYS.'+ days', 'count' => $unbilled['receipts'], 'amount' => $unbilled['amount'],
+                'href' => route('purchase-orders.index', $this->filters(['unbilled' => 'late'])), 'tone' => 'warning', 'icon' => 'download'];
         }
         if ($u->can('materials.view')) {
             $warehouses = Warehouse::query()->visibleTo($u)->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->select('warehouses.id');
