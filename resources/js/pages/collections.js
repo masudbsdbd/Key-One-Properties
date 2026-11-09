@@ -59,7 +59,7 @@ export function initCollectionPages() {
         if (!/^\d{1,3}(\.\d{0,4})?$/.test(pct) || Number(pct) > 100) return;
         const amount = form.dataset.amount;
         const deduction = Decimal.product([amount, pct || '0', '0.01'], 2);
-        const fmt = (v) => Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmt = (v) => Decimal.format(v);
         form.querySelector('[data-deduction-amount]').textContent = fmt(deduction);
         form.querySelector('[data-deduction-net]').textContent = fmt(Decimal.sum([amount, `-${deduction}`]));
     });

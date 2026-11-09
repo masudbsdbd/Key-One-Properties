@@ -53,6 +53,6 @@ export const Decimal = {
         const last3 = w.slice(-3);
         const rest = w.slice(0, -3);
         const grouped = rest ? `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last3}` : last3;
-        return `${negative ? '-' : ''}${grouped}.${frac}`;
+        return `${negative ? '-' : ''}${grouped}${frac === '00' ? '' : `.${frac}`}`;
     },
 };

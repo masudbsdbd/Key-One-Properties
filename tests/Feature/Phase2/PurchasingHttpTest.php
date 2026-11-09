@@ -159,7 +159,7 @@ class PurchasingHttpTest extends TestCase
 
         // Statement: running balance and CSV.
         $ledger = $this->actingAs($this->buyer)->ajax()->get(route('suppliers.ledger', $supplier))->assertOk()->json('data.html');
-        $this->assertStringContainsString('24,170.00', $ledger);
+        $this->assertStringContainsString('24,170', $ledger);
         $csv = $this->actingAs($this->buyer)->get(route('suppliers.ledger.export', $supplier))->assertOk()->streamedContent();
         $this->assertStringContainsString('Opening Balance', $csv);
         $this->assertStringEndsWith(",0.00\n", $csv);

@@ -246,7 +246,7 @@ class ProfitTest extends TestCase
         $this->project->members()->attach([$officer->id, $approver->id]);
         $karim = $this->investors[0];
 
-        $this->assertStringContainsString('23,40,000.00', $this->actingAs($officer)->ajax()->get(route('distributions.payables'))->assertOk()->json('data.html'));
+        $this->assertStringContainsString('23,40,000', $this->actingAs($officer)->ajax()->get(route('distributions.payables'))->assertOk()->json('data.html'));
         $this->actingAs($officer)->ajax()->get(route('distributions.create', ['investor' => $karim->public_id, 'flat' => $this->flat->public_id]))->assertOk();
         $input = ['investor' => $karim->public_id, 'flat' => $this->flat->public_id, 'amount' => '9,999,999', 'idempotency_key' => (string) Str::uuid()];
         $this->actingAs($officer)->ajax()->post(route('distributions.store'), $input)->assertStatus(422)->assertJsonValidationErrors('amount');
@@ -330,7 +330,7 @@ class ProfitTest extends TestCase
         $p = app(PaymentService::class);
         $p->post($p->collect(null, $this->sale->fresh(), ['payment_date' => now()->toDateString(), 'amount' => '1250000', 'method' => 'cash'], $this->maker, (string) Str::uuid()), $this->checker);
 
-        $this->actingAs($user)->get(route('sales.overview'))->assertOk()->assertSee('50,00,000.00')->assertSee('12,50,000.00')->assertSee('37,50,000.00');
+        $this->actingAs($user)->get(route('sales.overview'))->assertOk()->assertSee('50,00,000')->assertSee('12,50,000')->assertSee('37,50,000');
         $csv = $this->actingAs($user)->get(route('sales.summary', ['format' => 'csv']))->assertOk()->streamedContent();
         $this->assertStringContainsString($this->project->code, $csv);
         $this->assertStringContainsString('3750000', str_replace([',', '.00'], '', $csv));

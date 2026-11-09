@@ -52,7 +52,7 @@ class CollectionsHttpTest extends TestCase
     {
         $plan = ['sale' => $this->sale->public_id, 'start_date' => now()->subMonths(2)->toDateString(), 'down_payment_amount' => '200,000', 'installment_frequency' => 'monthly', 'count' => '4', 'first_due_date' => now()->subMonth()->toDateString()];
         $this->assertSame($this->sale->public_id, $this->actingAs($this->cashier)->ajax()->get(route('options.plan-sales'))->json('results.0.id'));
-        $this->actingAs($this->cashier)->ajax()->post(route('installment-plans.preview'), $plan)->assertOk()->assertSee('2,50,000.00');
+        $this->actingAs($this->cashier)->ajax()->post(route('installment-plans.preview'), $plan)->assertOk()->assertSee('2,50,000');
         $this->actingAs($this->cashier)->ajax()->post(route('installment-plans.store'), ['down_payment_amount' => '2000000'] + $plan)->assertStatus(422)->assertJsonValidationErrors('down_payment_amount');
         $this->actingAs($this->cashier)->ajax()->post(route('installment-plans.store'), $plan + ['submit' => '1'])->assertOk();
         $p = InstallmentPlan::query()->firstOrFail();
@@ -74,7 +74,7 @@ class CollectionsHttpTest extends TestCase
         $this->actingAs($this->cashier)->get(route('customer-payments.receipt', $cp))->assertOk()->assertSee('Money Receipt');
 
         $customer = $this->sale->customer;
-        $this->actingAs($this->cashier)->get(route('customers.statement', $customer))->assertOk()->assertSee('9,00,000.00');
+        $this->actingAs($this->cashier)->get(route('customers.statement', $customer))->assertOk()->assertSee('9,00,000');
         $this->actingAs($this->cashier)->ajax()->get(route('customers.statement.table', $customer))->assertOk();
         $this->assertStringContainsString('Customer Statement', $this->actingAs($this->cashier)->get(route('customers.statement.export', $customer).'?format=print')->getContent());
 
@@ -110,7 +110,7 @@ class CollectionsHttpTest extends TestCase
         $this->actingAs($outsider)->ajax()->post(route('customer-payments.post', $cp))->assertForbidden();
         $this->actingAs($outsider)->ajax()->get(route('customer-payments.create', ['sale' => $this->sale->public_id]))->assertStatus(422);
         $this->assertStringNotContainsString($cp->payment_no, $this->actingAs($outsider)->ajax()->get(route('customer-payments.table'))->json('data.html'));
-        $this->actingAs($outsider)->get(route('customers.statement', $this->sale->customer))->assertOk()->assertSee('0.00');
+        $this->actingAs($outsider)->get(route('customers.statement', $this->sale->customer))->assertOk()->assertSee('৳ 0');
         $this->assertStringNotContainsString($this->sale->sale_no, $this->actingAs($outsider)->ajax()->get(route('customers.statement.table', $this->sale->customer))->json('data.html'));
     }
 }
