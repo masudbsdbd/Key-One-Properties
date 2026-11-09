@@ -91,6 +91,13 @@
     }
     .nav-link[aria-current='page'] svg { @apply text-ink-900; }
     .nav-section { @apply px-3.5 pt-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-white/45; }
+    .nav-group {
+        @apply mt-1 flex w-full items-center gap-3 h-11 px-3.5 rounded-control text-left text-[15px] font-medium text-white/85
+            hover:bg-white/10 hover:text-white transition-colors;
+    }
+    .nav-group.is-current { @apply text-white font-semibold; }
+    .nav-sub { @apply ml-[1.4rem] mt-1 mb-2 border-l border-white/15 pl-2.5; }
+    .nav-sub .nav-link { @apply h-10 text-[14px]; }
     .nav-count { @apply ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold bg-accent-500 text-white; }
 
     /* Icon tiles (stat cards, activity lists) */
@@ -141,6 +148,7 @@
 @media (min-width: 1024px) {
     html[data-sidebar='collapsed'] .app-sidebar { width: var(--spacing-sidebar-collapsed); }
     html[data-sidebar='collapsed'] .app-sidebar .sidebar-label { display: none; }
+    html[data-sidebar='collapsed'] .app-sidebar .nav-sub { margin-left: 0; padding-left: 0; border-left: 0; }
     html[data-sidebar='collapsed'] .app-main { padding-left: var(--spacing-sidebar-collapsed); }
 }
 
