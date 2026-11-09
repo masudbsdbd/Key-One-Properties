@@ -11,7 +11,7 @@
                 <x-form.select name="floors" id="bulk-floors" label="Floors" :url="route('options.floors')" depends-on="#bulk-building" depends-param="building" multiple required placeholder="Select floors" />
                 <button type="button" class="mt-1.5 text-[13px] font-medium text-accent-700 hover:underline" data-select-all-floors data-url="{{ route('options.floors') }}">Select all floors</button>
             </div>
-            <x-form.input name="per_floor" type="number" label="Units per Floor" min="1" max="50" value="4" required />
+            <x-form.input name="per_floor" type="number" label="Units per Floor" min="1" max="50" placeholder="4" required />
             <x-form.input name="pattern" label="Number Pattern" value="{floor}{L}" required hint="{floor}, {n} or {L} (A, B, C)" />
             <x-form.input name="start_index" type="number" label="Start From" min="1" value="1" />
             <x-form.select name="flat_type" id="bulk-type" label="Type" :options="App\Models\Flat::TYPES" placeholder="Select type" />
