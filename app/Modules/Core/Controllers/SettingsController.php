@@ -3,6 +3,7 @@
 namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
 use App\Modules\Investors\Services\ProfitPolicy;
 use App\Support\Ajax;
 use App\Support\Branding;
@@ -71,6 +72,26 @@ class SettingsController extends Controller
         }
 
         return Ajax::success('Branding saved.', ['redirect' => route('settings.edit')]);
+    }
+
+    public function updateProjectStages(Request $request, Settings $settings): JsonResponse
+    {
+        Gate::authorize('settings.manage');
+        $request->merge(['stages' => array_values(array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : $v, (array) $request->input('stages', [])), fn ($v) => $v !== '' && $v !== null))]);
+        $data = $request->validate([
+            'stages' => ['array', 'max:20'],
+            'stages.*' => ['required', 'string', 'max:80', 'distinct:ignore_case'],
+        ], ['stages.*.distinct' => 'Each stage name must be different.']);
+
+        $before = Project::defaultStages();
+        $settings->put(['projects.default_stages' => json_encode($data['stages'] ?? [])]);
+        if ($before !== ($data['stages'] ?? [])) {
+            activity('settings')->event('default_stages_updated')->causedBy($request->user())
+                ->withProperties(['name' => 'Default project stages', 'old' => ['stages' => $before], 'attributes' => ['stages' => $data['stages'] ?? []]])
+                ->log('default_stages_updated');
+        }
+
+        return Ajax::success('Default stages saved.');
     }
 
     public function updateProfitPolicy(Request $request, Settings $settings): JsonResponse

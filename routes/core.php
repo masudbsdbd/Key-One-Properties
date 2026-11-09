@@ -60,3 +60,4 @@ Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit
 Route::put('settings/branding', [SettingsController::class, 'updateBranding'])->name('settings.branding');
 Route::put('preferences', [PreferenceController::class, 'update'])->middleware('throttle:60,1')->name('profile.preferences');
 Route::put('settings/profit-policy', [SettingsController::class, 'updateProfitPolicy'])->name('settings.profit-policy');
+Route::put('settings/project-stages', [SettingsController::class, 'updateProjectStages'])->name('settings.project-stages');

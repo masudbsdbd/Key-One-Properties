@@ -23,7 +23,7 @@ class ProjectService
             $project->created_by = $creator->id;
             $project->save();
 
-            foreach (Project::DEFAULT_STAGES as $i => $name) {
+            foreach (Project::defaultStages() as $i => $name) {
                 $project->stages()->create(['name' => $name, 'sequence' => $i + 1, 'status' => 'not_started']);
             }
 

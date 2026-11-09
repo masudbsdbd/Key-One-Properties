@@ -125,6 +125,7 @@
         <x-card title="Stages" :padded="false">
             @can('manageStages', $project)
                 <x-slot:actions>
+                    @can('settings.manage')<x-button size="sm" variant="ghost" icon="settings" href="{{ route('settings.edit') }}#default-stages">Default Stages</x-button>@endcan
                     <x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('projects.stages.create', $project) }}">Add Stage</x-button>
                 </x-slot:actions>
             @endcan

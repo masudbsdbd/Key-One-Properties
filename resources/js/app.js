@@ -18,7 +18,7 @@ import { initProfilePage } from './pages/profile';
 import { initRemoteModal, openRemoteModal } from './components/remote-modal';
 import { initActions } from './components/actions';
 import { initPermissionForms } from './pages/permissions';
-import { initSettingsPage } from './pages/settings';
+import { initSettingsPage, initStageTemplates } from './pages/settings';
 import { initPartials, reloadPartials } from './components/partials';
 import { initTooltips } from './components/tooltip';
 import { initProjectPages } from './pages/projects';
@@ -47,6 +47,7 @@ $(() => {
     initActions();
     initPermissionForms();
     initSettingsPage();
+    initStageTemplates();
     initPartials();
     initTooltips();
     initProjectPages();
