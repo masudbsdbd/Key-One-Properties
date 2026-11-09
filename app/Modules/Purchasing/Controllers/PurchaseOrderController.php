@@ -133,6 +133,7 @@ class PurchaseOrderController extends Controller
         if ($project) {
             $stores = Warehouse::query()->where('project_id', $project->id)->where('is_active', true)->limit(2)->get();
             $order->setRelation('warehouse', $stores->count() === 1 ? $stores->first() : null);
+            $project->setAttribute('needs_store', $stores->isEmpty() && $request->user()->can('materials.manage'));
         }
 
         return $this->form($order, $supplier, 'New Purchase Order', $project);

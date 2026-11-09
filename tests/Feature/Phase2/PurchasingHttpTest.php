@@ -109,6 +109,24 @@ class PurchasingHttpTest extends TestCase
         return $po->fresh();
     }
 
+    public function test_a_project_without_an_active_store_can_open_one_from_the_order_form(): void
+    {
+        $this->warehouse->forceFill(['is_active' => false])->save();
+        $keeper = $this->userWith(['projects.view', 'purchases.create', 'materials.manage']);
+        $this->project->members()->attach($keeper->id);
+        $form = fn (User $u) => $this->actingAs($u)->ajax()->get(route('purchase-orders.create', ['project' => $this->project->public_id]))->assertOk()->json('data.html');
+
+        $this->assertStringNotContainsString('Add Site Store', $form($this->buyer));
+        $this->assertStringContainsString('Add Site Store', $form($keeper));
+
+        $this->actingAs($this->buyer)->ajax()->post(route('warehouses.site-store', $this->project))->assertForbidden();
+        $this->actingAs($this->userWith(['materials.manage']))->ajax()->post(route('warehouses.site-store', $this->project))->assertNotFound();
+        $id = $this->actingAs($keeper)->ajax()->post(route('warehouses.site-store', $this->project))->assertOk()->json('data.id');
+        $this->assertSame($id, $this->actingAs($keeper)->ajax()->post(route('warehouses.site-store', $this->project))->json('data.id'));
+        $this->assertSame($this->project->id, Warehouse::query()->where('public_id', $id)->value('project_id'));
+        $this->assertStringNotContainsString('Add Site Store', $form($keeper));
+    }
+
     public function test_received_goods_without_a_bill_show_as_not_billed(): void
     {
         $supplier = $this->supplier();

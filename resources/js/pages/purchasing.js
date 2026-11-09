@@ -1,5 +1,7 @@
 import $ from 'jquery';
 import { Decimal } from './decimal';
+import { http } from '../core/http';
+import { toast } from '../components/toast';
 
 const clean = (v) => {
     const s = String(v ?? '').replace(/,/g, '').trim();
@@ -21,7 +23,24 @@ function unallocated(form) {
     out.classList.toggle('text-danger-600', rest.startsWith('-'));
 }
 
+async function openSiteStore(button) {
+    button.disabled = true;
+    try {
+        const res = await http.post(button.dataset.openSiteStore);
+        const $select = $(button.dataset.fill);
+        $select.append(new Option(res.data.text, res.data.id, true, true)).trigger('change');
+        toast.success(res.message);
+        button.remove();
+    } catch {
+        button.disabled = false;
+    }
+}
+
 export function initPurchasingPages() {
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-open-site-store]');
+        if (button) openSiteStore(button);
+    });
     document.addEventListener('input', (event) => {
         const bill = event.target.closest('[data-bill-form]');
         if (bill) billTotal(bill);

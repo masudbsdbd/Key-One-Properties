@@ -58,6 +58,16 @@ class WarehouseController extends Controller
         return $this->form(new Warehouse(['is_active' => true]), 'New Warehouse');
     }
 
+    /** Gives a project without an active store its site store, straight from the purchase order form. */
+    public function openSiteStore(Request $request, Project $project): JsonResponse
+    {
+        abort_unless($request->user()->can('materials.manage'), 403);
+        abort_unless($project->isVisibleTo($request->user()), 404);
+        $store = Warehouse::query()->where('project_id', $project->id)->where('is_active', true)->first() ?? Warehouse::openSiteStore($project);
+
+        return Ajax::success('Site store ready.', ['id' => $store->public_id, 'text' => $store->name.' ('.$store->code.') · '.$project->code]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('materials.manage'), 403);

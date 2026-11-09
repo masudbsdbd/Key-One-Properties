@@ -40,6 +40,7 @@ Route::prefix('warehouses')->name('warehouses.')->controller(WarehouseController
     Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
+    Route::post('site-store/{project}', 'openSiteStore')->name('site-store');
     Route::get('{warehouse}/edit', 'edit')->name('edit');
     Route::put('{warehouse}', 'update')->name('update');
 });
