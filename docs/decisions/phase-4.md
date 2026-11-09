@@ -143,6 +143,30 @@ browser checks for 13–14, and an empty-state check for 17.
   permission, and is written to the activity log. Files expire after `REPORT_EXPORT_DAYS` (default 7) and
   `keyone:prune-report-exports` (daily 04:10) deletes them. Queue requests are limited to 10 per minute per user.
 
+## 10a. Dashboard and list summaries (client asked for "only what is needed", 2026-11-09)
+
+- One dashboard at `/` replaces the old cards and the separate `/executive` page (removed). Every panel answers a
+  question that leads to an action and is shown only with its permission: Needs Attention (overdue customers with
+  phone and days late, dues this week, bookings expiring in 7 days, supplier bills past due date, purchase orders
+  past delivery date, materials below reorder level), Awaiting You, four figures (collected vs due this month,
+  receivable with overdue part, sales this month vs last month, payables with past-due part), Project Health
+  (construction %, budget used %, units sold, collected % of sold value; flagged when cost runs 10 points ahead of
+  progress), Money In and Out (company, last 6 months), Collections Ahead (overdue now + next 3 months), Overdue by
+  Age, Unit Inventory, Delayed Milestones, Investors. Counts of users, departments, customers and projects were dropped.
+- Defaults chosen: no monthly targets (comparison is with last month); overdue turns red after 30 days late
+  (`Dashboard::LATE_DAYS`), amber before; lists open on "any period".
+- All figures come from `App\Support\Dashboard` and the lists' own queries, so a dashboard number equals the tile of
+  the list it opens (`DashboardTest`). Panels load separately and are cached per user and project for 5 minutes,
+  storing plain values only.
+- No profit, balance sheet or cash-flow-from-books figures until Phase 5; "Money In and Out" is labelled
+  operational and is the panel accounting will replace.
+- List pages: 2–4 summary tiles built by `App\Support\ListSummary` from the filtered list query; tiles follow
+  project, period and search but not their own status filter; clicking a tile applies its filter. Shared `<x-period>`
+  filter; exports end with a Total row (`Report::sumMoney()`). New reports: Collection Forecast, Project Summary.
+- Money shows paisa only when they are not zero (`৳ 7,50,000`, `৳ 7,50,000.53`); CSV keeps full values.
+- A page's only table keeps filters, search, sort and searchable dropdowns in the address bar; card/table choice is
+  saved per user.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
