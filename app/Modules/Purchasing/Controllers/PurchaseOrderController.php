@@ -13,14 +13,18 @@ use App\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
+use App\Support\Export\Report;
 use App\Support\LineKeys;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class PurchaseOrderController extends Controller
 {
@@ -34,6 +38,48 @@ class PurchaseOrderController extends Controller
     }
 
     public function table(Request $request): JsonResponse
+    {
+        $query = $this->listing($request);
+        $supplier = Supplier::findByPublicId($request->input('supplier'));
+        $orders = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('purchasing.orders._rows', ['orders' => $orders, 'showSupplier' => ! $supplier])->render(), $orders);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('purchases.export'), 403);
+
+        return Report::make('Purchase Orders')->meta(['Status' => PurchaseOrder::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+            ->columns(['PO No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Warehouse' => 'text', 'Project' => 'text', 'Expected' => 'date', 'Total' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (PurchaseOrder $o) => [$o->po_no, $o->order_date, $o->supplier->name, $o->warehouse->code, $o->project?->code ?? 'Company', $o->expected_date, $o->total_amount, PurchaseOrder::STATUSES[$o->status]]))
+            ->respond($request);
+    }
+
+    public function document(Request $request, PurchaseOrder $order): Response
+    {
+        Gate::authorize('po:view', $order);
+
+        return Documents::purchaseOrder($order)->respond($request);
+    }
+
+    public function receiptDocument(Request $request, PurchaseOrder $order, GoodsReceipt $receipt): Response
+    {
+        Gate::authorize('po:view', $order);
+        abort_unless($receipt->purchase_order_id === $order->id, 404);
+
+        return Documents::goodsReceipt($receipt)->respond($request);
+    }
+
+    public function returnDocument(Request $request, PurchaseOrder $order, PurchaseReturn $purchaseReturn): Response
+    {
+        Gate::authorize('po:view', $order);
+        abort_unless($purchaseReturn->receipt->purchase_order_id === $order->id, 404);
+
+        return Documents::purchaseReturn($purchaseReturn)->respond($request);
+    }
+
+    private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('purchases.view'), 403);
 
@@ -49,9 +95,7 @@ class PurchaseOrderController extends Controller
             $query->where('project_id', $project->id);
         }
 
-        $orders = TableQuery::apply($query, $request, ['po_no', 'notes'], ['date' => 'order_date', 'total' => 'total_amount'], 'date', 'desc');
-
-        return Ajax::table(view('purchasing.orders._rows', ['orders' => $orders, 'showSupplier' => ! $supplier])->render(), $orders);
+        return TableQuery::prepare($query, $request, ['po_no', 'notes'], ['date' => 'order_date', 'total' => 'total_amount'], 'date', 'desc');
     }
 
     public function create(Request $request): JsonResponse

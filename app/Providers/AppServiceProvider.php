@@ -8,11 +8,15 @@ use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
 use App\Modules\Construction\Policies\ConstructionAccess;
+use App\Modules\Contractors\Policies\ContractorAccess;
 use App\Modules\Core\Policies\UserPolicy;
 use App\Modules\Customers\Policies\CustomerPolicy;
+use App\Modules\Expenses\Policies\ExpenseAccess;
 use App\Modules\Flats\Policies\FlatPolicy;
+use App\Modules\Investors\Policies\InvestorAccess;
 use App\Modules\Projects\Policies\ProjectPolicy;
 use App\Modules\Purchasing\Policies\PurchasingAccess;
+use App\Modules\Sales\Policies\SalesAccess;
 use App\Support\Attachments\AttachableRegistry;
 use App\Support\Branding;
 use App\Support\Settings;
@@ -40,6 +44,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Customer::class, CustomerPolicy::class);
         ConstructionAccess::register();
         PurchasingAccess::register();
+        ContractorAccess::register();
+        ExpenseAccess::register();
+        SalesAccess::register();
+        InvestorAccess::register();
 
         // Progress evidence: visible with the project; changeable by the submitter or an approver while still submitted.
         AttachableRegistry::register('construction-progress', ConstructionProgressUpdate::class, 'construction-progress:files-view', 'construction-progress:files-manage');

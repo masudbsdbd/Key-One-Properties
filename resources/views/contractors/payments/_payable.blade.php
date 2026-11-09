@@ -1,0 +1,1 @@
+<x-form.select name="bill" label="Against" :placeholder="'Advance on '.$order->wo_no" :options="$bills->mapWithKeys(fn ($b) => [$b->public_id => $b->bill_no.' · due '.App\Support\Format::money($b->outstanding(true))])->all()" :selected="request('bill')" :enhance="false" />

@@ -4,9 +4,11 @@ namespace Tests\Feature\Flats;
 
 use App\Models\Flat;
 use App\Models\FlatPriceHistory;
+use App\Models\FlatPriceRevision;
 use App\Models\Floor;
 use App\Models\Project;
 use App\Models\User;
+use App\Modules\Sales\Services\PriceRevisionService;
 use Database\Factories\FlatFactory;
 use LogicException;
 use Tests\TestCase;
@@ -107,6 +109,8 @@ class FlatInventoryTest extends TestCase
             ->assertStatus(422);
 
         $this->actingAs($this->user)->ajax()->post(route('flats.price.update', $flat), ['list_price' => '1,200,000', 'reason' => 'Market rate'])->assertOk();
+        $this->assertSame('1000000.00', $flat->fresh()->list_price);
+        app(PriceRevisionService::class)->approve(FlatPriceRevision::query()->firstOrFail(), $this->superAdmin());
 
         $this->assertSame('1200000.00', $flat->fresh()->list_price);
         $history = FlatPriceHistory::query()->where('flat_id', $flat->id)->firstOrFail();

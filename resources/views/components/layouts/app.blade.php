@@ -131,7 +131,7 @@
             </div>
         </header>
 
-        <main id="main" class="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:py-8">
+        <main id="main" class="w-full min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             {{ $slot }}
         </main>
     </div>

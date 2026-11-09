@@ -13,6 +13,10 @@ import { toast } from './toast';
  *   [data-table-body]        receives html
  *   [data-table-pagination]  receives pager
  *   [data-table-summary]     receives "x–y of z"
+ *   [data-table-export=url]  link that downloads url with the current filters
+ *   [data-table-view]        Table / Cards switch; html goes to [data-table-cards] in card view and the
+ *                            choice is saved to the user's preferences (data-view-key, data-view-url)
+ *   [data-table-stats]       receives data.stats when the endpoint sends it
  * Row actions:
  *   [data-row-action="delete|post"] with data-url, optional data-confirm.
  * Other scripts can call el.reload() or dispatch "table:reload".
@@ -30,6 +34,17 @@ function setup(table) {
     const pager = table.querySelector('[data-table-pagination]');
     const summary = table.querySelector('[data-table-summary]');
     const skeleton = body.innerHTML;
+    const cards = table.querySelector('[data-table-cards]');
+    const grid = table.querySelector('[data-table-grid]');
+    const viewInput = table.querySelector('[data-table-view-input]');
+    const stats = table.querySelector('[data-table-stats]');
+    const target = () => (cards && viewInput?.value === 'cards' ? cards : body);
+
+    // Plain filters can be preset from the page URL, e.g. /expenses?status=submitted.
+    const preset = new URLSearchParams(window.location.search);
+    table.querySelectorAll('select[data-table-filter]:not([data-select]), input[data-table-filter]').forEach((input) => {
+        if (input.name && preset.has(input.name)) input.value = preset.get(input.name);
+    });
 
     const params = () => {
         const query = { page: state.page };
@@ -40,6 +55,15 @@ function setup(table) {
         return query;
     };
 
+    // [data-table-export] links download with the table's current filters and sort.
+    table.querySelectorAll('[data-table-export]').forEach((link) => {
+        link.addEventListener('click', () => {
+            const url = new URL(link.dataset.tableExport, window.location.origin);
+            Object.entries(params()).forEach(([key, value]) => key !== 'page' && url.searchParams.set(key, value));
+            link.href = url.toString();
+        });
+    });
+
     const load = async () => {
         state.controller?.abort();
         state.controller = new AbortController();
@@ -47,7 +71,8 @@ function setup(table) {
         if (!body.children.length) body.innerHTML = skeleton;
         try {
             const res = await http.get(table.dataset.url, params(), { signal: state.controller.signal });
-            body.innerHTML = res.data.html;
+            target().innerHTML = res.data.html;
+            if (stats && res.data.stats !== undefined) stats.innerHTML = res.data.stats;
             renderMeta(res.meta || {});
             table.dispatchEvent(new CustomEvent('table:loaded', { bubbles: true, detail: res }));
         } catch (error) {
@@ -103,6 +128,23 @@ function setup(table) {
     });
 
     table.addEventListener('click', async (event) => {
+        const switcher = event.target.closest('[data-table-view]');
+        if (switcher && viewInput) {
+            const mode = switcher.dataset.tableView;
+            if (viewInput.value === mode) return;
+            viewInput.value = mode;
+            table.querySelectorAll('[data-table-view]').forEach((b) => {
+                b.classList.toggle('is-active', b === switcher);
+                b.setAttribute('aria-pressed', String(b === switcher));
+            });
+            cards.hidden = mode !== 'cards';
+            grid.hidden = mode === 'cards';
+            (mode === 'cards' ? body : cards).innerHTML = '';
+            load();
+            http.put(table.dataset.viewUrl, { key: table.dataset.viewKey, value: mode }, { silent: true }).catch(() => {});
+            return;
+        }
+
         const sorter = event.target.closest('[data-sort]');
         if (sorter && table.contains(sorter)) {
             const key = sorter.dataset.sort;
@@ -156,7 +198,18 @@ function setup(table) {
 
     table.reload = load;
     table.addEventListener('table:reload', load);
-    load();
+
+    // Tables inside a hidden tab panel load the first time the panel is shown.
+    if (table.closest('[hidden]')) {
+        const onShown = () => {
+            if (table.closest('[hidden]')) return;
+            document.removeEventListener('tab:shown', onShown);
+            load();
+        };
+        document.addEventListener('tab:shown', onShown);
+    } else {
+        load();
+    }
 }
 
 function pages(current, last) {

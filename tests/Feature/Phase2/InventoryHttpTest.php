@@ -152,7 +152,7 @@ class InventoryHttpTest extends TestCase
             'lines' => [['material' => $this->rod->public_id, 'quantity' => '5']],
         ])->assertOk();
         $borrow = MaterialBorrow::query()->firstOrFail();
-        $outsider = $this->userWith(self::MANAGER + self::STORE);
+        $outsider = $this->userWith(array_merge(self::MANAGER, self::STORE));
 
         $this->actingAs($outsider)->get(route('borrows.show', $borrow))->assertForbidden();
         $this->actingAs($outsider)->ajax()->post(route('borrows.approve', $borrow), ['approved' => []])->assertForbidden();

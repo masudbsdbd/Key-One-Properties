@@ -2,8 +2,16 @@
 
 namespace Database\Seeders;
 
+use App\Models\Contractor;
 use App\Models\Customer;
 use App\Models\Department;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use App\Models\Flat;
+use App\Models\FlatBooking;
+use App\Models\FlatSale;
+use App\Models\Investor;
+use App\Models\InvestorFlatAgreement;
 use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
@@ -12,12 +20,19 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Collections\Services\InstallmentService;
+use App\Modules\Collections\Services\PaymentService;
+use App\Modules\Contractors\Services\ContractorService;
 use App\Modules\Customers\Services\CustomerService;
+use App\Modules\Expenses\Services\ExpenseService;
 use App\Modules\Flats\Controllers\BuildingController;
 use App\Modules\Flats\Services\FlatService;
 use App\Modules\Inventory\Services\InventoryService;
+use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Projects\Services\ProjectService;
 use App\Modules\Purchasing\Services\PurchasingService;
+use App\Modules\Sales\Services\PriceRevisionService;
+use App\Modules\Sales\Services\SalesService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -53,6 +68,10 @@ class SampleDataSeeder extends Seeder
         }
         if (Project::query()->exists()) {
             $this->purchasing($admin);
+            $this->contractors($admin);
+            $this->expenses($admin);
+            $this->sales($admin);
+            $this->investors($admin);
 
             return;
         }
@@ -91,6 +110,8 @@ class SampleDataSeeder extends Seeder
 
         $this->inventory($admin);
         $this->purchasing($admin);
+        $this->contractors($admin);
+        $this->expenses($admin);
 
         $customers = app(CustomerService::class);
         foreach ([
@@ -185,5 +206,147 @@ class SampleDataSeeder extends Seeder
             ['material' => $material('STL-ROD-16'), 'quantity' => '3000', 'unit_cost' => '93.5', 'discount' => '0', 'tax' => '0'],
         ], ['order_date' => now()->subDays(3)->toDateString()], $admin);
         $service->submit($rods, $admin);
+    }
+
+    private function contractors(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        if (Contractor::query()->exists() || ! $project) {
+            return;
+        }
+
+        $service = app(ContractorService::class);
+        $civil = $service->createContractor(['name' => 'Rahim Builders', 'trade' => 'Civil', 'contact_person' => 'Abdur Rahim', 'mobile' => '01911000001', 'status' => 'active'], $admin);
+        $service->createContractor(['name' => 'Bright Electric Works', 'trade' => 'Electrical', 'contact_person' => 'Sohel Rana', 'mobile' => '01911000002', 'status' => 'active'], $admin);
+
+        $wo = $service->saveWorkOrder(null, $civil, $project, null, [
+            'title' => 'Brick work, floors 1–5', 'scope' => 'Outer and partition walls with 1st class bricks.', 'contract_amount' => '1800000', 'retention_percent' => '5',
+            'start_date' => now()->subDays(40)->toDateString(), 'end_date' => now()->addDays(50)->toDateString(),
+        ], $admin);
+        $service->approveWorkOrder($wo, $admin);
+        $advance = $service->createPayment($wo, null, '150000', ['payment_date' => now()->subDays(38)->toDateString(), 'payment_method' => 'bank', 'reference' => 'DBBL-55120'], $admin, (string) Str::uuid());
+        $service->approvePayment($advance, $admin);
+
+        $ids = [];
+        foreach ([['1st floor walls', '4200', 85], ['2nd floor walls', '4200', 85], ['3rd floor walls', '3900', 85]] as $i => [$what, $qty, $rate]) {
+            $m = $service->recordMeasurement($wo, ['measurement_date' => now()->subDays(30 - $i * 8)->toDateString(), 'description' => $what, 'quantity' => $qty, 'unit' => 'sft', 'rate' => (string) $rate], $admin);
+            if ($i < 2) {
+                $service->approveMeasurement($m, $admin);
+                $ids[] = $m->id;
+            }
+        }
+        $bill = $service->createBill($wo, $ids, ['bill_date' => now()->subDays(10)->toDateString(), 'advance_adjustment' => '150000'], $admin);
+        $service->approveBill($bill, $admin);
+        $service->createPayment($wo, $bill->fresh(), '300000', ['payment_date' => now()->subDays(3)->toDateString(), 'payment_method' => 'cheque', 'reference' => 'CHQ-118802'], $admin, (string) Str::uuid());
+    }
+
+    private function expenses(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        if (Expense::query()->exists() || ! $project || ! ExpenseCategory::query()->exists()) {
+            return;
+        }
+
+        $service = app(ExpenseService::class);
+        $category = fn (string $code) => ExpenseCategory::query()->where('code', $code)->firstOrFail();
+        foreach ([
+            ['general', null, 'ADM-RENT', 'Head office rent', 'Rangs Properties', '185000', 25, 'paid'],
+            ['general', null, 'UTL-ELEC', 'Head office electricity', 'DESCO', '18450', 18, 'approved'],
+            ['project', $project, 'SITE-SEC', 'Night guards, October', 'Safe Guard Services', '42000', 12, 'paid'],
+            ['project', $project, 'SITE-TRN', 'Rod unloading and carriage', 'Rahman Transport', '8600', 6, 'submitted'],
+            ['project', $project, 'SITE-TEST', 'Cylinder test, 3rd floor slab', 'BUET Testing Lab', '12500', 3, 'draft'],
+        ] as [$scope, $p, $code, $what, $payee, $amount, $daysAgo, $status]) {
+            $expense = $service->save(null, $category($code), $p, null,
+                ['scope' => $scope, 'expense_date' => now()->subDays($daysAgo)->toDateString(), 'description' => $what, 'payee_name' => $payee, 'amount' => $amount], $admin);
+            if ($status === 'draft') {
+                continue;
+            }
+            $service->submit($expense, $admin);
+            if ($status === 'submitted') {
+                continue;
+            }
+            $service->approve($expense, $admin);
+            if ($status === 'paid') {
+                $service->pay($expense, ['paid_on' => now()->subDays(max(0, $daysAgo - 2))->toDateString(), 'payment_method' => 'bank', 'payment_reference' => 'TRX-'.random_int(10000, 99999)], $admin);
+            }
+        }
+    }
+
+    private function sales(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        $customers = Customer::query()->orderBy('id')->take(4)->get();
+        if (FlatBooking::query()->exists() || ! $project || $customers->count() < 3) {
+            return;
+        }
+
+        $service = app(SalesService::class);
+        $flats = Flat::query()->where('project_id', $project->id)->where('status', 'available')->orderBy('id')->take(4)->get();
+        $make = function (Flat $flat, Customer $customer, string $price, string $booking, int $daysAgo) use ($service, $admin) {
+            $b = $service->saveBooking(null, $flat, $customer, ['booking_date' => now()->subDays($daysAgo)->toDateString(), 'agreed_price' => $price, 'booking_amount_expected' => $booking], $admin);
+            $service->submitBooking($b, $admin);
+
+            return $b;
+        };
+
+        $sold = $make($flats[0], $customers[0], '4600000', '500000', 40);
+        $service->approveBooking($sold, $admin);
+        $sale = $service->saveSale(null, $flats[0], $customers[0], $sold->fresh(), ['agreement_date' => now()->subDays(30)->toDateString(), 'sale_price' => '4600000', 'discount_amount' => '100000'], $admin);
+        $service->submitSale($sale, $admin);
+        $service->approveSale($sale, $admin);
+        $service->updateAgreement($sale, ['signed_at' => now()->subDays(28)->toDateString()], $admin);
+        $service->updateRegistration($sale, ['status' => 'in_process'], $admin);
+
+        $booked = $make($flats[1], $customers[1], '4750000', '300000', 12);
+        $service->approveBooking($booked, $admin);
+        $make($flats[2], $customers[2], '4500000', '250000', 2);
+        app(PriceRevisionService::class)->request($flats[3], (string) ((float) $flats[3]->list_price + 150000), 'Corner unit premium', $admin);
+
+        $this->collections($sale->fresh(), $booked->fresh(), $admin);
+    }
+
+    private function collections(FlatSale $sale, FlatBooking $booking, User $admin): void
+    {
+        $plans = app(InstallmentService::class);
+        $payments = app(PaymentService::class);
+        $pay = fn (?FlatBooking $b, ?FlatSale $s, string $amount, int $daysAgo, string $method, ?string $ref = null) => $payments->collect($b, $s,
+            ['payment_date' => now()->subDays($daysAgo)->toDateString(), 'amount' => $amount, 'method' => $method, 'reference_no' => $ref], $admin, (string) Str::uuid());
+
+        $plan = $plans->create($sale, ['start_date' => now()->subDays(30)->toDateString(), 'down_payment_amount' => '900000', 'installment_frequency' => 'monthly',
+            'count' => 12, 'first_due_date' => now()->subDays(20)->toDateString()], $admin);
+        $plans->submit($plan, $admin);
+        $plans->approve($plan, $admin);
+
+        $payments->post($pay(null, $sale, '900000', 28, 'bank', 'TRX-10021'), $admin);
+        $payments->post($pay(null, $sale, '150000', 5, 'cheque', 'CHQ-552310'), $admin);
+        $pay(null, $sale, '100000', 1, 'cash');
+        $payments->post($pay($booking, null, '300000', 11, 'mobile', 'BK-77120'), $admin);
+    }
+
+    private function investors(User $admin): void
+    {
+        $project = Project::query()->orderBy('id')->first();
+        if (Investor::query()->exists() || ! $project) {
+            return;
+        }
+        $service = app(InvestorService::class);
+        $flats = Flat::query()->where('project_id', $project->id)->orderBy('id')->take(3)->get();
+        $from = now()->subMonths(6)->startOfMonth()->toDateString();
+        $people = collect([['Mahbub Alam', '01711456789', 'mahbub.alam@example.com'], ['Farhana Kabir', '01819223344', null], ['Sajid Chowdhury', '01911667788', 'sajid@example.com']])
+            ->map(fn ($p) => $service->saveInvestor(null, ['name' => $p[0], 'mobile' => $p[1], 'email' => $p[2], 'address' => 'Dhaka', 'status' => 'active'], $admin));
+
+        foreach ([[0, 0, '60', '2500000', ['1500000', '500000']], [1, 0, '30', '1200000', ['1200000']], [2, 1, '50', '2000000', ['800000']], [0, 2, '40', '1800000', []]] as [$i, $f, $share, $capital, $payments]) {
+            $a = $service->saveAgreement(null, $people[$i], $flats[$f], ['committed_capital' => $capital, 'profit_share_percent' => $share, 'effective_from' => $from], $admin);
+            $service->submitAgreement($a, $admin);
+            if ($f === 2) {
+                continue;
+            }
+            $service->approveAgreement($a, $admin);
+            foreach ($payments as $n => $amount) {
+                $tx = $service->recordCapital($a->fresh(), 'contribution', ['amount' => $amount, 'transaction_date' => now()->subMonths(5 - $n * 2)->toDateString(), 'payment_method' => 'bank', 'reference_no' => 'TRX-'.random_int(10000, 99999)], $admin, (string) Str::uuid());
+                $service->postCapital($tx, $admin);
+            }
+        }
+        $service->recordCapital(InvestorFlatAgreement::query()->where('status', 'active')->firstOrFail(), 'contribution', ['amount' => '300000', 'transaction_date' => now()->subDay()->toDateString(), 'payment_method' => 'cheque', 'reference_no' => 'CHQ-889120'], $admin, (string) Str::uuid());
     }
 }

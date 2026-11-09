@@ -11,6 +11,7 @@ use App\Modules\Inventory\Services\InventoryLines;
 use App\Modules\Inventory\Services\StockMath;
 use App\Modules\Inventory\Services\TransferService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class TransferController extends Controller
 {
@@ -157,6 +159,13 @@ class TransferController extends Controller
     /**
      * @return array{0: Warehouse, 1: Warehouse, 2: array}
      */
+    public function document(Request $request, MaterialTransfer $transfer): Response
+    {
+        abort_unless(InventoryAccess::transfer($request->user(), $transfer, 'view'), 403);
+
+        return Documents::transfer($transfer, $request->user()->can('materials.valuation.view'))->respond($request);
+    }
+
     private function input(Request $request): array
     {
         abort_unless($request->user()->can('materials.transfer.request'), 403);

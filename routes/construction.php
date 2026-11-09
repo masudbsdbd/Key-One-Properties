@@ -49,6 +49,7 @@ Route::prefix('construction')->name('construction.')->group(function () {
 Route::prefix('labour')->name('labour.')->controller(LabourController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::post('{entry}/approve', 'approve')->name('approve');

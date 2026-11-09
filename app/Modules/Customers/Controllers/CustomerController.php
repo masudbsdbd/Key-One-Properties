@@ -8,13 +8,16 @@ use App\Models\User;
 use App\Modules\Customers\Requests\CustomerRequest;
 use App\Modules\Customers\Services\CustomerService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\Phone;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
+use Symfony\Component\HttpFoundation\Response;
 
 class CustomerController extends Controller
 {
@@ -28,6 +31,24 @@ class CustomerController extends Controller
     }
 
     public function table(Request $request): JsonResponse
+    {
+        $query = $this->listing($request);
+        $customers = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('customers._rows', ['customers' => $customers])->render(), $customers);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('customers.export'), 403);
+
+        return Report::make('Customers')->meta(['Status' => Customer::STATUSES[(string) $request->input('status')] ?? null, 'Source' => Customer::SOURCES[(string) $request->input('source')] ?? null])
+            ->columns(['Code' => 'text', 'Name' => 'text', 'Mobile' => 'text', 'Email' => 'text', 'Source' => 'text', 'Status' => 'text', 'Created' => 'date'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (Customer $c) => [$c->customer_code, $c->full_name, Phone::display($c->primary_mobile), $c->email, Customer::SOURCES[$c->source] ?? null, Customer::STATUSES[$c->status], $c->created_at]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
     {
         Gate::authorize('viewAny', Customer::class);
         $user = $request->user();
@@ -53,13 +74,11 @@ class CustomerController extends Controller
             $request->merge(['search' => Phone::normalize($term)]);
         }
 
-        $customers = TableQuery::apply($query, $request, ['full_name', 'customer_code', 'primary_mobile', 'alternate_mobile', 'email'], [
+        return TableQuery::prepare($query, $request, ['full_name', 'customer_code', 'primary_mobile', 'alternate_mobile', 'email'], [
             'name' => 'full_name',
             'code' => 'customer_code',
             'created' => 'created_at',
         ], 'created', 'desc');
-
-        return Ajax::table(view('customers._rows', ['customers' => $customers])->render(), $customers);
     }
 
     public function create(): JsonResponse

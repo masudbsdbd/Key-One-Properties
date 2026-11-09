@@ -8,14 +8,18 @@ use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Documents;
+use App\Support\Export\Report;
 use App\Support\Money;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class SupplierPaymentController extends Controller
@@ -31,9 +35,40 @@ class SupplierPaymentController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $supplier = Supplier::findByPublicId($request->input('supplier'));
+        $payments = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('purchasing.payments._rows', ['payments' => $payments, 'showSupplier' => ! $supplier])->render(), $payments);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('purchases.export'), 403);
+
+        return Report::make('Supplier Payments')->meta(['Status' => SupplierPayment::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name])
+            ->columns(['Payment No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Method' => 'text', 'Reference' => 'text', 'Amount' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (SupplierPayment $p) => [$p->payment_no, $p->payment_date, $p->supplier->name, SupplierPayment::METHODS[$p->payment_method], $p->payment_reference, $p->amount, SupplierPayment::STATUSES[$p->status]]))
+            ->respond($request);
+    }
+
+    public function document(Request $request, SupplierPayment $payment): Response
+    {
+        $this->authorizeView($request, $payment);
+
+        return Documents::supplierPayment($payment)->respond($request);
+    }
+
+    private function authorizeView(Request $request, SupplierPayment $payment, ?string $permission = null): void
+    {
+        abort_unless($request->user()->can('purchases.view') && (! $permission || $request->user()->can($permission)) && $payment->isVisibleTo($request->user()), 403);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('purchases.view'), 403);
 
-        $query = SupplierPayment::query()->with('supplier:id,public_id,name');
+        $query = SupplierPayment::query()->visibleTo($request->user())->with('supplier:id,public_id,name');
         if (array_key_exists($status = (string) $request->input('status'), SupplierPayment::STATUSES)) {
             $query->where('status', $status);
         }
@@ -41,9 +76,7 @@ class SupplierPaymentController extends Controller
             $query->where('supplier_id', $supplier->id);
         }
 
-        $payments = TableQuery::apply($query, $request, ['payment_no', 'payment_reference'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
-
-        return Ajax::table(view('purchasing.payments._rows', ['payments' => $payments, 'showSupplier' => ! $supplier])->render(), $payments);
+        return TableQuery::prepare($query, $request, ['payment_no', 'payment_reference'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
     }
 
     public function create(Request $request): JsonResponse
@@ -61,7 +94,7 @@ class SupplierPaymentController extends Controller
         abort_unless($request->user()->can('purchases.payment.create'), 403);
         $supplier = Supplier::findByPublicId($request->input('supplier')) ?? abort(404);
 
-        $bills = SupplierBill::query()->whereBelongsTo($supplier)->where('status', 'approved')->with('allocations.payment')->orderBy('due_date')->orderBy('invoice_date')->get()
+        $bills = SupplierBill::query()->visibleTo($request->user())->whereBelongsTo($supplier)->where('status', 'approved')->with('allocations.payment')->orderBy('due_date')->orderBy('invoice_date')->get()
             ->filter(fn (SupplierBill $b) => Money::isPositive($b->outstanding()));
 
         return Ajax::success(null, ['html' => view('purchasing.payments._allocatable', ['bills' => $bills, 'balance' => $supplier->balance()])->render()]);
@@ -88,7 +121,7 @@ class SupplierPaymentController extends Controller
         $supplier = Supplier::findByPublicId($data['supplier']) ?? throw ValidationException::withMessages(['supplier' => 'Select a supplier.']);
 
         $wanted = collect($data['allocations'] ?? [])->filter(fn ($v) => $v !== null && Money::isPositive((string) $v));
-        $bills = SupplierBill::query()->whereBelongsTo($supplier)->whereIn('public_id', $wanted->keys())->pluck('id', 'public_id');
+        $bills = SupplierBill::query()->visibleTo($request->user())->whereBelongsTo($supplier)->whereIn('public_id', $wanted->keys())->pluck('id', 'public_id');
         if ($bills->count() !== $wanted->count()) {
             throw ValidationException::withMessages(['allocations' => 'Some bills could not be found for this supplier.']);
         }
@@ -106,7 +139,7 @@ class SupplierPaymentController extends Controller
 
     public function show(Request $request, SupplierPayment $payment): View
     {
-        abort_unless($request->user()->can('purchases.view'), 403);
+        $this->authorizeView($request, $payment);
         $payment->load(['supplier', 'allocations.bill', 'creator']);
 
         return view('purchasing.payments.show', ['payment' => $payment]);
@@ -114,7 +147,7 @@ class SupplierPaymentController extends Controller
 
     public function approve(Request $request, SupplierPayment $payment): JsonResponse
     {
-        abort_unless($request->user()->can('purchases.payment.approve'), 403);
+        $this->authorizeView($request, $payment, 'purchases.payment.approve');
         try {
             $this->service->approvePayment($payment, $request->user());
         } catch (ValidationException $e) {
@@ -126,7 +159,7 @@ class SupplierPaymentController extends Controller
 
     public function reasonForm(Request $request, SupplierPayment $payment, string $action): JsonResponse
     {
-        abort_unless($request->user()->can('purchases.payment.approve'), 403);
+        $this->authorizeView($request, $payment, 'purchases.payment.approve');
 
         return Ajax::success(null, ['title' => Str::headline($action).' '.$payment->payment_no, 'html' => view('partials.reason-form', [
             'action' => route('supplier-payments.'.$action, $payment), 'button' => Str::headline($action), 'reload' => true,
@@ -135,7 +168,7 @@ class SupplierPaymentController extends Controller
 
     public function reject(Request $request, SupplierPayment $payment): JsonResponse
     {
-        abort_unless($request->user()->can('purchases.payment.approve'), 403);
+        $this->authorizeView($request, $payment, 'purchases.payment.approve');
         $this->service->rejectPayment($payment, $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'], $request->user());
 
         return Ajax::success('Payment rejected.');
@@ -143,7 +176,7 @@ class SupplierPaymentController extends Controller
 
     public function reverse(Request $request, SupplierPayment $payment): JsonResponse
     {
-        abort_unless($request->user()->can('purchases.payment.approve'), 403);
+        $this->authorizeView($request, $payment, 'purchases.payment.approve');
         $this->service->reversePayment($payment, $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'], $request->user());
 
         return Ajax::success('Payment reversed.');

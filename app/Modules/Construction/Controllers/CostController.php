@@ -7,10 +7,14 @@ use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Support\Ajax;
 use App\Support\Costing\CostAttribution;
+use App\Support\Export\Report;
+use App\Support\Format;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class CostController extends Controller
 {
@@ -26,25 +30,19 @@ class CostController extends Controller
         ])->render()]);
     }
 
-    public function export(Project $project): StreamedResponse
+    public function export(Request $request, Project $project): Response
     {
         Gate::authorize('construction:cost-export', $project);
+        $totals = CostAttribution::totals($project);
 
-        return response()->streamDownload(function () use ($project) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Category', 'Source', 'Amount', 'Reversal']);
-            $project->costAllocations()->orderBy('effective_at')->orderBy('id')->chunk(500, function ($rows) use ($out) {
-                foreach ($rows as $row) {
-                    fputcsv($out, [
-                        $row->effective_at->toDateString(),
-                        ProjectCostAllocation::CATEGORIES[$row->cost_category] ?? $row->cost_category,
-                        Str::headline(class_basename($row->source_type)),
-                        $row->amount,
-                        $row->reversal_of_id ? 'Yes' : 'No',
-                    ]);
-                }
-            });
-            fclose($out);
-        }, Str::slug($project->code.'-cost').'.csv', ['Content-Type' => 'text/csv']);
+        return Report::make('Project Cost')
+            ->meta(['Project' => $project->name.' ('.$project->code.')'] + collect($totals)->mapWithKeys(fn ($v, $k) => [ProjectCostAllocation::CATEGORIES[$k] => Format::money($v)])->all())
+            ->columns(['Date' => 'date', 'Category' => 'text', 'Source' => 'text', 'Reversal' => 'text', 'Amount' => 'money'])
+            ->rows(fn () => $project->costAllocations()->orderBy('effective_at')->orderBy('id')->lazy()->map(fn ($row) => [
+                $row->effective_at, ProjectCostAllocation::CATEGORIES[$row->cost_category] ?? $row->cost_category,
+                Str::headline(class_basename($row->source_type)), $row->reversal_of_id ? 'Yes' : '', $row->amount,
+            ]))
+            ->totals([null, null, null, null, Money::add('0', ...array_values($totals))])
+            ->respond($request);
     }
 }

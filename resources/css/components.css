@@ -73,6 +73,7 @@
     .data-table tbody td { @apply px-4 py-2.5 border-b border-line text-ink-700 align-middle; }
     .data-table tbody tr:last-child td { @apply border-b-0; }
     .data-table tbody tr:hover td { @apply bg-surface-muted; }
+    .data-table tfoot td { @apply px-4 py-2.5 border-t border-line text-ink-900 align-middle; }
     .sort-button { @apply inline-flex items-center gap-1 hover:text-ink-900; }
 
     /* Skeleton */
@@ -105,6 +106,14 @@
     .tone-info { @apply bg-info-50 text-info-600; }
     .tone-warning { @apply bg-warning-50 text-warning-600; }
     .tone-danger { @apply bg-danger-50 text-danger-600; }
+
+    /* Table / Cards switch */
+    .view-switch { @apply inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-ink-600 transition-colors hover:text-ink-900; }
+    .view-switch.is-active { @apply bg-sidebar text-white hover:text-white; }
+
+    /* Unit cards */
+    .unit-card { @apply relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-md; }
+    .unit-stat { @apply flex items-center gap-3 rounded-card px-4 py-3; }
 
     /* Tabs */
     .tab {

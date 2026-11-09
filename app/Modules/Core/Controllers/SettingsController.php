@@ -3,6 +3,7 @@
 namespace App\Modules\Core\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Investors\Services\ProfitPolicy;
 use App\Support\Ajax;
 use App\Support\Branding;
 use App\Support\Settings;
@@ -12,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -69,6 +71,29 @@ class SettingsController extends Controller
         }
 
         return Ajax::success('Branding saved.', ['redirect' => route('settings.edit')]);
+    }
+
+    public function updateProfitPolicy(Request $request, Settings $settings): JsonResponse
+    {
+        Gate::authorize('settings.manage');
+        $data = $request->validate([
+            'revenue_recognition' => ['nullable', Rule::in(array_keys(ProfitPolicy::RECOGNITION))],
+            'cost_policy' => ['nullable', Rule::in(array_keys(ProfitPolicy::COST_POLICIES))],
+        ]);
+        $before = $settings->all();
+        $values = ['investors.revenue_recognition' => $data['revenue_recognition'] ?? null, 'investors.cost_policy' => $data['cost_policy'] ?? null];
+        $changed = collect($values)->filter(fn ($v, $k) => ($before[$k] ?? null) !== $v);
+        $settings->put($values);
+        if ($changed->isNotEmpty()) {
+            activity('settings')->event('profit_policy_updated')->causedBy($request->user())
+                ->withProperties([
+                    'name' => 'Investor profit policy',
+                    'old' => $changed->keys()->mapWithKeys(fn ($k) => [Str::after($k, 'investors.') => $before[$k] ?? null])->all(),
+                    'attributes' => $changed->mapWithKeys(fn ($v, $k) => [Str::after($k, 'investors.') => $v])->all(),
+                ])->log('profit_policy_updated');
+        }
+
+        return Ajax::success('Profit policy saved.');
     }
 
     private function store(UploadedFile $file, ?string $previous): string

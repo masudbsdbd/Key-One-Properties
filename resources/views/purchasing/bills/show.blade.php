@@ -11,6 +11,7 @@
 <x-layouts.app :title="$bill->bill_no">
     <x-page-header :title="$bill->bill_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Supplier Bills' => route('supplier-bills.index'), $bill->bill_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('supplier-bills.document', $bill)" />
             @if ($bill->status === 'draft')
                 @can('purchases.bill.approve')<x-button icon="check" data-action="post" data-url="{{ route('supplier-bills.approve', $bill) }}" data-reload data-confirm="Approve {{ $bill->bill_no }}?" data-confirm-message="{{ App\Support\Format::money($bill->total_amount) }} will be added to {{ $bill->supplier->name }}'s payable." data-confirm-text="Approve" data-tone="primary">Approve</x-button>@endcan
                 @can('purchases.bill.manage')<x-button variant="ghost" icon="trash" data-action="post" data-url="{{ route('supplier-bills.cancel', $bill) }}" data-reload data-confirm="Discard draft {{ $bill->bill_no }}?" data-confirm-text="Discard" aria-label="Discard draft" />@endcan
@@ -25,7 +26,7 @@
     </x-page-header>
 
     <div class="grid gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-4">
                     <div class="sm:col-span-2"><p class="detail-label">Supplier</p><a href="{{ route('suppliers.show', $bill->supplier) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $bill->supplier->name }}</a><p class="text-[13px] text-ink-500">{{ $bill->supplier_invoice_no ? 'Invoice '.$bill->supplier_invoice_no : $bill->supplier->supplier_code }}</p></div>

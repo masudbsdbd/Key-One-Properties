@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
             SuperAdminSeeder::class,
+            ExpenseCategorySeeder::class,
         ]);
 
         if (app()->environment('local')) {

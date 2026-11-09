@@ -30,7 +30,7 @@
 
     <x-card title="Cost Entries" :padded="false">
         @can('construction:cost-export', $project)
-            <x-slot:actions><x-button size="sm" variant="secondary" icon="download" href="{{ route('construction.cost.export', $project) }}">CSV</x-button></x-slot:actions>
+            <x-slot:actions><x-export-menu :url="route('construction.cost.export', $project)" :table="false" /></x-slot:actions>
         @endcan
         @if ($rows->isEmpty())
             <x-empty-state icon="bar-chart" title="No cost posted yet" />

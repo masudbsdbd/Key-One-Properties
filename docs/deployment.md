@@ -38,6 +38,7 @@
    php artisan migrate --force
    php artisan db:seed --class=RolesAndPermissionsSeeder --force
    php artisan db:seed --class=SuperAdminSeeder --force
+   php artisan db:seed --class=ExpenseCategorySeeder --force
    php artisan storage:link
    php artisan optimize
    ```
@@ -55,7 +56,11 @@ One entry runs the scheduler, which also processes the database queue:
 
 Scheduled jobs: nightly database backup (02:30), weekly activity log clean-up
 (older than 365 days), daily expired password-reset clean-up, failed-job pruning,
-queue worker every minute.
+queue worker every minute, nightly reconciliation of stock, supplier and contractor ledgers
+and project cost (03:10, output in `storage/logs/reconcile.log`).
+
+Run `php artisan keyone:reconcile` after any data import or restore; it exits non-zero when a
+ledger or project cost does not match its source documents.
 
 ## Updating
 
@@ -65,7 +70,9 @@ git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
+php artisan db:seed --class=RolesAndPermissionsSeeder --force
 php artisan optimize
+php artisan keyone:reconcile
 php artisan up
 ```
 

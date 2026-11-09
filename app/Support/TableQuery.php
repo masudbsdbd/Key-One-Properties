@@ -26,6 +26,18 @@ class TableQuery
         ?string $defaultSort = null,
         string $defaultDir = 'asc',
     ): LengthAwarePaginator {
+        return self::paginate(self::prepare($query, $request, $searchColumns, $sorts, $defaultSort, $defaultDir), $request);
+    }
+
+    /** Search and sort without paginating; shared by lists and their exports. */
+    public static function prepare(
+        Builder $query,
+        Request $request,
+        array $searchColumns = [],
+        array $sorts = [],
+        ?string $defaultSort = null,
+        string $defaultDir = 'asc',
+    ): Builder {
         $term = trim((string) $request->input('search', ''));
 
         if ($term !== '' && $searchColumns) {
@@ -54,6 +66,11 @@ class TableQuery
 
         $query->orderBy($query->getModel()->getQualifiedKeyName(), 'desc');
 
+        return $query;
+    }
+
+    public static function paginate(Builder $query, Request $request): LengthAwarePaginator
+    {
         $perPage = min(max((int) $request->input('per_page', self::PER_PAGE), 5), 100);
 
         return $query->paginate($perPage)->withQueryString();

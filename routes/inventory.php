@@ -39,6 +39,7 @@ Route::prefix('warehouses')->name('warehouses.')->controller(WarehouseController
 Route::prefix('stock')->name('stock.')->controller(StockController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'exportBalances')->name('export');
     Route::get('receive', 'receiveForm')->name('receive.form');
     Route::post('receive', 'receive')->name('receive');
     Route::get('issue', 'issueForm')->name('issue.form');
@@ -66,6 +67,7 @@ Route::prefix('borrows')->name('borrows.')->controller(BorrowController::class)-
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{borrow}', 'show')->name('show');
+    Route::get('{borrow}/document', 'document')->name('document');
     Route::get('{borrow}/approve', 'approveForm')->name('approve.form');
     Route::post('{borrow}/approve', 'approve')->name('approve');
     Route::post('{borrow}/issue', 'issue')->name('issue');
@@ -83,6 +85,7 @@ Route::prefix('transfers')->name('transfers.')->controller(TransferController::c
     Route::post('preview', 'preview')->name('preview');
     Route::post('/', 'store')->name('store');
     Route::get('{transfer}', 'show')->name('show');
+    Route::get('{transfer}/document', 'document')->name('document');
     Route::post('{transfer}/approve', 'approve')->name('approve');
     Route::post('{transfer}/post', 'post')->name('post');
     Route::get('{transfer}/action/{action}', 'reasonForm')->whereIn('action', ['reject', 'cancel', 'reverse'])->name('reason');

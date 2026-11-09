@@ -15,6 +15,7 @@ Route::prefix('projects')->name('projects.')->group(function () {
     Route::controller(ProjectController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('table', 'table')->name('table');
+        Route::get('export', 'export')->name('export');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::post('{project}/restore', 'restore')->name('restore');

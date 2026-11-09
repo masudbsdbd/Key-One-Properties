@@ -1,5 +1,5 @@
 @php($scope = $project ? 'p' : 'all')
-<x-data-table :url="route('flats.table', $project ? ['project' => $project->public_id] : [])" sort="flat_no" search="Search unit number" :columns="array_values(array_filter([
+<x-data-table :url="route('flats.table', $project ? ['project' => $project->public_id] : [])" sort="flat_no" search="Search unit number" view-key="flats.view" :view="App\Support\Preferences::get(auth()->user(), 'flats.view')" :columns="array_values(array_filter([
     ['label' => 'Unit', 'sort' => 'flat_no'],
     $project ? null : ['label' => 'Project'],
     ['label' => 'Building / Floor', 'sort' => 'floor'],
@@ -34,14 +34,16 @@
             </select>
         </div>
     </x-slot:filters>
-    @if ($project)
-        <x-slot:toolbar>
+    <x-slot:stats><div class="h-[74px] animate-pulse rounded-card bg-surface-muted"></div></x-slot:stats>
+    <x-slot:toolbar>
+        @can('flats.export')<x-export-menu :url="route('flats.export', $project ? ['project' => $project->public_id] : [])" />@endcan
+        @if ($project)
             @can('bulkCreateIn', [App\Models\Flat::class, $project])
                 <x-button size="sm" variant="secondary" icon="layers" data-remote-modal="{{ route('projects.flats.bulk', $project) }}" data-size="max-w-5xl">Bulk Create</x-button>
             @endcan
             @can('createIn', [App\Models\Flat::class, $project])
                 <x-button size="sm" icon="plus" data-remote-modal="{{ route('flats.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">New Unit</x-button>
             @endcan
-        </x-slot:toolbar>
-    @endif
+        @endif
+    </x-slot:toolbar>
 </x-data-table>

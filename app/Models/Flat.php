@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -79,6 +80,31 @@ class Flat extends Model
         return $this->hasMany(FlatPriceHistory::class)->latest('effective_at')->latest('id');
     }
 
+    public function claim(): HasOne
+    {
+        return $this->hasOne(ActiveFlatClaim::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(FlatBooking::class);
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(FlatSale::class);
+    }
+
+    public function priceRevisions(): HasMany
+    {
+        return $this->hasMany(FlatPriceRevision::class);
+    }
+
+    public function investorAgreements(): HasMany
+    {
+        return $this->hasMany(InvestorFlatAgreement::class);
+    }
+
     public function statusHistory(): HasMany
     {
         return $this->hasMany(FlatStatusHistory::class)->latest('changed_at')->latest('id');
@@ -92,6 +118,11 @@ class Flat extends Model
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         return $query->whereHas('project', fn (Builder $q) => $q->visibleTo($user));
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        return $this->project !== null && $this->project->isVisibleTo($user);
     }
 
     public function isLockedBySales(): bool

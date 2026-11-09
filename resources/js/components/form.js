@@ -80,7 +80,9 @@ export function initAjaxForms(root = document) {
         const form = this;
         if (form.dataset.pending === 'true') return;
 
-        const submit = form.querySelector('[type="submit"]');
+        const submitter = event.originalEvent?.submitter;
+        const submit = submitter?.type === 'submit' ? submitter : form.querySelector('[type="submit"]');
+        const data = submitter?.name ? new FormData(form, submitter) : new FormData(form);
         form.dataset.pending = 'true';
         setPending(submit, true);
         clearErrors(form);
@@ -89,7 +91,7 @@ export function initAjaxForms(root = document) {
             const body = await http.request({
                 method: 'POST',
                 url: form.action,
-                data: new FormData(form),
+                data,
                 silent: form.dataset.silent === 'true',
             });
             if (body.message && !form.hasAttribute('data-no-toast')) toast.success(body.message);

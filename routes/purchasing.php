@@ -11,6 +11,7 @@ Route::get('options/suppliers', [SupplierController::class, 'options'])->middlew
 Route::prefix('suppliers')->name('suppliers.')->controller(SupplierController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{supplier}', 'show')->name('show');
@@ -24,9 +25,13 @@ Route::prefix('suppliers')->name('suppliers.')->controller(SupplierController::c
 Route::prefix('purchase-orders')->name('purchase-orders.')->controller(PurchaseOrderController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{order}', 'show')->name('show');
+    Route::get('{order}/document', 'document')->name('document');
+    Route::get('{order}/receipts/{receipt}/document', 'receiptDocument')->name('receipt.document');
+    Route::get('{order}/returns/{purchaseReturn}/document', 'returnDocument')->name('return.document');
     Route::get('{order}/edit', 'edit')->name('edit');
     Route::put('{order}', 'update')->name('update');
     Route::post('{order}/submit', 'submit')->name('submit');
@@ -44,10 +49,12 @@ Route::prefix('purchase-orders')->name('purchase-orders.')->controller(PurchaseO
 Route::prefix('supplier-bills')->name('supplier-bills.')->controller(SupplierBillController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::get('billable', 'billable')->name('billable');
     Route::post('/', 'store')->name('store');
     Route::get('{bill}', 'show')->name('show');
+    Route::get('{bill}/document', 'document')->name('document');
     Route::post('{bill}/approve', 'approve')->name('approve');
     Route::post('{bill}/cancel', 'cancel')->name('cancel');
     Route::get('{bill}/reverse', 'reverseForm')->name('reverse.form');
@@ -57,10 +64,12 @@ Route::prefix('supplier-bills')->name('supplier-bills.')->controller(SupplierBil
 Route::prefix('supplier-payments')->name('supplier-payments.')->controller(SupplierPaymentController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::get('allocatable', 'allocatable')->name('allocatable');
     Route::post('/', 'store')->name('store');
     Route::get('{payment}', 'show')->name('show');
+    Route::get('{payment}/document', 'document')->name('document');
     Route::post('{payment}/approve', 'approve')->name('approve');
     Route::get('{payment}/action/{action}', 'reasonForm')->whereIn('action', ['reject', 'reverse'])->name('reason');
     Route::post('{payment}/reject', 'reject')->name('reject');

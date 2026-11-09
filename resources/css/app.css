@@ -59,7 +59,10 @@
     [data-view-toggle],
     [data-line-add],
     [data-line-remove],
-    [data-allocate-full] {
+    [data-allocate-full],
+    [data-plan-preview],
+    [data-plan-add-line],
+    [data-table-view] {
         cursor: pointer;
     }
 

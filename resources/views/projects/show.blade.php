@@ -1,3 +1,16 @@
+@php
+    $user = auth()->user();
+    $tabs = array_filter([
+        'overview' => 'Overview', 'stages' => 'Stages & Progress',
+        'buildings' => Route::has('projects.buildings.index') ? 'Buildings' : null, 'flats' => Route::has('projects.buildings.index') ? 'Units' : null,
+        'construction' => Gate::allows('construction:cost-view', $project) ? 'Cost' : null,
+        'materials' => $user->can('materials.view') ? 'Materials' : null,
+        'purchases' => $user->can('purchases.view') ? 'Purchases' : null,
+        'contractors' => $user->can('contractors.view') ? 'Contractors' : null,
+        'expenses' => $user->can('expenses.view.project') ? 'Expenses' : null,
+        'gallery' => 'Gallery', 'team' => 'Team', 'activity' => 'Activity',
+    ]);
+@endphp
 <x-layouts.app :title="$project->name">
     <x-page-header :title="$project->name" :breadcrumbs="['Dashboard' => route('dashboard'), 'Projects' => route('projects.index'), $project->name => null]">
         <x-slot:actions>
@@ -18,8 +31,7 @@
     </div>
 
     <div class="mb-6 mt-8 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
-        @foreach (['overview' => 'Overview', 'stages' => 'Stages & Progress', 'buildings' => 'Buildings', 'flats' => 'Units', 'gallery' => 'Gallery', 'team' => 'Team', 'activity' => 'Activity'] as $key => $label)
-            @continue(in_array($key, ['buildings', 'flats']) && ! Route::has('projects.buildings.index'))
+        @foreach ($tabs as $key => $label)
             <button type="button" role="tab" class="tab" id="tab-{{ $key }}" data-tab="{{ $key }}" aria-controls="panel-{{ $key }}">{{ $label }}</button>
         @endforeach
     </div>
@@ -112,6 +124,52 @@
             </div>
         </x-card>
     </section>
+
+    @isset($tabs['construction'])
+        <section id="panel-construction" role="tabpanel" aria-labelledby="tab-construction" hidden>
+            <div data-partial-url="{{ route('construction.cost', $project) }}" data-lazy><div class="card p-5"><div class="skeleton h-24 w-full"></div></div></div>
+        </section>
+    @endisset
+    @isset($tabs['materials'])
+        <section id="panel-materials" role="tabpanel" aria-labelledby="tab-materials" hidden>
+            <x-data-table :url="route('stock.table', ['project' => $project->public_id])" sort="owned" dir="desc" search="Search material" :columns="array_values(array_filter([
+                ['label' => 'Material'], ['label' => 'Warehouse'], ['label' => 'Owned', 'sort' => 'owned', 'class' => 'text-right'],
+                ['label' => 'Borrowed In', 'class' => 'text-right'], ['label' => 'Lent Out', 'class' => 'text-right'], ['label' => 'Physical', 'class' => 'text-right'],
+                $user->can('materials.valuation.view') ? ['label' => 'Avg Cost', 'class' => 'text-right'] : null,
+                $user->can('materials.valuation.view') ? ['label' => 'Value', 'sort' => 'value', 'class' => 'text-right'] : null,
+            ]))" />
+        </section>
+    @endisset
+    @isset($tabs['purchases'])
+        <section id="panel-purchases" role="tabpanel" aria-labelledby="tab-purchases" hidden>
+            <x-data-table :url="route('purchase-orders.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search PO number" :columns="[
+                ['label' => 'Order', 'sort' => 'date'], ['label' => 'Supplier'], ['label' => 'Warehouse'], ['label' => 'Total', 'class' => 'text-right', 'sort' => 'total'], ['label' => 'Received'], ['label' => 'Status'],
+            ]">
+                <x-slot:toolbar>@can('purchases.create')<x-button icon="plus" data-remote-modal="{{ route('purchase-orders.create') }}" data-size="max-w-5xl">Purchase Order</x-button>@endcan</x-slot:toolbar>
+            </x-data-table>
+        </section>
+    @endisset
+    @isset($tabs['contractors'])
+        <section id="panel-contractors" role="tabpanel" aria-labelledby="tab-contractors" hidden>
+            <x-data-table :url="route('work-orders.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search work order" :columns="[
+                ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Progress'], ['label' => 'Status'],
+            ]">
+                <x-slot:toolbar>@can('contractors.workorder.create')<x-button icon="plus" data-remote-modal="{{ route('work-orders.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Work Order</x-button>@endcan</x-slot:toolbar>
+            </x-data-table>
+        </section>
+    @endisset
+    @isset($tabs['expenses'])
+        <section id="panel-expenses" role="tabpanel" aria-labelledby="tab-expenses" hidden>
+            <x-data-table :url="route('expenses.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search number, description or payee" :columns="[
+                ['label' => 'Expense', 'sort' => 'date'], ['label' => 'Category'], ['label' => 'Scope'], ['label' => 'Payee'], ['label' => 'Amount', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Status'],
+            ]">
+                <x-slot:filters>
+                    <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\Expense::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
+                </x-slot:filters>
+                <x-slot:toolbar>@can('expenses.create.project')<x-button icon="plus" data-remote-modal="{{ route('expenses.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Expense</x-button>@endcan</x-slot:toolbar>
+            </x-data-table>
+        </section>
+    @endisset
 
     <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
         <x-card title="Activity" :padded="false">

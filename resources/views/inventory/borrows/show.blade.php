@@ -16,6 +16,7 @@
 <x-layouts.app :title="$borrow->borrow_no">
     <x-page-header :title="$borrow->borrow_no" :breadcrumbs="['Dashboard' => route('dashboard'), 'Borrows' => route('borrows.index'), $borrow->borrow_no => null]">
         <x-slot:actions>
+            <x-document-menu :url="route('borrows.document', $borrow)" />
             @if ($borrow->status === 'submitted' && $can('approve'))
                 <x-button icon="check" data-remote-modal="{{ route('borrows.approve.form', $borrow) }}" data-size="max-w-2xl">Approve</x-button>
                 <x-button variant="ghost" data-remote-modal="{{ route('borrows.reason', [$borrow, 'reject']) }}" data-size="max-w-md">Reject</x-button>
@@ -34,7 +35,7 @@
     </x-page-header>
 
     <div class="grid gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
             <x-card>
                 <div class="grid gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
                     <div><p class="detail-label">From</p><p class="detail-value font-semibold">{{ $borrow->sourceProject->name }}</p><p class="text-[13px] text-ink-500">{{ $borrow->sourceWarehouse->name }} · owner</p></div>

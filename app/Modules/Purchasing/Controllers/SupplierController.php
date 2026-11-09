@@ -9,17 +9,19 @@ use App\Models\SupplierBill;
 use App\Models\SupplierLedgerEntry;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
+use App\Support\Format;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class SupplierController extends Controller
 {
@@ -34,6 +36,25 @@ class SupplierController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $suppliers = TableQuery::paginate($query, $request);
+
+        return Ajax::table(view('purchasing.suppliers._rows', ['suppliers' => $suppliers])->render(), $suppliers);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('purchases.export'), 403);
+
+        return Report::make('Suppliers')->meta(['Status' => Supplier::STATUSES[(string) $request->input('status')] ?? null])
+            ->columns(['Code' => 'text', 'Name' => 'text', 'Contact' => 'text', 'Mobile' => 'text', 'TIN / BIN' => 'text', 'Payable' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (Supplier $s) => [$s->supplier_code, $s->name, $s->contact_person, $s->mobile ? Phone::display($s->mobile) : null, $s->tax_id,
+                Money::sub((string) ($s->charges ?? '0'), (string) ($s->payments ?? '0')), Supplier::STATUSES[$s->status]]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('suppliers.view'), 403);
 
         $query = Supplier::query()
@@ -43,9 +64,7 @@ class SupplierController extends Controller
             $query->where('status', $status);
         }
 
-        $suppliers = TableQuery::apply($query, $request, ['name', 'supplier_code', 'contact_person', 'mobile'], ['name' => 'name', 'code' => 'supplier_code'], 'name');
-
-        return Ajax::table(view('purchasing.suppliers._rows', ['suppliers' => $suppliers])->render(), $suppliers);
+        return TableQuery::prepare($query, $request, ['name', 'supplier_code', 'contact_person', 'mobile'], ['name' => 'name', 'code' => 'supplier_code'], 'name');
     }
 
     public function create(Request $request): JsonResponse
@@ -119,18 +138,16 @@ class SupplierController extends Controller
             new LengthAwarePaginator($rows, $total, 50, $page));
     }
 
-    public function exportLedger(Request $request, Supplier $supplier): StreamedResponse
+    public function exportLedger(Request $request, Supplier $supplier): Response
     {
         abort_unless($request->user()->can('suppliers.ledger.export'), 403);
 
-        return response()->streamDownload(function () use ($supplier) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Type', 'Description', 'Charge', 'Payment', 'Balance']);
-            foreach ($this->statement($supplier)->cursor() as $row) {
-                fputcsv($out, [$row->entry_date->toDateString(), SupplierLedgerEntry::TYPES[$row->entry_type] ?? $row->entry_type, $row->description, $row->charge_amount, $row->payment_amount, $row->running_balance]);
-            }
-            fclose($out);
-        }, Str::slug($supplier->supplier_code.'-ledger').'.csv', ['Content-Type' => 'text/csv']);
+        return Report::make('Supplier Statement')
+            ->meta(['Supplier' => $supplier->name.' ('.$supplier->supplier_code.')', 'Payable' => Format::money($supplier->balance())])
+            ->columns(['Date' => 'date', 'Type' => 'text', 'Description' => 'text', 'Charge' => 'money', 'Payment' => 'money', 'Balance' => 'money'])
+            ->rows(fn () => $this->statement($supplier)->lazy()->map(fn ($r) => [$r->entry_date, SupplierLedgerEntry::TYPES[$r->entry_type] ?? $r->entry_type, $r->description,
+                (float) $r->charge_amount ? $r->charge_amount : null, (float) $r->payment_amount ? $r->payment_amount : null, $r->running_balance]))
+            ->respond($request);
     }
 
     public function activity(Request $request, Supplier $supplier): JsonResponse

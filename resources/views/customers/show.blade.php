@@ -1,6 +1,7 @@
 <x-layouts.app :title="$customer->full_name">
     <x-page-header :title="$customer->full_name" :breadcrumbs="['Dashboard' => route('dashboard'), 'Customers' => route('customers.index'), $customer->customer_code => null]">
         <x-slot:actions>
+            @if (Route::has('customers.statement'))@can('collections.payment.view')<x-button variant="secondary" icon="file" href="{{ route('customers.statement', $customer) }}">Statement</x-button>@endcan @endif
             @can('update', $customer)
                 <x-button icon="edit" data-remote-modal="{{ route('customers.edit', $customer) }}" data-size="max-w-3xl">Edit</x-button>
             @endcan

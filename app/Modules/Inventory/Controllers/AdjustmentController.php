@@ -51,6 +51,7 @@ class AdjustmentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->can('materials.adjust.request'), 403);
         $data = $request->validate([
             'warehouse' => ['required', 'string', 'size:16'],
             'reason' => ['required', 'string', 'max:255'],
