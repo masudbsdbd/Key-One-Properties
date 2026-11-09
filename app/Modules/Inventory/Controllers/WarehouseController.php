@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\Warehouse;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class WarehouseController extends Controller
 {
@@ -20,6 +22,20 @@ class WarehouseController extends Controller
         abort_unless($request->user()->can('materials.view'), 403);
 
         return view('inventory.warehouses.index');
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('materials.export'), 403);
+        $value = $request->user()->can('materials.valuation.view');
+        $query = Warehouse::query()->visibleTo($request->user())->with('project:id,name,code')
+            ->withCount(['balances as items_count' => fn ($q) => $q->where(fn ($x) => $x->where('owned_qty', '>', 0)->orWhere('borrowed_in_qty', '>', 0))])
+            ->withSum('balances as stock_value', 'owned_value')->orderBy('name');
+
+        return Report::make('Warehouses')->sumMoney()
+            ->columns(['Code' => 'text', 'Name' => 'text', 'Project' => 'text', 'Items' => 'number'] + ($value ? ['Stock Value' => 'money'] : []))
+            ->rows(fn () => $query->lazy()->map(fn (Warehouse $w) => [$w->code, $w->name, $w->project?->name ?? 'Company', $w->items_count, ...($value ? [(string) ($w->stock_value ?? 0)] : [])]))
+            ->respond($request);
     }
 
     public function table(Request $request): JsonResponse

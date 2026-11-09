@@ -17,6 +17,7 @@ Route::middleware('throttle:120,1')->group(function () {
 Route::prefix('materials')->name('materials.')->controller(MaterialController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('catalog', 'catalog')->name('catalog');
     Route::post('categories', 'storeCategory')->name('categories.store');
     Route::post('units', 'storeUnit')->name('units.store');
@@ -30,6 +31,7 @@ Route::prefix('materials')->name('materials.')->controller(MaterialController::c
 Route::prefix('warehouses')->name('warehouses.')->controller(WarehouseController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{warehouse}/edit', 'edit')->name('edit');
@@ -54,6 +56,7 @@ Route::prefix('stock')->name('stock.')->controller(StockController::class)->grou
 Route::prefix('adjustments')->name('adjustments.')->controller(AdjustmentController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::post('{adjustment}/approve', 'approve')->name('approve');
@@ -64,6 +67,7 @@ Route::prefix('adjustments')->name('adjustments.')->controller(AdjustmentControl
 Route::prefix('borrows')->name('borrows.')->controller(BorrowController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
     Route::get('{borrow}', 'show')->name('show');
@@ -81,6 +85,7 @@ Route::prefix('borrows')->name('borrows.')->controller(BorrowController::class)-
 Route::prefix('transfers')->name('transfers.')->controller(TransferController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('preview', 'preview')->name('preview');
     Route::post('/', 'store')->name('store');

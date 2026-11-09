@@ -10,6 +10,7 @@ use App\Modules\Construction\Services\ConstructionService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -36,17 +37,32 @@ class LabourController extends Controller
         $project = Project::findByPublicId($request->input('project'));
         $entries = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('construction.labour._rows', ['entries' => $entries, 'showProject' => ! $project])->render(), $entries);
+        return Ajax::table(view('construction.labour._rows', ['entries' => $entries, 'showProject' => ! $project])->render(), $entries, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('construction.cost.export'), 403);
 
-        return Report::make('Labour')->meta(['Project' => Project::findByPublicId($request->input('project'))?->name, 'Status' => LabourEntry::STATUSES[(string) $request->input('status')] ?? null])
+        return Report::make('Labour')->sumMoney()->meta(['Period' => TableQuery::periodLabel($request), 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Status' => LabourEntry::STATUSES[(string) $request->input('status')] ?? null])
             ->columns(['Entry No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Type' => 'text', 'Headcount' => 'number', 'Units' => 'qty', 'Rate' => 'money', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (LabourEntry $e) => [$e->entry_no, $e->work_date, $e->project->code, LabourEntry::TYPES[$e->labour_type] ?? $e->labour_type, $e->headcount, $e->units, $e->rate, $e->total_amount, LabourEntry::STATUSES[$e->status]]))
             ->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'cost' => "SUM(CASE WHEN labour_entries.status = 'approved' THEN labour_entries.total_amount ELSE 0 END)",
+            'days' => "SUM(CASE WHEN labour_entries.status = 'approved' THEN labour_entries.headcount ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN labour_entries.status = 'submitted' THEN labour_entries.total_amount ELSE 0 END)",
+            'pending_n' => "SUM(CASE WHEN labour_entries.status = 'submitted' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Labour Cost', $row->cost, 'users', 'info', ['status' => 'approved'])
+            ->count('Worker-Days', $row->days, 'calendar', 'violet')
+            ->money('Awaiting Approval', $row->pending, 'alert', 'accent', ['status' => 'submitted'], ListSummary::many($row->pending_n, 'entry'));
     }
 
     private function listing(Request $request): Builder
@@ -65,6 +81,8 @@ class LabourController extends Controller
         if (array_key_exists($type = (string) $request->input('labour_type'), LabourEntry::TYPES)) {
             $query->where('labour_type', $type);
         }
+
+        TableQuery::period($query, $request, 'work_date');
 
         return TableQuery::prepare($query, $request, ['entry_no', 'notes'], ['date' => 'work_date', 'amount' => 'total_amount'], 'date', 'desc');
     }

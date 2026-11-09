@@ -7,7 +7,7 @@
         @endcan
     </x-page-header>
 
-    <x-data-table :url="route('projects.table')" sort="name" search="Search name, code or location" data-view="table" data-project-table :columns="[
+    <x-data-table summary :url="route('projects.table')" sort="name" search="Search name, code or location" data-view="table" data-project-table :columns="[
         ['label' => 'Project', 'sort' => 'name'],
         ['label' => 'Location'],
         ['label' => 'Status'],

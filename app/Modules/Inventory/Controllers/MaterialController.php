@@ -8,11 +8,13 @@ use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
 use App\Models\StockMovement;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class MaterialController extends Controller
 {
@@ -23,6 +25,23 @@ class MaterialController extends Controller
         return view('inventory.materials.index', [
             'categories' => MaterialCategory::query()->orderBy('name')->pluck('name', 'public_id'),
         ]);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('materials.export'), 403);
+        $query = Material::query()->with(['category:id,name', 'unit:id,code'])->withSum('balances as owned_total', 'owned_qty')->orderBy('name');
+        if ($category = MaterialCategory::findByPublicId($request->input('category'))) {
+            $query->where('category_id', $category->id);
+        }
+        if (in_array($request->input('active'), ['0', '1'], true)) {
+            $query->where('is_active', $request->input('active') === '1');
+        }
+
+        return Report::make('Materials')->meta(['Category' => $category?->name])
+            ->columns(['SKU' => 'text', 'Name' => 'text', 'Category' => 'text', 'Unit' => 'text', 'In Stock' => 'qty', 'Active' => 'text'])
+            ->rows(fn () => $query->lazy()->map(fn (Material $m) => [$m->sku, $m->name, $m->category?->name, $m->unit?->code, $m->owned_total ?? 0, $m->is_active ? 'Yes' : 'No']))
+            ->respond($request);
     }
 
     public function table(Request $request): JsonResponse

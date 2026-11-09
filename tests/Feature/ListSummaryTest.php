@@ -72,8 +72,18 @@ class ListSummaryTest extends TestCase
         $this->assertContains('Total', $last);
         $this->assertContains(Money::amount((string) FlatSale::query()->sum('net_contract_value')), $last);
 
-        foreach (['cancellations.export', 'late-fees.export'] as $route) {
+        foreach (['cancellations.export', 'late-fees.export', 'construction.export', 'borrows.export', 'transfers.export', 'adjustments.export', 'materials.export', 'warehouses.export'] as $route) {
             $this->actingAs($this->admin)->get(route($route, ['format' => 'csv']))->assertOk();
+        }
+    }
+
+    public function test_every_list_with_tiles_renders_them(): void
+    {
+        foreach (['sales.table', 'bookings.table', 'refunds.table', 'cancellations.table', 'customer-payments.table', 'installment-plans.table', 'dues.table', 'late-fees.assessments',
+            'suppliers.table', 'purchase-orders.table', 'supplier-bills.table', 'supplier-payments.table', 'contractors.table', 'work-orders.table', 'contractor-bills.table', 'contractor-payments.table',
+            'investors.table', 'investor-agreements.table', 'investor-capital.table', 'profit-calculations.table', 'distributions.table',
+            'projects.table', 'customers.table', 'expenses.table', 'labour.table', 'construction.table', 'stock.movements.table', 'borrows.table', 'transfers.table', 'adjustments.table'] as $route) {
+            $this->assertStringContainsString('summary-tile', $this->stats($route), $route);
         }
     }
 }

@@ -10,14 +10,3 @@
 @empty
     <tr><td colspan="6"><x-empty-state icon="note" title="No expenses" /></td></tr>
 @endforelse
-@if ($expenses->total())
-    <tr class="bg-surface-muted text-sm">
-        <td colspan="6" class="px-5 py-3">
-            <div class="flex flex-wrap justify-end gap-x-8 gap-y-1">
-                <span class="text-ink-500">Pending <x-money :value="$totals->pending_total" class="ml-1 font-medium text-ink-900" /></span>
-                <span class="text-ink-500">Approved <x-money :value="$totals->approved_total" class="ml-1 font-medium text-ink-900" /></span>
-                <span class="text-ink-500">Paid <x-money :value="$totals->paid_total" class="ml-1 font-semibold text-ink-900" /></span>
-            </div>
-        </td>
-    </tr>
-@endif

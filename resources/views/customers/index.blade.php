@@ -7,7 +7,7 @@
         @endcan
     </x-page-header>
 
-    <x-data-table :url="route('customers.table')" sort="created" dir="desc" search="Search name, mobile, email or code" :columns="[
+    <x-data-table summary :url="route('customers.table')" sort="created" dir="desc" search="Search name, mobile, email or code" :columns="[
         ['label' => 'Customer', 'sort' => 'name'],
         ['label' => 'Mobile'],
         ['label' => 'Email'],
@@ -39,6 +39,7 @@
                     <option value="1">Archived</option>
                 </select>
             @endcan
+            <input type="hidden" name="dues" data-table-filter>
         </x-slot:filters>
         <x-slot:toolbar>@can('customers.export')<x-export-menu :url="route('customers.export')" />@endcan</x-slot:toolbar>
     </x-data-table>

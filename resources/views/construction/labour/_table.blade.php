@@ -1,4 +1,4 @@
-<x-data-table :url="route('labour.table', $project ? ['project' => $project->public_id] : [])" sort="date" dir="desc" search="Search entry number or notes" :columns="array_values(array_filter([
+<x-data-table summary :url="route('labour.table', $project ? ['project' => $project->public_id] : [])" sort="date" dir="desc" search="Search entry number or notes" :columns="array_values(array_filter([
     ['label' => 'Entry'],
     $project ? null : ['label' => 'Project'],
     ['label' => 'Date', 'sort' => 'date'],
@@ -22,6 +22,7 @@
                 @foreach (App\Models\LabourEntry::TYPES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
             </select>
         </div>
+        <x-period />
     </x-slot:filters>
     <x-slot:toolbar>
         @can('construction.cost.export')<x-export-menu :url="route('labour.export', $project ? ['project' => $project->public_id] : [])" />@endcan
