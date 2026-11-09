@@ -56,7 +56,14 @@
         <x-card title="Budget">
             <dl class="space-y-4">
                 <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Estimated</dt><dd class="font-semibold tabular-nums text-ink-900">{{ App\Support\Format::money($project->estimated_budget) }}</dd></div>
-                <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Actual cost</dt><dd><x-badge>Phase 2</x-badge></dd></div>
+                @can('construction:cost-view', $project)
+                    @php $actual = App\Support\Money::amount(App\Support\Money::add('0', ...array_values(App\Support\Costing\CostAttribution::totals($project)))); @endphp
+                    <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Actual cost</dt><dd><a href="{{ route('construction.cost', $project) }}" class="font-semibold tabular-nums text-ink-900 hover:text-accent-700">{{ App\Support\Format::money($actual) }}</a></dd></div>
+                    @if ($project->estimated_budget !== null)
+                        @php $variance = App\Support\Money::amount(App\Support\Money::sub((string) $project->estimated_budget, $actual)); $over = App\Support\Money::isPositive(App\Support\Money::sub($actual, (string) $project->estimated_budget)); @endphp
+                        <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Remaining</dt><dd @class(['font-medium tabular-nums', 'text-danger-600' => $over, 'text-ink-900' => ! $over])>{{ App\Support\Format::money($variance) }}</dd></div>
+                    @endif
+                @endcan
             </dl>
         </x-card>
     </section>

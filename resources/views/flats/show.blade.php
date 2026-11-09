@@ -23,7 +23,7 @@
     </div>
 
     <div class="mt-6 grid gap-6 xl:grid-cols-3">
-        <x-card title="Details" class="xl:col-span-2">
+        <x-card title="Details" @class(['xl:col-span-2' => $sales, 'xl:col-span-3' => ! $sales])>
             <dl class="grid gap-5 sm:grid-cols-3">
                 <div><dt class="detail-label">Project</dt><dd class="detail-value"><a href="{{ route('projects.show', $flat->project) }}" class="text-accent-700 hover:underline">{{ $flat->project->name }}</a></dd></div>
                 <div><dt class="detail-label">Building</dt><dd class="detail-value">{{ $flat->building->name }} ({{ $flat->building->code }})</dd></div>
@@ -38,9 +38,9 @@
                 @endif
             </dl>
         </x-card>
-        <x-card title="Sales">
-            <x-empty-state icon="calendar" title="Coming in Phase 3" class="py-6" />
-        </x-card>
+        @if ($sales)
+            @include('flats._sales')
+        @endif
     </div>
 
     <div class="mt-6 grid gap-6 xl:grid-cols-2">

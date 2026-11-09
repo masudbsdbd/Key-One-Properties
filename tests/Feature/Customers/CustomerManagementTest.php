@@ -168,12 +168,17 @@ class CustomerManagementTest extends TestCase
         $this->assertSoftDeleted($note);
     }
 
-    public function test_future_modules_show_honest_placeholders(): void
+    public function test_sales_and_payment_tabs_follow_permissions(): void
     {
         $user = $this->sales();
         $customer = Customer::factory()->create(['created_by' => $user->id]);
 
-        $this->actingAs($user)->get(route('customers.show', $customer))->assertOk()->assertSee('Coming in Phase 3');
+        $this->actingAs($user)->get(route('customers.show', $customer))->assertOk()
+            ->assertDontSee('Coming in Phase')->assertDontSee('id="tab-sales"', false)->assertDontSee('id="tab-payments"', false);
+
+        $user->givePermissionTo(['sales.sale.view', 'collections.payment.view']);
+        $this->actingAs($user->fresh())->get(route('customers.show', $customer))->assertOk()
+            ->assertSee('id="tab-sales"', false)->assertSee('id="tab-payments"', false);
     }
 
     public function test_archive_and_restore(): void

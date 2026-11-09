@@ -3,6 +3,7 @@
 namespace App\Modules\Collections\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\FlatBooking;
 use App\Models\FlatSale;
@@ -168,6 +169,9 @@ class CustomerPaymentController extends Controller
         }
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
+        }
+        if ($customer = Customer::findByPublicId($request->input('customer'))) {
+            $query->where('customer_id', $customer->id);
         }
 
         return TableQuery::prepare($query, $request, ['payment_no', 'reference_no', 'customer.full_name'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');

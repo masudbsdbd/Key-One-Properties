@@ -5,10 +5,14 @@ namespace App\Modules\Flats\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Flat;
+use App\Models\FlatBooking;
+use App\Models\FlatSale;
 use App\Models\Floor;
 use App\Models\Project;
+use App\Models\User;
 use App\Modules\Flats\Requests\FlatRequest;
 use App\Modules\Flats\Services\FlatService;
+use App\Modules\Portal\Services\CustomerPortal;
 use App\Modules\Sales\Services\PriceRevisionService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
@@ -128,7 +132,7 @@ class FlatController extends Controller
         $activity = Activity::query()->where('subject_type', $flat->getMorphClass())->where('subject_id', $flat->id)
             ->with('causer')->latest()->latest('id')->limit(50)->get();
 
-        return view('flats.show', ['flat' => $flat, 'activity' => $activity]);
+        return view('flats.show', ['flat' => $flat, 'activity' => $activity, 'sales' => $this->salesSummary($flat, auth()->user())]);
     }
 
     public function history(Request $request, Flat $flat): JsonResponse
@@ -208,5 +212,26 @@ class FlatController extends Controller
         $this->service->changeStatus($flat, $data['status'], $data['reason'] ?? null, $request->user());
 
         return Ajax::success('Status updated.');
+    }
+
+    /** Current sale or booking of the unit with its collection position, plus earlier deals; null without sales access. */
+    private function salesSummary(Flat $flat, User $user): ?array
+    {
+        $canSales = $user->can('sales.sale.view');
+        $canBookings = $user->can('sales.booking.view');
+        if (! $canSales && ! $canBookings) {
+            return null;
+        }
+        $sales = $canSales ? FlatSale::query()->where('flat_id', $flat->id)->with('customer:id,public_id,full_name,customer_code')->latest('id')->get() : collect();
+        $bookings = $canBookings ? FlatBooking::query()->where('flat_id', $flat->id)->with('customer:id,public_id,full_name,customer_code')->latest('id')->get() : collect();
+        $current = $sales->first(fn ($s) => ! in_array($s->status, ['cancelled', 'rejected'], true))
+            ?? $bookings->first(fn ($b) => ! in_array($b->status, ['cancelled', 'rejected', 'converted_to_sale'], true));
+        $live = $current instanceof FlatSale ? in_array($current->status, FlatSale::ACTIVE, true) : $current?->status === 'confirmed';
+
+        return [
+            'current' => $current,
+            'position' => $live && $user->can('collections.payment.view') ? (new CustomerPortal($current->customer))->position($current) : null,
+            'history' => $sales->concat($bookings)->reject(fn ($r) => $r === $current)->sortByDesc('created_at')->take(5)->values(),
+        ];
     }
 }
