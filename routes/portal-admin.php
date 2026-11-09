@@ -12,7 +12,7 @@ Route::prefix('portal-access')->name('portal-access.')->controller(PortalAccessC
     Route::post('{type}/links/{link}/revoke', 'revoke')->whereIn('type', ['investor', 'customer'])->name('links.revoke');
     Route::get('{type}/links/{link}/password', 'passwordForm')->whereIn('type', ['investor', 'customer'])->name('links.password.form');
     Route::put('{type}/links/{link}/password', 'password')->whereIn('type', ['investor', 'customer'])->name('links.password');
-    Route::get('grants/{link}/create', 'grantForm')->name('grants.create');
-    Route::post('grants/{link}', 'grant')->name('grants.store');
+    Route::get('{type}/links/{link}/grants/create', 'grantForm')->whereIn('type', ['investor', 'customer'])->name('grants.create');
+    Route::post('{type}/links/{link}/grants', 'grant')->whereIn('type', ['investor', 'customer'])->name('grants.store');
     Route::delete('grants/{grant}', 'revokeGrant')->name('grants.revoke');
 });

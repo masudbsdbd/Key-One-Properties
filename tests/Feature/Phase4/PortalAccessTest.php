@@ -164,10 +164,10 @@ class PortalAccessTest extends TestCase
         $this->assertStringContainsString('rahim@example.com', $html);
         $this->assertStringContainsString('Active', $html);
 
-        $this->actingAs($this->admin)->ajax()->get(route('portal-access.grants.create', $link->public_id))->assertOk()->assertSee('project:'.$flat->project->public_id);
-        $this->actingAs($this->admin)->ajax()->post(route('portal-access.grants.store', $link->public_id), ['resource' => 'project:'.$flat->project->public_id, 'capability' => 'investor.portal.project.financials.view'])->assertOk();
+        $this->actingAs($this->admin)->ajax()->get(route('portal-access.grants.create', ['investor', $link->public_id]))->assertOk()->assertSee('project:'.$flat->project->public_id);
+        $this->actingAs($this->admin)->ajax()->post(route('portal-access.grants.store', ['investor', $link->public_id]), ['resource' => 'project:'.$flat->project->public_id, 'capability' => 'investor.portal.project.financials.view'])->assertOk();
         $grant = PortalAccessGrant::query()->firstOrFail();
-        $this->actingAs($this->admin)->ajax()->post(route('portal-access.grants.store', $link->public_id), ['resource' => 'project:'.$flat->project->public_id, 'capability' => 'admin.everything'])->assertStatus(422);
+        $this->actingAs($this->admin)->ajax()->post(route('portal-access.grants.store', ['investor', $link->public_id]), ['resource' => 'project:'.$flat->project->public_id, 'capability' => 'admin.everything'])->assertStatus(422);
         $this->actingAs($this->admin)->ajax()->delete(route('portal-access.grants.revoke', $grant))->assertOk();
         $this->assertNotNull($grant->fresh()->revoked_at);
 

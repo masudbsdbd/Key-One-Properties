@@ -137,6 +137,9 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
   Implementation decisions live in `docs/decisions/phase-2.md`, `phase-3.md` and `phase-4.md`.
 - Current phase: Phase 4 (Investor Portal, Customer Portal, Dashboard & Reports). Phase 3 is complete.
 - Portals live at `/investor` and `/customer`; internal pages keep their paths (the admin panel is not on `/admin`).
+- Portal visibility (client, 2026-11-09): the company decides what each investor or customer sees. Project
+  financials, cost categories and customer project progress are off by default and opened by an admin per
+  account and project/unit (grants) or for everyone through the Investor/Customer role. Exports stay CSV.
 - Phase 3 policies (client, 2026-11-09): revenue recognised after sale approval when an admin approves the
   profit calculation; loss gives investors zero; refunds have no deduction by default but the approver may
   deduct a percentage; late fees default 0 and count as unit revenue; payment order oldest due first, fee

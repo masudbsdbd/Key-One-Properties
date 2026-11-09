@@ -256,6 +256,7 @@ class Permissions
                 'customer.portal.installments.view' => 'See installments',
                 'customer.portal.payments.view' => 'See payments',
                 'customer.portal.statements.download' => 'Download receipts and statements',
+                'customer.portal.project.progress.view' => 'See project progress',
             ],
         ];
     }

@@ -12,7 +12,7 @@ class ConstructionProgressUpdate extends Model
 {
     use HasAttachments, HasPublicId;
 
-    public const VISIBILITIES = ['internal' => 'Internal', 'investor' => 'Investor visible'];
+    public const VISIBILITIES = ['internal' => 'Internal', 'investor' => 'Portal visible'];
 
     public const STATUSES = ['submitted' => 'Submitted', 'approved' => 'Approved', 'rejected' => 'Rejected'];
 

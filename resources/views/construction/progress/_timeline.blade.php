@@ -12,7 +12,7 @@
                         <p class="text-[13px] text-ink-500">{{ App\Support\Format::date($update->report_date) }} · {{ $update->submitter?->name }}@if ($update->approver && $update->status !== 'submitted') · {{ $update->status === 'approved' ? 'Approved' : 'Rejected' }} by {{ $update->approver->name }}@endif</p>
                     </div>
                     <div class="flex shrink-0 flex-wrap items-center gap-2">
-                        @if ($update->visibility === 'investor')<x-badge tone="violet">{{ $update->published_at ? 'Published' : 'Investor' }}</x-badge>@endif
+                        @if ($update->visibility === 'investor')<x-badge tone="violet">{{ $update->published_at ? 'Published' : 'Portal' }}</x-badge>@endif
                         <x-badge tone="accent">{{ App\Support\Format::percent($update->previous_percent) }} → {{ App\Support\Format::percent($update->progress_percent) }}</x-badge>
                         <x-status-badge :status="$update->status" />
                     </div>

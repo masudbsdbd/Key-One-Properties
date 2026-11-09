@@ -24,12 +24,12 @@
                     @endcan
                 @endif
             </div>
-            @if ($type === 'investor' && ($userGrants->isNotEmpty() || (! $link->revoked_at && $user->can('portal.grants.manage'))))
+            @if ($userGrants->isNotEmpty() || (! $link->revoked_at && $user->can('portal.grants.manage')))
                 <div class="mt-3 rounded-card border border-line bg-surface-muted">
                     <div class="flex items-center justify-between gap-3 px-4 py-2.5">
                         <p class="text-sm font-medium text-ink-900">Grants</p>
                         @if (! $link->revoked_at)
-                            @can('portal.grants.manage')<x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('portal-access.grants.create', $link->public_id) }}" data-size="max-w-lg" :disabled="! $link->verified_at" data-disabled-reason="Verify the account first">Add Grant</x-button>@endcan
+                            @can('portal.grants.manage')<x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('portal-access.grants.create', [$type, $link->public_id]) }}" data-size="max-w-lg" :disabled="! $link->verified_at" data-disabled-reason="Verify the account first">Add Grant</x-button>@endcan
                         @endif
                     </div>
                     @foreach ($userGrants as $g)

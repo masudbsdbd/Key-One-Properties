@@ -5,6 +5,8 @@ namespace App\Modules\Portal\Services;
 use App\Models\Customer;
 use App\Models\CustomerUserLink;
 use App\Models\Flat;
+use App\Models\FlatBooking;
+use App\Models\FlatSale;
 use App\Models\Investor;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorUserLink;
@@ -31,7 +33,14 @@ class PortalAccess
         'investor.portal.cost.labour.view' => 'Labour cost',
         'investor.portal.cost.contractor.view' => 'Contractor cost',
         'investor.portal.cost.expense.view' => 'Project expenses',
+        'customer.portal.project.progress.view' => 'Project progress',
     ];
+
+    /** Capabilities an admin may grant to each kind of portal account. */
+    public static function grantable(string $portal): array
+    {
+        return array_filter(self::GRANTABLE, fn ($label, $key) => str_starts_with($key, $portal.'.portal.'), ARRAY_FILTER_USE_BOTH);
+    }
 
     public static function investorFor(?User $user): ?Investor
     {
@@ -72,6 +81,32 @@ class PortalAccess
     public static function investorProjectIds(Investor $investor): Collection
     {
         return InvestorFlatAgreement::query()->where('investor_id', $investor->id)->whereIn('status', ['active', 'closed'])->distinct()->pluck('project_id');
+    }
+
+    /** Units the customer holds through a current sale or a confirmed booking. */
+    public static function customerFlatIds(Customer $customer): Collection
+    {
+        return FlatSale::query()->where('customer_id', $customer->id)->whereIn('status', FlatSale::ACTIVE)->pluck('flat_id')
+            ->merge(FlatBooking::query()->where('customer_id', $customer->id)->where('status', 'confirmed')->pluck('flat_id'))->unique()->values();
+    }
+
+    public static function customerProjectIds(Customer $customer): Collection
+    {
+        return Flat::query()->whereIn('id', self::customerFlatIds($customer))->distinct()->pluck('project_id');
+    }
+
+    /** Projects whose progress the customer may see: by role, or by a grant on the project or one of their units in it. */
+    public static function customerProgressProjectIds(User $user, Customer $customer): Collection
+    {
+        $projects = self::customerProjectIds($customer);
+        if ($user->can('customer.portal.project.progress.view')) {
+            return $projects;
+        }
+        $flats = Flat::query()->whereIn('id', self::customerFlatIds($customer))->get(['id', 'project_id']);
+        $grants = PortalAccessGrant::query()->current()->where('user_id', $user->id)->where('capability', 'customer.portal.project.progress.view')->get(['resource_type', 'resource_id']);
+
+        return $projects->filter(fn ($projectId) => $grants->contains(fn ($g) => ($g->resource_type === 'project' && $g->resource_id === $projectId)
+            || ($g->resource_type === 'flat' && $flats->where('project_id', $projectId)->contains('id', $g->resource_id))))->values();
     }
 
     public static function allows(User $user, string $capability, ?Model $resource = null): bool
