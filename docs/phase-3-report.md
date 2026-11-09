@@ -45,24 +45,22 @@ supersede (`CostAllocationTest`), policy gate, payable change on recalculation, 
 stale calculation, missing permission, distributions, reconciliation and portal scoping (`ProfitTest`),
 project visibility on every screen (`*HttpTest`).
 
-## Policy decisions still open (blueprint §11)
+## Policy decisions (blueprint §11)
 
-Profit approval stays blocked until the first two are set in **Settings → Investor Profit Policy**.
+Answered by the client on 2026-11-09:
 
-1. **Revenue recognition** — when does a unit's profit become distributable: sale approved, registration
-   completed, handover completed, or fully collected?
-2. **Cost policy** — confirm that unit-tagged expenses are direct and all other project cost is shared by
-   saleable area. Also: what happens to approved runs when units are added or areas revised (today: the
-   run turns stale and a new run is needed).
-3. **Loss treatment** — built: investors get zero, they are not charged. Confirm.
-4. **Cancellation / refund** — built: booking money is refundable up to what was paid, no automatic
-   deduction; the unit is released when the cancellation is approved. Confirm deductions, if any.
-5. **Late fee** — built per customer policy; late fees are not unit revenue. Confirm the default policy.
-6. **Payment order** — built: oldest due first, fee before principal, then future items, rest as advance.
-7. **Investment share changes** — built: agreements have effective dates and versions; no proration by
-   time or capital. Confirm whether new investors may join after cost or revenue milestones.
-8. **Cash / bank settlement** — methods are cash, bank transfer, cheque and mobile banking; bank
-   reconciliation comes with Phase 5.
+| Question | Decision |
+| --- | --- |
+| Revenue recognition | After sale approval, when an admin approves the profit calculation (default set by migration) |
+| Loss treatment | Investors get zero; they are not charged |
+| Cancellation / refund | No deduction by default; the approver may deduct a percentage |
+| Late fee | Default 0; posted late fees count as unit revenue |
+| Payment order | Oldest due first, fee before principal, then future items, rest as advance |
+| Investment share changes | Investors share by their percentage |
+| Payment methods | Cash, bank transfer, cheque, mobile banking |
+
+Still open: **cost policy** (unit-tagged expenses direct, other project cost shared by saleable area).
+Profit approval stays blocked until it is confirmed in Settings → Investor Profit Policy.
 
 ## Known limitations
 

@@ -12,13 +12,17 @@ use App\Models\Investor;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorPayout;
 use App\Models\InvestorProfitDistribution;
+use App\Models\LateFeeAssessment;
 use App\Models\Project;
 use App\Models\User;
+use App\Modules\Collections\Services\InstallmentService;
+use App\Modules\Collections\Services\LateFeeService;
 use App\Modules\Collections\Services\PaymentService;
 use App\Modules\Investors\Services\CostAllocationService;
 use App\Modules\Investors\Services\DistributionService;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Investors\Services\InvestorService;
+use App\Modules\Investors\Services\ProfitPolicy;
 use App\Modules\Investors\Services\ProfitService;
 use App\Modules\Sales\Services\SalesService;
 use App\Support\ApprovalQueue;
@@ -117,8 +121,9 @@ class ProfitTest extends TestCase
         // 5,000,000 − direct 100,000 − shared 1,000,000 (1000/4000 of 4,000,000) − 33.33
         $this->assertSame('3899966.67', (string) $c->net_profit_amount);
         $this->assertSame('90.0000', (string) $c->investor_share_percent);
-        $this->assertFalse($c->revenue_eligible);
-        $this->assertSame('Revenue recognition policy is not set', $this->profit->approvalBlocker($c));
+        $this->assertSame('sale_approved', app(ProfitPolicy::class)->revenueRecognition());
+        $this->assertTrue($c->revenue_eligible);
+        $this->assertSame('Cost policy is not set', $this->profit->approvalBlocker($c));
         $this->refused(fn () => $this->profit->approve($c, $this->checker), 'not set');
         $this->refused(fn () => $this->profit->calculate($this->flat, ['as_of' => now()->toDateString()], $this->maker), 'open calculation');
 
@@ -359,5 +364,27 @@ class ProfitTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/"(id|[a-z_]+_id|[a-zA-Z]+Id)"\s*:/', json_encode($iv));
         $this->assertStringNotContainsString('Investor 1', json_encode($iv));
         $this->assertDoesNotMatchRegularExpression('/"[a-zA-Z_]*[Cc]ost[a-zA-Z_]*"\s*:/', json_encode($iv));
+    }
+
+    public function test_posted_late_fees_count_as_unit_revenue(): void
+    {
+        $this->configure();
+        $plans = app(InstallmentService::class);
+        $plan = $plans->create($this->sale->fresh(), ['start_date' => now()->subMonths(3)->toDateString(), 'installment_frequency' => 'monthly', 'count' => 2, 'first_due_date' => now()->subMonths(2)->toDateString()], $this->maker);
+        $plans->submit($plan, $this->maker);
+        $plans->approve($plan, $this->checker);
+        $fees = app(LateFeeService::class);
+        $fees->savePolicy(null, $this->sale->customer, null, ['fee_type' => 'fixed', 'fee_value' => '1500', 'frequency' => 'once', 'grace_days' => 0, 'effective_from' => now()->subYear()->toDateString()], $this->checker);
+        $this->assertSame(2, $fees->assess($plan->fresh(), now()));
+        $fees->waive(LateFeeAssessment::query()->firstOrFail(), 'Goodwill', $this->checker);
+
+        $c = $this->calc();
+        $this->assertSame('1500.00', $c->basis_snapshot['late_fees']);
+        $this->assertSame('5001500.00', (string) $c->revenue_amount);
+        $this->assertSame('3901500.00', (string) $c->net_profit_amount);
+        $this->assertNull($this->profit->approvalBlocker($c));
+
+        $fees->waive(LateFeeAssessment::query()->where('status', 'posted')->firstOrFail(), 'Goodwill', $this->checker);
+        $this->assertSame('Late fees changed after this calculation; recalculate', $this->profit->approvalBlocker($c->fresh()));
     }
 }

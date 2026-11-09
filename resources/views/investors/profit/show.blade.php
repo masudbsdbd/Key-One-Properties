@@ -55,7 +55,12 @@
                 <table class="data-table">
                     <thead><tr><th>Item</th>@foreach ($categories as $label)<th class="text-right">{{ $label }}</th>@endforeach<th class="text-right">Total</th></tr></thead>
                     <tbody>
-                        <tr><td class="font-medium">Revenue · {{ $snap['sale_no'] ?? '' }}</td>@foreach ($categories as $c => $l)<td></td>@endforeach<td class="text-right font-medium"><x-money :value="$calc->revenue_amount" /></td></tr>
+                        @if (isset($snap['late_fees']))
+                            <tr><td class="font-medium">Contract · {{ $snap['sale_no'] ?? '' }}</td>@foreach ($categories as $c => $l)<td></td>@endforeach<td class="text-right font-medium"><x-money :value="$snap['contract_value']" /></td></tr>
+                            <tr><td>Late fees</td>@foreach ($categories as $c => $l)<td></td>@endforeach<td class="text-right"><x-money :value="$snap['late_fees']" :muted="(float) $snap['late_fees'] === 0.0" /></td></tr>
+                        @else
+                            <tr><td class="font-medium">Revenue · {{ $snap['sale_no'] ?? '' }}</td>@foreach ($categories as $c => $l)<td></td>@endforeach<td class="text-right font-medium"><x-money :value="$calc->revenue_amount" /></td></tr>
+                        @endif
                         @foreach (['direct' => 'Direct cost', 'shared' => 'Shared cost'] as $type => $label)
                             <tr>
                                 <td>{{ $label }}</td>

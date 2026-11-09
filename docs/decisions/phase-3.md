@@ -87,18 +87,18 @@ overdue aging; late-fee policies; reschedule comparison. Investor directory and 
 editor with a live 100% gauge; capital transactions; cost runs and worksheet; profit calculations;
 distributions and payouts; investor ledger. Every list exports CSV/PDF/print; receipts and statements print.
 
-## 6. Policy decisions — defaults until the client decides
+## 6. Policy decisions (client answers of 2026-11-09)
 
 | Question (blueprint §11) | Default built | Where to change |
 | --- | --- | --- |
-| Revenue recognition / profit eligibility | **Not configured: profit calculations are provisional and approval is blocked.** Options offered: sale approved, registered, handed over, fully collected | Settings → Sales (`sales.revenue_recognition`) |
-| Loss treatment | Loss gives zero distributable profit; investors are not charged | — |
-| Cost pool | All project-level Phase 2 cost is shared by saleable area across all flats with area > 0; costs tagged with a flat are direct | Per run (area snapshot) |
-| Cancellation / refund | Cancellation needs approval; the flat is released when the cancellation is approved; refund is a separate request with its own approval and payment, amount up to what the customer paid | — |
-| Late fee | None unless a policy exists for the customer. Percent is applied to the unpaid principal of the overdue item; grace days; once or per month; late fees are not flat revenue | Customer late-fee policy |
-| Payment application order | Oldest due date first; within an item, fee before principal; then future items; any rest is unapplied advance | — |
-| Investment share changes | Agreements have effective dates; a calculation uses agreements active on its date; no time or capital proration | — |
-| Payment methods | Cash, bank transfer, cheque, mobile banking (same as Phase 2) | — |
+| Revenue recognition / profit eligibility | **Decided:** after the sale is approved, when an admin approves the calculation (`sale_approved`, set by migration) | Settings → Investor Profit Policy |
+| Loss treatment | **Decided (keep):** loss gives zero distributable profit; investors are not charged | — |
+| Cost pool | **Waiting for client confirmation.** All project-level Phase 2 cost is shared by saleable area across all flats with area > 0; costs tagged with a flat are direct | Per run (area snapshot) |
+| Cancellation / refund | Cancellation needs approval; the flat is released when the cancellation is approved; refund is a separate request with its own approval and payment, amount up to what the customer paid. **Decided:** no deduction by default; the approver may deduct a percentage | Refund approval |
+| Late fee | None unless a policy exists for the customer. Percent is applied to the unpaid principal of the overdue item; grace days; once or per month. **Decided:** default 0; posted (not waived) late fees count as unit revenue in flat profit | Customer late-fee policy |
+| Payment application order | Oldest due date first; within an item, fee before principal; then future items; any rest is unapplied advance. **Decided (keep)** | — |
+| Investment share changes | Agreements have effective dates; a calculation uses agreements active on its date; no time or capital proration. **Decided:** investors share by their percentage only | — |
+| Payment methods | **Decided (keep):** cash, bank transfer, cheque, mobile banking | — |
 
 ## 7. Investor agreements and capital (P5)
 
