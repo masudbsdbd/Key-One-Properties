@@ -12,6 +12,7 @@ import { initSelects } from './components/select';
 import { initAjaxForms } from './components/form';
 import { initAjaxTables } from './components/table';
 import { initShell } from './components/shell';
+import { initPageProgress } from './components/progress';
 import { initTabs } from './components/tabs';
 import { initAuthPages } from './pages/auth';
 import { initProfilePage } from './pages/profile';
@@ -36,6 +37,7 @@ import { initReportPages } from './pages/reports';
 window.App = { http, toast, modal, confirm: confirmDialog, initSelects, openRemoteModal, reloadPartials };
 
 $(() => {
+    initPageProgress();
     initShell();
     initTabs(document);
     initSelects(document);

@@ -24,6 +24,7 @@
     @stack('head')
 </head>
 <body class="min-h-screen">
+    <div class="page-progress is-loading" data-page-progress aria-hidden="true"></div>
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] btn btn-secondary">Skip to content</a>
 
     {{-- Sidebar --}}

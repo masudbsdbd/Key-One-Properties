@@ -53,6 +53,18 @@
     .form-error { @apply mt-1.5 text-[13px] text-danger-600; }
     .form-check { @apply h-4 w-4 rounded border-line-strong; accent-color: var(--color-accent-600); }
 
+    /* Page progress bar */
+    .page-progress {
+        @apply pointer-events-none fixed left-0 top-0 z-[200] h-[3px] w-0 rounded-r-full opacity-100;
+        background: linear-gradient(90deg, var(--color-accent-500), var(--color-accent-300));
+        box-shadow: 0 0 8px color-mix(in oklab, var(--color-accent-500) 60%, transparent);
+        transition: width 250ms ease, opacity 300ms ease 150ms;
+    }
+    .page-progress.is-loading { animation: page-progress-load 2.5s cubic-bezier(0.1, 0.6, 0.3, 1) forwards; }
+    .page-progress.is-done { opacity: 0; }
+    @keyframes page-progress-load { from { width: 0; } to { width: 60%; } }
+    @media (prefers-reduced-motion: reduce) { .page-progress, .page-progress.is-loading { transition: none; animation: none; } }
+
     /* Badges */
     .badge { @apply inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-medium whitespace-nowrap; }
     .ref-link { @apply rounded-sm underline decoration-ink-300 decoration-dotted underline-offset-4 transition-colors hover:text-accent-700 hover:decoration-solid hover:decoration-accent-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500; }
