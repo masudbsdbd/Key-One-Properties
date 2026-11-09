@@ -18,7 +18,7 @@ class CustomerRefund extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'decimal:2', 'approved_at' => 'datetime', 'paid_on' => 'date', 'paid_at' => 'datetime', 'reversed_at' => 'datetime'];
+        return ['amount' => 'decimal:2', 'deduction_percent' => 'decimal:4', 'deduction_amount' => 'decimal:2', 'net_amount' => 'decimal:2', 'approved_at' => 'datetime', 'paid_on' => 'date', 'paid_at' => 'datetime', 'reversed_at' => 'datetime'];
     }
 
     public function customer(): BelongsTo
@@ -49,5 +49,11 @@ class CustomerRefund extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /** Amount the customer receives: the request less the approved deduction. */
+    public function payable(): string
+    {
+        return (string) ($this->net_amount ?? $this->amount);
     }
 }

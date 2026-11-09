@@ -72,6 +72,7 @@ Route::prefix('refunds')->name('refunds.')->controller(RefundController::class)-
     Route::post('/', 'store')->name('store');
     Route::get('{refund}', 'show')->name('show');
     Route::post('{refund}/approve', 'approve')->name('approve');
+    Route::get('{refund}/approve', 'approveForm')->name('approve.form');
     Route::get('{refund}/action/{action}', 'reasonForm')->whereIn('action', ['reject', 'reverse'])->name('reason');
     Route::post('{refund}/reject', 'reject')->name('reject');
     Route::get('{refund}/pay', 'payForm')->name('pay.form');
