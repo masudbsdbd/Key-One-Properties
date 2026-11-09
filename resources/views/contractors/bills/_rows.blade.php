@@ -2,7 +2,7 @@
     @php($outstanding = in_array($bill->status, ['approved', 'paid'], true) ? App\Support\Money::sub((string) $bill->net_payable, (string) ($bill->paid ?? '0')) : null)
     <tr>
         <td class="whitespace-nowrap"><a href="{{ route('contractor-bills.show', $bill) }}" class="font-medium text-ink-900 hover:text-accent-700">{{ $bill->bill_no }}</a><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($bill->bill_date) }}@if ($bill->kind === 'retention_release') · Retention release @endif</p></td>
-        @if ($showContractor)<td class="text-ink-700">{{ $bill->contractor->name }}</td>@endif
+        @if ($showContractor)<td class="text-ink-700"><x-ref :to="$bill->contractor">{{ $bill->contractor->name }}</x-ref></td>@endif
         @if ($showOrder)<td class="text-ink-700"><a href="{{ route('work-orders.show', $bill->workOrder) }}" class="hover:text-accent-700">{{ $bill->workOrder->wo_no }}</a><span class="block max-w-48 truncate text-[13px] text-ink-400">{{ $bill->workOrder->title }}</span></td>@endif
         <td class="text-right"><x-money :value="$bill->gross_amount" /></td>
         <td class="text-right font-medium"><x-money :value="$bill->net_payable" /></td>

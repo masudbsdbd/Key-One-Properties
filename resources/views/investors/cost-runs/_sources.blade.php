@@ -2,8 +2,8 @@
     <tr>
         <td class="whitespace-nowrap">{{ App\Support\Format::date($r->effective_at) }}</td>
         <td>{{ App\Models\ProjectCostAllocation::CATEGORIES[$r->cost_category] ?? $r->cost_category }}</td>
-        <td class="text-ink-700">{{ $r->sourceLabel() }}@if ($r->reversal_of_id) <x-badge tone="danger">Reversal</x-badge>@endif</td>
-        <td>{{ $r->flat ? 'Unit '.$r->flat->flat_no : 'Shared' }}</td>
+        <td class="text-ink-700"><x-ref :to="$r->source">{{ $r->sourceLabel() }}</x-ref>@if ($r->reversal_of_id) <x-badge tone="danger">Reversal</x-badge>@endif</td>
+        <td>@if ($r->flat)<x-ref :to="$r->flat">Unit {{ $r->flat->flat_no }}</x-ref>@else Shared @endif</td>
         <td class="text-right font-medium"><x-money :value="$r->amount" /></td>
     </tr>
 @empty

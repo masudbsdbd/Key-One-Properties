@@ -174,7 +174,7 @@ class RefundController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.refund.view'), 403);
-        $query = CustomerRefund::query()->visibleTo($request->user())->with(['customer:id,public_id,full_name', 'booking:id,public_id,booking_no', 'sale:id,public_id,sale_no', 'project:id,code']);
+        $query = CustomerRefund::query()->visibleTo($request->user())->with(['customer:id,public_id,full_name,created_by', 'booking:id,public_id,booking_no,project_id', 'sale:id,public_id,sale_no,project_id', 'project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), CustomerRefund::STATUSES)) {
             $query->where('status', $status);
         }

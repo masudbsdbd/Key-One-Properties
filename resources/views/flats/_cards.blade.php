@@ -7,7 +7,7 @@
         <div class="relative flex items-start justify-between gap-3">
             <div class="min-w-0">
                 <a href="{{ route('flats.show', $flat) }}" class="block text-2xl font-semibold leading-7 text-ink-900 hover:text-accent-700">{{ $flat->flat_no }}</a>
-                <p class="truncate text-sm text-ink-600">{{ $flat->project->name }}</p>
+                <p class="truncate text-sm text-ink-600"><x-ref :to="$flat->project">{{ $flat->project->name }}</x-ref></p>
             </div>
             <x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge>
         </div>

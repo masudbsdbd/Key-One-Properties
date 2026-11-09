@@ -3,8 +3,8 @@
     @php($doc = $c->booking ?? $c->sale)
     <tr>
         <td class="min-w-56"><p class="font-medium text-ink-900">{{ $c->cancellation_no }}</p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($c->requested_at) }} · {{ $c->requester->name }} · {{ $c->reason }}</p>@if ($c->rejection_reason)<p class="text-[13px] text-danger-600">{{ $c->rejection_reason }}</p>@endif</td>
-        <td><a href="{{ $c->booking ? route('bookings.show', $c->booking) : route('sales.show', $c->sale) }}" class="text-accent-700 hover:underline">{{ $doc->booking_no ?? $doc->sale_no }}</a><span class="block text-[13px] text-ink-500">Unit {{ $doc->flat->flat_no }}</span></td>
-        <td class="text-ink-700">{{ $doc->customer->full_name }}</td>
+        <td><a href="{{ $c->booking ? route('bookings.show', $c->booking) : route('sales.show', $c->sale) }}" class="text-accent-700 hover:underline">{{ $doc->booking_no ?? $doc->sale_no }}</a><span class="block text-[13px] text-ink-500"><x-ref :to="$doc->flat">Unit {{ $doc->flat->flat_no }}</x-ref></span></td>
+        <td class="text-ink-700"><x-ref :to="$doc->customer">{{ $doc->customer->full_name }}</x-ref></td>
         <td class="text-right"><x-money :value="$c->refund_expected" /></td>
         <td><x-status-badge :status="$c->status" /></td>
         <td class="whitespace-nowrap text-right">

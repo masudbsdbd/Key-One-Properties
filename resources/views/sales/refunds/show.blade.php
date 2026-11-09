@@ -37,7 +37,7 @@
                     </div>
                     <div><p class="detail-label">Against</p>
                         @if ($refund->sale)<a href="{{ route('sales.show', $refund->sale) }}" class="detail-value text-accent-700 hover:underline">{{ $refund->sale->sale_no }}</a>@elseif ($refund->booking)<a href="{{ route('bookings.show', $refund->booking) }}" class="detail-value text-accent-700 hover:underline">{{ $refund->booking->booking_no }}</a>@endif
-                        <p class="text-[13px] text-ink-500">{{ $refund->project->name }}</p>
+                        <p class="text-[13px] text-ink-500"><x-ref :to="$refund->project">{{ $refund->project->name }}</x-ref></p>
                     </div>
                     <div><p class="detail-label">Cancellation</p><p class="detail-value">{{ $refund->cancellation?->cancellation_no ?? '—' }}</p></div>
                 </div>

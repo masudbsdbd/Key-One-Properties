@@ -227,7 +227,7 @@ class AgreementController extends Controller
     {
         abort_unless($request->user()->can('investor.view'), 403);
         $query = InvestorFlatAgreement::query()->visibleTo($request->user())
-            ->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,building_id', 'flat.building:id,code', 'project:id,code']);
+            ->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,building_id,project_id', 'flat.building:id,code', 'project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), InvestorFlatAgreement::STATUSES)) {
             $query->where('status', $status);
         }

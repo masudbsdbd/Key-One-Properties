@@ -39,7 +39,7 @@ class DistributionController extends Controller
     {
         $rows = TableQuery::paginate($this->payableQuery($request), $request);
         $investors = Investor::query()->whereIn('id', $rows->pluck('investor_id'))->get()->keyBy('id');
-        $flats = Flat::query()->whereIn('id', $rows->pluck('flat_id'))->with(['project:id,code', 'building:id,code'])->get()->keyBy('id');
+        $flats = Flat::query()->whereIn('id', $rows->pluck('flat_id'))->with(['project:id,public_id,code', 'building:id,code'])->get()->keyBy('id');
         $rows->getCollection()->each(function ($r) use ($investors, $flats) {
             $r->investor = $investors[$r->investor_id];
             $r->flat = $flats[$r->flat_id];
@@ -208,7 +208,7 @@ class DistributionController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.view'), 403);
-        $query = InvestorProfitDistribution::query()->visibleTo($request->user())->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,project_id', 'flat.project:id,code']);
+        $query = InvestorProfitDistribution::query()->visibleTo($request->user())->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,project_id', 'flat.project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), InvestorProfitDistribution::STATUSES)) {
             $query->where('status', $status);
         }

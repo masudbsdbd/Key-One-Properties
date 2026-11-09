@@ -189,7 +189,7 @@ class BookingController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.booking.view'), 403);
-        $query = FlatBooking::query()->visibleTo($request->user())->with(['flat:id,public_id,flat_no,building_id', 'flat.building:id,code', 'customer:id,public_id,full_name,customer_code', 'project:id,code']);
+        $query = FlatBooking::query()->visibleTo($request->user())->with(['flat:id,public_id,flat_no,building_id,project_id', 'flat.building:id,code', 'customer:id,public_id,full_name,customer_code,created_by', 'project:id,public_id,code']);
         if (array_key_exists($status = (string) $request->input('status'), FlatBooking::STATUSES)) {
             $query->where('status', $status);
         }

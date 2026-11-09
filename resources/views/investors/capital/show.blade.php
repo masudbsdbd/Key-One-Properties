@@ -23,7 +23,7 @@
         <x-card class="min-w-0 xl:col-span-2">
             <div class="grid gap-5 sm:grid-cols-2">
                 <div><p class="detail-label">Investor</p><a href="{{ route('investors.show', $tx->investor) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $tx->investor->name }}</a><p class="text-[13px] text-ink-500">{{ $tx->investor->investor_code }}</p></div>
-                <div><p class="detail-label">Agreement</p><a href="{{ route('investor-agreements.show', $tx->agreement) }}" class="detail-value text-accent-700 hover:underline">{{ $tx->agreement->agreement_no }}</a><p class="text-[13px] text-ink-500">{{ $tx->project->code }} · {{ $tx->flat->building->code }} · Unit {{ $tx->flat->flat_no }}</p></div>
+                <div><p class="detail-label">Agreement</p><a href="{{ route('investor-agreements.show', $tx->agreement) }}" class="detail-value text-accent-700 hover:underline">{{ $tx->agreement->agreement_no }}</a><p class="text-[13px] text-ink-500"><x-ref :to="$tx->project">{{ $tx->project->code }}</x-ref> · {{ $tx->flat->building->code }} · <x-ref :to="$tx->flat">Unit {{ $tx->flat->flat_no }}</x-ref></p></div>
                 <div><p class="detail-label">Type</p><x-badge :tone="$tx->transaction_type === 'contribution' ? 'success' : 'warning'">{{ App\Models\InvestorCapitalTransaction::TYPES[$tx->transaction_type] }}</x-badge></div>
                 <div><p class="detail-label">Date</p><p class="detail-value">{{ App\Support\Format::date($tx->transaction_date) }}</p></div>
                 <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Modules\Investors\Controllers\CapitalController::METHODS[$tx->payment_method] ?? '—' }}</p></div>

@@ -2,7 +2,7 @@
     @php $due = App\Support\Money::sub((string) $r->payable, (string) $r->paid); @endphp
     <tr>
         <td><a href="{{ route('investors.show', $r->investor) }}" class="font-medium text-ink-900 hover:text-accent-700">{{ $r->investor->name }}</a><p class="text-[13px] text-ink-500">{{ $r->investor->investor_code }}</p></td>
-        <td class="text-ink-700">{{ $r->flat->project->code }} · {{ $r->flat->building->code }}<span class="block font-medium text-ink-900">Unit {{ $r->flat->flat_no }}</span></td>
+        <td class="text-ink-700"><x-ref :to="$r->flat->project">{{ $r->flat->project->code }}</x-ref> · {{ $r->flat->building->code }}<x-ref :to="$r->flat" class="block font-medium text-ink-900">Unit {{ $r->flat->flat_no }}</x-ref></td>
         <td class="text-right"><x-money :value="$r->payable" /></td>
         <td class="text-right"><x-money :value="$r->paid" muted /></td>
         <td class="text-right font-medium"><x-money :value="$due" /></td>

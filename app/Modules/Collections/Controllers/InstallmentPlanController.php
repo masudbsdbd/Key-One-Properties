@@ -201,7 +201,7 @@ class InstallmentPlanController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('collections.plan.view'), 403);
-        $query = InstallmentPlan::query()->visibleTo($request->user())->with(['sale:id,public_id,sale_no,flat_id,project_id', 'sale.flat:id,flat_no', 'sale.project:id,code', 'customer:id,public_id,full_name'])->withCount('items');
+        $query = InstallmentPlan::query()->visibleTo($request->user())->with(['sale:id,public_id,sale_no,flat_id,project_id', 'sale.flat:id,public_id,flat_no,project_id', 'sale.project:id,public_id,code', 'customer:id,public_id,full_name,created_by'])->withCount('items');
         if (array_key_exists($status = (string) $request->input('status'), InstallmentPlan::STATUSES)) {
             $query->where('status', $status);
         }

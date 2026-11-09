@@ -57,7 +57,12 @@ One entry runs the scheduler, which also processes the database queue:
 Scheduled jobs: nightly database backup (02:30), weekly activity log clean-up
 (older than 365 days), daily expired password-reset clean-up, failed-job pruning,
 queue worker every minute, nightly reconciliation of stock, supplier and contractor ledgers
-and project cost (03:10, output in `storage/logs/reconcile.log`).
+and project cost (03:10, output in `storage/logs/reconcile.log`), and deletion of expired report
+exports (04:10, `keyone:prune-report-exports`).
+
+Queued report exports (Reports → Queue) need the scheduler: the per-minute queue worker builds them.
+Without cron they stay "Queued". Files are kept for `REPORT_EXPORT_DAYS` days (default 7) under
+`storage/app/private/report-exports`, never in `public/`.
 
 Run `php artisan keyone:reconcile` after any data import or restore; it exits non-zero when a
 ledger or project cost does not match its source documents.
@@ -85,6 +90,10 @@ php artisan up
 - `TRUSTED_PROXIES` set only to real proxy addresses, otherwise client IPs can be spoofed.
 - Private uploads live in `storage/app/private` and are served only through authorised routes.
 - Backups are stored outside `public/` and copied off the server.
+- Investor and customer portals live at `/investor` and `/customer`. Portal accounts are created from the
+  investor or customer page (Portal tab), must be verified by a second user, and never reach internal pages.
+- After upgrading, give staff roles the new permissions they need (Reports, Portal Access); the seeder adds
+  them to Admin only. Investor and Customer roles are created by the seeder.
 
 ## Query review
 

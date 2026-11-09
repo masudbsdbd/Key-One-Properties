@@ -178,7 +178,7 @@ class ProfitController extends Controller
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.cost.view'), 403);
-        $query = FlatProfitCalculation::query()->visibleTo($request->user())->with(['project:id,code,name', 'flat:id,public_id,flat_no,building_id', 'flat.building:id,code']);
+        $query = FlatProfitCalculation::query()->visibleTo($request->user())->with(['project:id,public_id,code,name', 'flat:id,public_id,flat_no,building_id,project_id', 'flat.building:id,code']);
         if (array_key_exists($status = (string) $request->input('status'), FlatProfitCalculation::STATUSES)) {
             $query->where('status', $status);
         }

@@ -63,7 +63,7 @@ class ContractorPaymentController extends Controller
     {
         abort_unless($request->user()->can('contractors.view'), 403);
 
-        $query = ContractorPayment::query()->visibleTo($request->user())->with(['contractor:id,public_id,name', 'workOrder:id,public_id,wo_no', 'bill:id,public_id,bill_no']);
+        $query = ContractorPayment::query()->visibleTo($request->user())->with(['contractor:id,public_id,name', 'workOrder:id,public_id,wo_no,project_id', 'workOrder.project:id', 'bill:id,public_id,bill_no,project_id', 'bill.project:id']);
         if (array_key_exists($status = (string) $request->input('status'), ContractorPayment::STATUSES)) {
             $query->where('status', $status);
         }

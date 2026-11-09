@@ -46,7 +46,7 @@
         <x-card title="Distribution">
             <dl class="space-y-3 text-sm">
                 <div><dt class="detail-label">Investor</dt><dd><a href="{{ route('investors.show', $d->investor) }}" class="detail-value font-semibold text-ink-900 hover:text-accent-700">{{ $d->investor->name }}</a></dd></div>
-                <div><dt class="detail-label">Unit</dt><dd class="detail-value">{{ $d->flat->project->name }} · Unit {{ $d->flat->flat_no }}</dd></div>
+                <div><dt class="detail-label">Unit</dt><dd class="detail-value"><x-ref :to="$d->flat->project">{{ $d->flat->project->name }}</x-ref> · <x-ref :to="$d->flat">Unit {{ $d->flat->flat_no }}</x-ref></dd></div>
                 <div><dt class="detail-label">Status</dt><dd><x-status-badge :status="$s" :labels="App\Models\InvestorProfitDistribution::STATUSES" /></dd></div>
                 <div><dt class="detail-label">Requested</dt><dd class="detail-value">{{ $d->requester->name }} · {{ App\Support\Format::date($d->created_at) }}</dd></div>
                 <div><dt class="detail-label">Approved</dt><dd class="detail-value">{{ $d->approver && $s !== 'rejected' ? $d->approver->name.' · '.App\Support\Format::date($d->approved_at) : '—' }}</dd></div>

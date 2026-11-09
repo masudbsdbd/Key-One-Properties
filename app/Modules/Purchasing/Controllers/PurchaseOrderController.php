@@ -83,7 +83,7 @@ class PurchaseOrderController extends Controller
     {
         abort_unless($request->user()->can('purchases.view'), 403);
 
-        $query = PurchaseOrder::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'project:id,code', 'warehouse:id,code'])
+        $query = PurchaseOrder::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'project:id,public_id,code', 'warehouse:id,code'])
             ->withSum('lines as ordered_qty', 'quantity')->withSum('lines as received_qty', 'received_qty');
         if (array_key_exists($status = (string) $request->input('status'), PurchaseOrder::STATUSES)) {
             $query->where('status', $status);

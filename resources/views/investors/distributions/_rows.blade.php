@@ -1,8 +1,8 @@
 @forelse ($distributions as $d)
     <tr>
         <td class="whitespace-nowrap"><a href="{{ route('distributions.show', $d) }}" class="font-medium text-ink-900 hover:text-accent-700">{{ $d->distribution_no }}</a><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($d->created_at) }}</p></td>
-        <td class="text-ink-700">{{ $d->investor->name }}<span class="block text-[13px] text-ink-500">{{ $d->investor->investor_code }}</span></td>
-        <td class="text-ink-700">{{ $d->flat->project->code }} · Unit {{ $d->flat->flat_no }}</td>
+        <td class="text-ink-700"><x-ref :to="$d->investor">{{ $d->investor->name }}</x-ref><span class="block text-[13px] text-ink-500">{{ $d->investor->investor_code }}</span></td>
+        <td class="text-ink-700"><x-ref :to="$d->flat->project">{{ $d->flat->project->code }}</x-ref> · <x-ref :to="$d->flat">Unit {{ $d->flat->flat_no }}</x-ref></td>
         <td class="text-right font-medium"><x-money :value="$d->amount" /></td>
         <td><x-status-badge :status="$d->status" :labels="App\Models\InvestorProfitDistribution::STATUSES" /></td>
     </tr>

@@ -150,7 +150,7 @@ class CapitalController extends Controller
     {
         abort_unless($request->user()->can('investor.view'), 403);
         $query = InvestorCapitalTransaction::query()->visibleTo($request->user())
-            ->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no', 'project:id,code', 'agreement:id,public_id,agreement_no']);
+            ->with(['investor:id,public_id,name,investor_code', 'flat:id,public_id,flat_no,project_id', 'project:id,public_id,code', 'agreement:id,public_id,agreement_no']);
         foreach (['status' => InvestorCapitalTransaction::STATUSES, 'type' => InvestorCapitalTransaction::TYPES] as $key => $allowed) {
             if (array_key_exists($value = (string) $request->input($key), $allowed)) {
                 $query->where($key === 'type' ? 'transaction_type' : 'status', $value);

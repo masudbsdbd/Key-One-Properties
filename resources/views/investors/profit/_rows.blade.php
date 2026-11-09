@@ -1,7 +1,7 @@
 @forelse ($calcs as $c)
     <tr>
         <td class="whitespace-nowrap"><a href="{{ route('profit-calculations.show', $c) }}" class="font-medium text-ink-900 hover:text-accent-700">{{ $c->calculation_no }}</a><p class="text-[13px] text-ink-500">v{{ $c->version }} · {{ App\Support\Format::date($c->created_at) }}</p></td>
-        <td class="text-ink-700">{{ $c->project->code }} · {{ $c->flat->building->code }}<span class="block font-medium text-ink-900">Unit {{ $c->flat->flat_no }}</span></td>
+        <td class="text-ink-700"><x-ref :to="$c->project">{{ $c->project->code }}</x-ref> · {{ $c->flat->building->code }}<x-ref :to="$c->flat" class="block font-medium text-ink-900">Unit {{ $c->flat->flat_no }}</x-ref></td>
         <td class="text-right"><x-money :value="$c->revenue_amount" /></td>
         <td class="text-right"><x-money :value="App\Support\Money::add((string) $c->direct_cost_amount, (string) $c->shared_cost_amount, (string) $c->other_approved_cost_amount)" muted /></td>
         <td @class(['text-right font-semibold', 'text-danger-600' => (float) $c->net_profit_amount < 0])><x-money :value="$c->net_profit_amount" /></td>

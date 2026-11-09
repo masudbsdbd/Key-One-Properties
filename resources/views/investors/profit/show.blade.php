@@ -76,8 +76,8 @@
         </x-card>
         <x-card title="Basis">
             <dl class="space-y-3 text-sm">
-                <div><dt class="detail-label">Unit</dt><dd class="detail-value">{{ $calc->project->name }} · Unit {{ $calc->flat->flat_no }}</dd></div>
-                <div><dt class="detail-label">Sale</dt><dd class="detail-value">@if ($calc->sale)<a href="{{ route('sales.show', $calc->sale) }}" class="text-accent-700 hover:underline">{{ $calc->sale->sale_no }}</a> · {{ $calc->sale->customer->full_name }}@else — @endif</dd></div>
+                <div><dt class="detail-label">Unit</dt><dd class="detail-value"><x-ref :to="$calc->project">{{ $calc->project->name }}</x-ref> · <x-ref :to="$calc->flat">Unit {{ $calc->flat->flat_no }}</x-ref></dd></div>
+                <div><dt class="detail-label">Sale</dt><dd class="detail-value">@if ($calc->sale)<a href="{{ route('sales.show', $calc->sale) }}" class="text-accent-700 hover:underline">{{ $calc->sale->sale_no }}</a> · <x-ref :to="$calc->sale->customer">{{ $calc->sale->customer->full_name }}</x-ref>@else — @endif</dd></div>
                 <div><dt class="detail-label">Cost Run</dt><dd class="detail-value">@if ($calc->costRun)<a href="{{ route('cost-runs.show', $calc->costRun) }}" class="text-accent-700 hover:underline">{{ $calc->costRun->run_no }}</a> · v{{ $calc->costRun->calculation_version }}@endif</dd></div>
                 <div><dt class="detail-label">As Of</dt><dd class="detail-value">{{ isset($snap['as_of']) ? App\Support\Format::date(Carbon\Carbon::parse($snap['as_of'])) : '—' }}</dd></div>
                 <div><dt class="detail-label">Revenue Recognition</dt><dd class="detail-value">{{ App\Modules\Investors\Services\ProfitPolicy::RECOGNITION[$calc->recognition_basis] ?? 'Not set' }}</dd></div>

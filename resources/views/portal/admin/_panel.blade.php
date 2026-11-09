@@ -33,8 +33,9 @@
                         @endif
                     </div>
                     @foreach ($userGrants as $g)
+                        @php $resource = $g->resource(); @endphp
                         <div class="flex flex-wrap items-center gap-3 border-t border-line px-4 py-2.5 text-sm">
-                            <span class="min-w-0 flex-1"><span class="font-medium text-ink-900">{{ App\Modules\Portal\Services\PortalAccess::GRANTABLE[$g->capability] ?? $g->capability }}</span><span class="block text-[13px] text-ink-500">{{ $service->resourceLabel($g->resource()) }} · {{ $g->granter->name }} · {{ App\Support\Format::date($g->created_at) }}@if ($g->expires_at) · until {{ App\Support\Format::date($g->expires_at) }}@endif</span></span>
+                            <span class="min-w-0 flex-1"><span class="font-medium text-ink-900">{{ App\Modules\Portal\Services\PortalAccess::GRANTABLE[$g->capability] ?? $g->capability }}</span><span class="block text-[13px] text-ink-500"><x-ref :to="$resource">{{ $service->resourceLabel($resource) }}</x-ref> · {{ $g->granter->name }} · {{ App\Support\Format::date($g->created_at) }}@if ($g->expires_at) · until {{ App\Support\Format::date($g->expires_at) }}@endif</span></span>
                             @if ($g->isCurrent())
                                 <x-badge tone="success">Active</x-badge>
                                 @can('portal.grants.manage')<button type="button" class="btn btn-ghost btn-icon text-danger-600" data-action="delete" data-url="{{ route('portal-access.grants.revoke', $g) }}" data-confirm="Revoke this grant?" data-confirm-text="Revoke" aria-label="Revoke grant"><x-icon name="x" size="h-4 w-4" /></button>@endcan
