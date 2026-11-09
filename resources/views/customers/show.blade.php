@@ -47,7 +47,7 @@
             <p class="mt-6 border-t border-line pt-4 text-[13px] text-ink-500">{{ $customer->creator?->name }} · {{ App\Support\Format::datetime($customer->created_at) }}</p>
         </x-card>
 
-        <div>
+        <div class="min-w-0">
             <div class="mb-6 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
                 <button type="button" role="tab" class="tab" id="tab-addresses" data-tab="addresses" aria-controls="panel-addresses">Addresses</button>
                 <button type="button" role="tab" class="tab" id="tab-notes" data-tab="notes" aria-controls="panel-notes">Notes</button>

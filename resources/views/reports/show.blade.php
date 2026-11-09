@@ -5,7 +5,7 @@
 <x-layouts.app :title="$report->name()">
     <x-page-header :title="$report->name()" :breadcrumbs="['Dashboard' => route('dashboard'), 'Reports' => route('reports.index'), $report->name() => null]" />
     <div class="mb-4 flex flex-wrap items-center gap-2 text-[13px] text-ink-600">
-        <x-badge tone="info">{{ $report->basis() }}</x-badge>
+        <x-badge tone="info" class="h-auto whitespace-normal py-1">{{ $report->basis() }}</x-badge>
         <x-badge>BDT</x-badge>
         <x-badge>Operational · not audited</x-badge>
         <span>Updated {{ now(config('app.display_timezone'))->format('d M Y, h:i A') }}</span>
