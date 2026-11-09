@@ -11,6 +11,7 @@ use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
@@ -39,7 +40,7 @@ class SupplierController extends Controller
         $query = $this->listing($request);
         $suppliers = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('purchasing.suppliers._rows', ['suppliers' => $suppliers])->render(), $suppliers);
+        return Ajax::table(view('purchasing.suppliers._rows', ['suppliers' => $suppliers])->render(), $suppliers, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -51,6 +52,21 @@ class SupplierController extends Controller
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (Supplier $s) => [$s->supplier_code, $s->name, $s->contact_person, $s->mobile ? Phone::display($s->mobile) : null, $s->tax_id,
                 Money::sub((string) ($s->charges ?? '0'), (string) ($s->payments ?? '0')), Supplier::STATUSES[$s->status]]))
             ->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $balance = '(SELECT COALESCE(SUM(l.charge_amount - l.payment_amount), 0) FROM supplier_ledger_entries l WHERE l.supplier_id = suppliers.id)';
+        $paid = "(SELECT COALESCE(SUM(a.amount), 0) FROM supplier_payment_allocations a JOIN supplier_payments p ON p.id = a.payment_id WHERE a.supplier_bill_id = b.id AND p.status = 'approved')";
+        $row = ListSummary::aggregate($this->listing($request), [
+            'payable' => "SUM({$balance})",
+            'owing' => "SUM(CASE WHEN {$balance} > 0 THEN 1 ELSE 0 END)",
+            'overdue' => ["SUM((SELECT COALESCE(SUM(b.total_amount - {$paid}), 0) FROM supplier_bills b WHERE b.supplier_id = suppliers.id AND b.status = 'approved' AND b.due_date < ?))", [now(config('app.display_timezone'))->toDateString()]],
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Payable', $row->payable, 'briefcase', 'warning', note: ListSummary::many($row->owing, 'supplier'))
+            ->money('Past Due Date', $row->overdue, 'alert', 'danger');
     }
 
     private function listing(Request $request): Builder

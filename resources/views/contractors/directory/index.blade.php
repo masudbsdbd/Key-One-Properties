@@ -4,7 +4,7 @@
             <x-slot:actions><x-button icon="plus" data-remote-modal="{{ route('contractors.create') }}" data-size="max-w-2xl" data-auto-create>New Contractor</x-button></x-slot:actions>
         @endcan
     </x-page-header>
-    <x-data-table :url="route('contractors.table')" sort="name" search="Search name, code, trade or mobile" :columns="[
+    <x-data-table summary data-table-history :url="route('contractors.table')" sort="name" search="Search name, code, trade or mobile" :columns="[
         ['label' => 'Contractor', 'sort' => 'name'], ['label' => 'Trade'], ['label' => 'Contact'], ['label' => 'Active Orders', 'class' => 'text-right'], ['label' => 'Payable', 'class' => 'text-right'], ['label' => 'Status'],
     ]">
         <x-slot:filters>

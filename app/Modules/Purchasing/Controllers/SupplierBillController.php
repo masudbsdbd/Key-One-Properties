@@ -11,6 +11,7 @@ use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\LineKeys;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,14 +38,14 @@ class SupplierBillController extends Controller
         $supplier = Supplier::findByPublicId($request->input('supplier'));
         $bills = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('purchasing.bills._rows', ['bills' => $bills, 'showSupplier' => ! $supplier])->render(), $bills);
+        return Ajax::table(view('purchasing.bills._rows', ['bills' => $bills, 'showSupplier' => ! $supplier])->render(), $bills, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('purchases.export'), 403);
 
-        return Report::make('Supplier Bills')->meta(['Status' => SupplierBill::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name])
+        return Report::make('Supplier Bills')->sumMoney()->meta(['Status' => SupplierBill::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Bill No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Invoice No' => 'text', 'Due' => 'date', 'Total' => 'money', 'Outstanding' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (SupplierBill $b) => [$b->bill_no, $b->invoice_date, $b->supplier->name, $b->supplier_invoice_no, $b->due_date, $b->total_amount,
                 in_array($b->status, ['approved', 'paid'], true) ? Money::sub((string) $b->total_amount, (string) ($b->allocated ?? '0')) : null, SupplierBill::STATUSES[$b->status]]))
@@ -58,17 +59,38 @@ class SupplierBillController extends Controller
         return Documents::supplierBill($bill)->respond($request);
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $unpaid = "supplier_bills.total_amount - (SELECT COALESCE(SUM(a.amount), 0) FROM supplier_payment_allocations a JOIN supplier_payments p ON p.id = a.payment_id WHERE a.supplier_bill_id = supplier_bills.id AND p.status = 'approved')";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['status', 'overdue'])), [
+            'unpaid' => "SUM(CASE WHEN supplier_bills.status = 'approved' THEN {$unpaid} ELSE 0 END)",
+            'overdue' => ["SUM(CASE WHEN supplier_bills.status = 'approved' AND supplier_bills.due_date < ? THEN {$unpaid} ELSE 0 END)", [now(config('app.display_timezone'))->toDateString()]],
+            'paid' => "SUM(CASE WHEN supplier_bills.status = 'paid' THEN supplier_bills.total_amount ELSE 0 END)",
+            'draft' => "SUM(CASE WHEN supplier_bills.status = 'draft' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Unpaid', $row->unpaid, 'clock', 'warning', ['status' => 'approved'])
+            ->money('Past Due Date', $row->overdue, 'alert', 'danger', ['overdue' => '1'])
+            ->money('Paid', $row->paid, 'check', 'success', ['status' => 'paid'])
+            ->count('Drafts', $row->draft, 'edit', 'accent', ['status' => 'draft']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('purchases.view'), 403);
 
-        $query = SupplierBill::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'purchaseOrder:id,public_id,po_no'])->withSum('allocations as allocated', 'amount');
+        $query = SupplierBill::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'purchaseOrder:id,public_id,po_no'])->withSum(['allocations as allocated' => fn ($q) => $q->whereHas('payment', fn ($p) => $p->where('status', 'approved'))], 'amount');
         if (array_key_exists($status = (string) $request->input('status'), SupplierBill::STATUSES)) {
             $query->where('status', $status);
         }
         if ($supplier = Supplier::findByPublicId($request->input('supplier'))) {
             $query->where('supplier_id', $supplier->id);
         }
+        if ($request->input('overdue') === '1') {
+            $query->where('status', 'approved')->whereDate('due_date', '<', now(config('app.display_timezone'))->toDateString());
+        }
+        TableQuery::period($query, $request, 'invoice_date');
 
         return TableQuery::prepare($query, $request, ['bill_no', 'supplier_invoice_no'], ['date' => 'invoice_date', 'due' => 'due_date', 'total' => 'total_amount'], 'date', 'desc');
     }

@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Contractor;
 use App\Models\ContractorBill;
 use App\Models\ContractorWorkOrder;
+use App\Models\Project;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -37,14 +39,14 @@ class ContractorBillController extends Controller
         $order = ContractorWorkOrder::findByPublicId($request->input('work_order'));
         $bills = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('contractors.bills._rows', ['bills' => $bills, 'showContractor' => ! $contractor && ! $order, 'showOrder' => ! $order])->render(), $bills);
+        return Ajax::table(view('contractors.bills._rows', ['bills' => $bills, 'showContractor' => ! $contractor && ! $order, 'showOrder' => ! $order])->render(), $bills, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('contractors.export'), 403);
 
-        return Report::make('Contractor Bills')->meta(['Status' => ContractorBill::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name])
+        return Report::make('Contractor Bills')->sumMoney()->meta(['Status' => ContractorBill::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Bill No' => 'text', 'Date' => 'date', 'Contractor' => 'text', 'Work Order' => 'text', 'Gross' => 'money', 'Advance' => 'money', 'Retention' => 'money', 'Other' => 'money', 'Net Payable' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorBill $b) => [$b->bill_no, $b->bill_date, $b->contractor->name, $b->workOrder->wo_no, $b->gross_amount, $b->advance_adjustment, $b->retention_amount, $b->other_deductions, $b->net_payable, ContractorBill::STATUSES[$b->status]]))
             ->respond($request);
@@ -55,6 +57,23 @@ class ContractorBillController extends Controller
         Gate::authorize('cbill:view', $bill);
 
         return Documents::contractorBill($bill)->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $paid = "(SELECT COALESCE(SUM(p.amount), 0) FROM contractor_payments p WHERE p.bill_id = contractor_bills.id AND p.status = 'approved')";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'unpaid' => "SUM(CASE WHEN contractor_bills.status = 'approved' THEN contractor_bills.net_payable - {$paid} ELSE 0 END)",
+            'paid' => "SUM(CASE WHEN contractor_bills.status = 'paid' THEN contractor_bills.net_payable ELSE 0 END)",
+            'retention' => "SUM(CASE WHEN contractor_bills.status IN ('approved', 'paid') THEN contractor_bills.retention_amount ELSE 0 END)",
+            'draft' => "SUM(CASE WHEN contractor_bills.status = 'draft' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Unpaid', $row->unpaid, 'clock', 'warning', ['status' => 'approved'])
+            ->money('Paid', $row->paid, 'check', 'success', ['status' => 'paid'])
+            ->money('Retention Held', $row->retention, 'lock', 'info')
+            ->count('Drafts', $row->draft, 'edit', 'accent', ['status' => 'draft']);
     }
 
     private function listing(Request $request): Builder
@@ -72,6 +91,10 @@ class ContractorBillController extends Controller
         if ($order = ContractorWorkOrder::findByPublicId($request->input('work_order'))) {
             $query->where('work_order_id', $order->id);
         }
+        if ($project = Project::findByPublicId($request->input('project'))) {
+            $query->where('project_id', $project->id);
+        }
+        TableQuery::period($query, $request, 'bill_date');
 
         return TableQuery::prepare($query, $request, ['bill_no'], ['date' => 'bill_date', 'net' => 'net_payable'], 'date', 'desc');
     }

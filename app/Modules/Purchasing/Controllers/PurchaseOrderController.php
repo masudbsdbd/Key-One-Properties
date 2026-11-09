@@ -16,6 +16,7 @@ use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\LineKeys;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -43,14 +44,14 @@ class PurchaseOrderController extends Controller
         $supplier = Supplier::findByPublicId($request->input('supplier'));
         $orders = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('purchasing.orders._rows', ['orders' => $orders, 'showSupplier' => ! $supplier])->render(), $orders);
+        return Ajax::table(view('purchasing.orders._rows', ['orders' => $orders, 'showSupplier' => ! $supplier])->render(), $orders, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('purchases.export'), 403);
 
-        return Report::make('Purchase Orders')->meta(['Status' => PurchaseOrder::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+        return Report::make('Purchase Orders')->sumMoney()->meta(['Status' => PurchaseOrder::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['PO No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Warehouse' => 'text', 'Project' => 'text', 'Expected' => 'date', 'Total' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (PurchaseOrder $o) => [$o->po_no, $o->order_date, $o->supplier->name, $o->warehouse->code, $o->project?->code ?? 'Company', $o->expected_date, $o->total_amount, PurchaseOrder::STATUSES[$o->status]]))
             ->respond($request);
@@ -79,6 +80,22 @@ class PurchaseOrderController extends Controller
         return Documents::purchaseReturn($purchaseReturn)->respond($request);
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $open = ListSummary::marks(PurchaseOrder::RECEIVABLE);
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['status', 'late'])), [
+            'open' => ["SUM(CASE WHEN purchase_orders.status IN ({$open}) THEN purchase_orders.total_amount ELSE 0 END)", PurchaseOrder::RECEIVABLE],
+            'open_n' => ["SUM(CASE WHEN purchase_orders.status IN ({$open}) THEN 1 ELSE 0 END)", PurchaseOrder::RECEIVABLE],
+            'submitted' => "SUM(CASE WHEN purchase_orders.status = 'submitted' THEN 1 ELSE 0 END)",
+            'late' => ["SUM(CASE WHEN purchase_orders.status IN ({$open}) AND purchase_orders.expected_date < ? THEN 1 ELSE 0 END)", [...PurchaseOrder::RECEIVABLE, now(config('app.display_timezone'))->toDateString()]],
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Open Orders', $row->open, 'note', 'info', note: ListSummary::many($row->open_n, 'order'))
+            ->count('Awaiting Approval', $row->submitted, 'alert', 'accent', ['status' => 'submitted'])
+            ->count('Delivery Overdue', $row->late, 'clock', 'danger', ['late' => '1']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('purchases.view'), 403);
@@ -94,6 +111,10 @@ class PurchaseOrderController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+        if ($request->input('late') === '1') {
+            $query->whereIn('status', PurchaseOrder::RECEIVABLE)->whereDate('expected_date', '<', now(config('app.display_timezone'))->toDateString());
+        }
+        TableQuery::period($query, $request, 'order_date');
 
         return TableQuery::prepare($query, $request, ['po_no', 'notes'], ['date' => 'order_date', 'total' => 'total_amount'], 'date', 'desc');
     }

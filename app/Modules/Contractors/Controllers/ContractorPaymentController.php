@@ -11,6 +11,7 @@ use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -39,14 +40,14 @@ class ContractorPaymentController extends Controller
         $contractor = Contractor::findByPublicId($request->input('contractor'));
         $payments = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('contractors.payments._rows', ['payments' => $payments, 'showContractor' => ! $contractor])->render(), $payments);
+        return Ajax::table(view('contractors.payments._rows', ['payments' => $payments, 'showContractor' => ! $contractor])->render(), $payments, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('contractors.export'), 403);
 
-        return Report::make('Contractor Payments')->meta(['Status' => ContractorPayment::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name])
+        return Report::make('Contractor Payments')->sumMoney()->meta(['Status' => ContractorPayment::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Payment No' => 'text', 'Date' => 'date', 'Contractor' => 'text', 'Work Order' => 'text', 'Against' => 'text', 'Method' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorPayment $p) => [$p->payment_no, $p->payment_date, $p->contractor->name, $p->workOrder->wo_no, $p->bill?->bill_no ?? 'Advance', ContractorPayment::METHODS[$p->payment_method], $p->amount, ContractorPayment::STATUSES[$p->status]]))
             ->respond($request);
@@ -57,6 +58,21 @@ class ContractorPaymentController extends Controller
         Gate::authorize('cpay:view', $payment);
 
         return Documents::contractorPayment($payment)->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'approved' => "SUM(CASE WHEN contractor_payments.status = 'approved' THEN contractor_payments.amount ELSE 0 END)",
+            'approved_n' => "SUM(CASE WHEN contractor_payments.status = 'approved' THEN 1 ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN contractor_payments.status = 'pending' THEN contractor_payments.amount ELSE 0 END)",
+            'reversed' => "SUM(CASE WHEN contractor_payments.status = 'reversed' THEN contractor_payments.amount ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Paid', $row->approved, 'check', 'success', ['status' => 'approved'], ListSummary::many($row->approved_n, 'payment'))
+            ->money('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending'])
+            ->money('Reversed', $row->reversed, 'refresh', 'danger', ['status' => 'reversed']);
     }
 
     private function listing(Request $request): Builder
@@ -73,6 +89,10 @@ class ContractorPaymentController extends Controller
         if ($order = ContractorWorkOrder::findByPublicId($request->input('work_order'))) {
             $query->where('work_order_id', $order->id);
         }
+        if (array_key_exists($method = (string) $request->input('method'), ContractorPayment::METHODS)) {
+            $query->where('payment_method', $method);
+        }
+        TableQuery::period($query, $request, 'payment_date');
 
         return TableQuery::prepare($query, $request, ['payment_no', 'reference'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
     }

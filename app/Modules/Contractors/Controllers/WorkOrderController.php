@@ -14,6 +14,7 @@ use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,14 +42,14 @@ class WorkOrderController extends Controller
         $contractor = Contractor::findByPublicId($request->input('contractor'));
         $orders = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('contractors.work-orders._rows', ['orders' => $orders, 'showContractor' => ! $contractor])->render(), $orders);
+        return Ajax::table(view('contractors.work-orders._rows', ['orders' => $orders, 'showContractor' => ! $contractor])->render(), $orders, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('contractors.export'), 403);
 
-        return Report::make('Work Orders')->meta(['Status' => ContractorWorkOrder::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+        return Report::make('Work Orders')->sumMoney()->meta(['Status' => ContractorWorkOrder::STATUSES[(string) $request->input('status')] ?? null, 'Contractor' => Contractor::findByPublicId($request->input('contractor'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['WO No' => 'text', 'Title' => 'text', 'Contractor' => 'text', 'Project' => 'text', 'Contract' => 'money', 'Measured' => 'money', 'Retention %' => 'number', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (ContractorWorkOrder $w) => [$w->wo_no, $w->title, $w->contractor->name, $w->project->code, $w->contract_amount, $w->measured ?? '0', $w->retention_percent, ContractorWorkOrder::STATUSES[$w->status]]))
             ->respond($request);
@@ -59,6 +60,23 @@ class WorkOrderController extends Controller
         Gate::authorize('wo:view', $order);
 
         return Documents::workOrder($order)->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $measured = "(SELECT COALESCE(SUM(m.measured_amount), 0) FROM contractor_measurements m WHERE m.work_order_id = contractor_work_orders.id AND m.status IN ('approved', 'billed'))";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'value' => "SUM(CASE WHEN contractor_work_orders.status = 'approved' THEN contractor_work_orders.contract_amount ELSE 0 END)",
+            'value_n' => "SUM(CASE WHEN contractor_work_orders.status = 'approved' THEN 1 ELSE 0 END)",
+            'measured' => "SUM(CASE WHEN contractor_work_orders.status = 'approved' THEN {$measured} ELSE 0 END)",
+            'draft' => "SUM(CASE WHEN contractor_work_orders.status = 'draft' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Active Contracts', $row->value, 'check-square', 'info', ['status' => 'approved'], ListSummary::many($row->value_n, 'work order'))
+            ->money('Work Done', $row->measured, 'activity', 'success')
+            ->money('Remaining', Money::sub((string) ($row->value ?? 0), (string) ($row->measured ?? 0)), 'clock', 'warning')
+            ->count('Drafts', $row->draft, 'edit', 'accent', ['status' => 'draft']);
     }
 
     private function listing(Request $request): Builder
@@ -76,6 +94,8 @@ class WorkOrderController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+
+        TableQuery::period($query, $request, 'start_date');
 
         return TableQuery::prepare($query, $request, ['wo_no', 'title'], ['date' => 'created_at', 'amount' => 'contract_amount'], 'date', 'desc');
     }

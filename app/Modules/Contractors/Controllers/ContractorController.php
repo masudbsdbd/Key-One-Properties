@@ -10,6 +10,7 @@ use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
@@ -38,7 +39,7 @@ class ContractorController extends Controller
         $query = $this->listing($request);
         $contractors = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('contractors.directory._rows', ['contractors' => $contractors])->render(), $contractors);
+        return Ajax::table(view('contractors.directory._rows', ['contractors' => $contractors])->render(), $contractors, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -50,6 +51,20 @@ class ContractorController extends Controller
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (Contractor $c) => [$c->contractor_code, $c->name, $c->trade, $c->contact_person, $c->mobile ? Phone::display($c->mobile) : null, $c->active_orders,
                 Money::sub((string) ($c->charges ?? '0'), (string) ($c->payments ?? '0')), Contractor::STATUSES[$c->status]]))
             ->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $balance = '(SELECT COALESCE(SUM(l.charge_amount - l.payment_amount), 0) FROM contractor_ledger_entries l WHERE l.contractor_id = contractors.id)';
+        $row = ListSummary::aggregate($this->listing($request), [
+            'payable' => "SUM({$balance})",
+            'owing' => "SUM(CASE WHEN {$balance} > 0 THEN 1 ELSE 0 END)",
+            'orders' => "SUM((SELECT COUNT(*) FROM contractor_work_orders w WHERE w.contractor_id = contractors.id AND w.status = 'approved'))",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Payable', $row->payable, 'briefcase', 'warning', note: ListSummary::many($row->owing, 'contractor'))
+            ->count('Active Work Orders', $row->orders, 'check-square', 'info');
     }
 
     private function listing(Request $request): Builder

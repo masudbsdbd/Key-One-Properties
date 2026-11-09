@@ -10,6 +10,7 @@ use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,14 +40,14 @@ class SupplierPaymentController extends Controller
         $supplier = Supplier::findByPublicId($request->input('supplier'));
         $payments = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('purchasing.payments._rows', ['payments' => $payments, 'showSupplier' => ! $supplier])->render(), $payments);
+        return Ajax::table(view('purchasing.payments._rows', ['payments' => $payments, 'showSupplier' => ! $supplier])->render(), $payments, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('purchases.export'), 403);
 
-        return Report::make('Supplier Payments')->meta(['Status' => SupplierPayment::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name])
+        return Report::make('Supplier Payments')->sumMoney()->meta(['Status' => SupplierPayment::STATUSES[(string) $request->input('status')] ?? null, 'Supplier' => Supplier::findByPublicId($request->input('supplier'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Payment No' => 'text', 'Date' => 'date', 'Supplier' => 'text', 'Method' => 'text', 'Reference' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (SupplierPayment $p) => [$p->payment_no, $p->payment_date, $p->supplier->name, SupplierPayment::METHODS[$p->payment_method], $p->payment_reference, $p->amount, SupplierPayment::STATUSES[$p->status]]))
             ->respond($request);
@@ -64,6 +65,21 @@ class SupplierPaymentController extends Controller
         abort_unless($request->user()->can('purchases.view') && (! $permission || $request->user()->can($permission)) && $payment->isVisibleTo($request->user()), 403);
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'approved' => "SUM(CASE WHEN supplier_payments.status = 'approved' THEN supplier_payments.amount ELSE 0 END)",
+            'approved_n' => "SUM(CASE WHEN supplier_payments.status = 'approved' THEN 1 ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN supplier_payments.status = 'pending' THEN supplier_payments.amount ELSE 0 END)",
+            'reversed' => "SUM(CASE WHEN supplier_payments.status = 'reversed' THEN supplier_payments.amount ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Paid', $row->approved, 'check', 'success', ['status' => 'approved'], ListSummary::many($row->approved_n, 'payment'))
+            ->money('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending'])
+            ->money('Reversed', $row->reversed, 'refresh', 'danger', ['status' => 'reversed']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('purchases.view'), 403);
@@ -75,6 +91,10 @@ class SupplierPaymentController extends Controller
         if ($supplier = Supplier::findByPublicId($request->input('supplier'))) {
             $query->where('supplier_id', $supplier->id);
         }
+        if (array_key_exists($method = (string) $request->input('method'), SupplierPayment::METHODS)) {
+            $query->where('payment_method', $method);
+        }
+        TableQuery::period($query, $request, 'payment_date');
 
         return TableQuery::prepare($query, $request, ['payment_no', 'payment_reference'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
     }
