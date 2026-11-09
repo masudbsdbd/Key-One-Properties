@@ -1,12 +1,8 @@
 <?php
 
-use App\Modules\Reports\Controllers\ExecutiveController;
 use App\Modules\Reports\Controllers\ReportController;
 use App\Modules\Reports\Controllers\ReportRunController;
 use Illuminate\Support\Facades\Route;
-
-Route::get('executive', [ExecutiveController::class, 'index'])->name('executive.index');
-Route::get('executive/widgets/{widget}', [ExecutiveController::class, 'widget'])->middleware('throttle:120,1')->name('executive.widget');
 
 Route::prefix('report-exports')->name('report-exports.')->controller(ReportRunController::class)->group(function () {
     Route::get('/', 'index')->name('index');

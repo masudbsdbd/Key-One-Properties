@@ -41,6 +41,7 @@ Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'
 
 Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured', 'staff'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('dashboard/panels/{panel}', [DashboardController::class, 'panel'])->middleware('throttle:120,1')->name('dashboard.panel');
     Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('search');
 
     Route::prefix('attachments')->name('attachments.')->controller(AttachmentController::class)->group(function () {

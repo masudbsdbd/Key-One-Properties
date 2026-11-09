@@ -11,8 +11,8 @@ use App\Models\ProjectCostAllocation;
 use App\Models\ReportRun;
 use App\Models\User;
 use App\Modules\Investors\Services\InvestorLedger;
-use App\Modules\Reports\ExecutiveMetrics;
 use App\Modules\Reports\ReportRegistry;
+use App\Support\Dashboard;
 use App\Support\Money;
 use Database\Seeders\ExpenseCategorySeeder;
 use Database\Seeders\SampleDataSeeder;
@@ -91,15 +91,14 @@ class ReportsTest extends TestCase
         $this->flushHeaders();
         $this->actingAs($this->userWith(['reports.view', 'reports.construction']))->get(route('reports.export', ['key' => 'project-cost', 'format' => 'csv']))->assertForbidden();
 
-        foreach (array_keys(ExecutiveMetrics::WIDGETS) as $w) {
-            $this->actingAs($this->admin)->ajax()->get(route('executive.widget', $w))->assertOk();
+        foreach (array_keys(Dashboard::PANELS) as $panel) {
+            $this->actingAs($this->admin)->ajax()->get(route('dashboard.panel', $panel))->assertOk();
         }
-        $this->actingAs($manager)->ajax()->get(route('executive.widget', 'construction'))->assertOk();
-        $this->actingAs($manager)->ajax()->get(route('executive.widget', 'investors'))->assertForbidden();
-        $this->actingAs($manager)->ajax()->get(route('executive.widget', 'nothing'))->assertNotFound();
+        $this->actingAs($manager)->ajax()->get(route('dashboard.panel', 'milestones'))->assertOk();
+        $this->actingAs($manager)->ajax()->get(route('dashboard.panel', 'investors'))->assertForbidden();
+        $this->actingAs($manager)->ajax()->get(route('dashboard.panel', 'nothing'))->assertNotFound();
         $this->flushHeaders();
-        $this->actingAs($manager)->get(route('executive.index'))->assertOk()->assertSee('Construction Cost')->assertDontSee('data-widget="investors"', false);
-        $this->actingAs($this->userWith(['reports.view']))->get(route('executive.index'))->assertForbidden();
+        $this->actingAs($manager)->get(route('dashboard'))->assertOk()->assertSee('data-widget="milestones"', false)->assertDontSee('data-widget="investors"', false);
 
         // General expenses never inflate project cost.
         $budget = $this->rows($this->admin, 'project-budget', ['project' => $project->public_id]);
