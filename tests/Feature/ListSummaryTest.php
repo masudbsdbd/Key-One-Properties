@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CustomerPayment;
 use App\Models\FlatSale;
+use App\Models\Project;
 use App\Models\User;
 use App\Support\Format;
 use App\Support\Money;
@@ -85,5 +86,15 @@ class ListSummaryTest extends TestCase
             'projects.table', 'customers.table', 'expenses.table', 'labour.table', 'construction.table', 'stock.movements.table', 'borrows.table', 'transfers.table', 'adjustments.table'] as $route) {
             $this->assertStringContainsString('summary-tile', $this->stats($route), $route);
         }
+    }
+
+    public function test_option_lookup_by_selected_id_stays_inside_the_users_scope(): void
+    {
+        [$mine, $other] = Project::query()->orderBy('id')->take(2)->get()->all();
+        $member = $this->userWith(['projects.view']);
+        $mine->members()->attach($member->id);
+
+        $this->actingAs($member)->ajax()->get(route('options.projects', ['selected' => $mine->public_id]))->assertOk()->assertJsonPath('results.0.id', $mine->public_id);
+        $this->actingAs($member)->ajax()->get(route('options.projects', ['selected' => $other->public_id]))->assertOk()->assertJsonCount(0, 'results');
     }
 }

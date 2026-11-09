@@ -49,6 +49,15 @@ function setup(table) {
     table.querySelectorAll('select[data-table-filter]:not([data-select]), input[data-table-filter]:not([data-table-view-input]), [data-table-search]').forEach((input) => {
         if (input.name && preset.has(input.name)) input.value = preset.get(input.name);
     });
+    // Searchable dropdown filters only know their value; fetch the label so the choice survives a reload.
+    const lookups = [...table.querySelectorAll('select[data-table-filter][data-select][data-select-url]')]
+        .filter((select) => select.name && preset.get(select.name) && !select.value)
+        .map((select) => http.get(select.dataset.selectUrl, { selected: preset.get(select.name) }, { silent: true })
+            .then((res) => {
+                const item = (res.results || res.data?.results || [])[0];
+                if (item) $(select).append(new Option(item.text, item.id, true, true)).trigger('change.select2');
+            })
+            .catch(() => {}));
     if (history && preset.get('sort') && table.querySelector(`[data-sort="${CSS.escape(preset.get('sort'))}"]`)) {
         state.sort = preset.get('sort');
         state.dir = preset.get('dir') === 'desc' ? 'desc' : 'asc';
@@ -235,6 +244,8 @@ function setup(table) {
             load();
         };
         document.addEventListener('tab:shown', onShown);
+    } else if (lookups.length) {
+        Promise.all(lookups).then(load);
     } else {
         load();
     }
