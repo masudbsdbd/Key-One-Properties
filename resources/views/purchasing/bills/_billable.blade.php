@@ -8,7 +8,7 @@
             <tbody>
                 @foreach ($rows as [$receipt, $line, $position])
                     <tr>
-                        <td><input type="checkbox" name="receipt_lines[]" value="{{ $receipt->public_id }}:{{ $position }}" class="form-check" data-bill-line data-amount="{{ App\Support\Money::amount($line->billableAmount()) }}" aria-label="Bill {{ $line->material->name }} from {{ $receipt->grn_no }}"></td>
+                        <td><input type="checkbox" name="receipt_lines[]" value="{{ $receipt->public_id }}:{{ $position }}" class="form-check" @checked(($checked ?? null) === $receipt->public_id) data-bill-line data-amount="{{ App\Support\Money::amount($line->billableAmount()) }}" aria-label="Bill {{ $line->material->name }} from {{ $receipt->grn_no }}"></td>
                         <td class="whitespace-nowrap"><p class="font-medium text-ink-900">{{ $receipt->grn_no }}</p><p class="text-[13px] text-ink-500">{{ $receipt->purchaseOrder->po_no }} · {{ App\Support\Format::date($receipt->received_at) }}</p></td>
                         <td>{{ $line->material->name }}</td>
                         <td class="text-right tabular-nums">{{ App\Support\Format::qty($line->returnable()) }} {{ $line->material->unit->code }}</td>

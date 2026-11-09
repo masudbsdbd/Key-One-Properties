@@ -173,6 +173,7 @@ class PurchaseOrderController extends Controller
             'order' => $order,
             'returns' => PurchaseReturn::query()->whereIn('goods_receipt_id', $order->receipts->pluck('id'))->with('lines.material')->get(),
             'bills' => SupplierBill::query()->where('purchase_order_id', $order->id)->get(),
+            'billing' => $order->receipts->mapWithKeys(fn (GoodsReceipt $r) => [$r->id => Unbilled::status($r)]),
         ]);
     }
 

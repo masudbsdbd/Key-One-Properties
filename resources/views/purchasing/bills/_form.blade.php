@@ -13,7 +13,7 @@
 
     <div>
         <p class="form-label">Received Goods</p>
-        <div class="rounded-card border border-line" data-partial-source="#bill-supplier" data-partial-base="{{ route('supplier-bills.billable') }}" data-partial-param="supplier" data-partial-empty="Select a supplier"><p class="p-5 text-sm text-ink-500">Select a supplier</p></div>
+        <div class="rounded-card border border-line" data-partial-source="#bill-supplier" data-partial-base="{{ route('supplier-bills.billable', array_filter(['receipt' => $receipt?->public_id])) }}" data-partial-param="supplier" data-partial-empty="Select a supplier"><p class="p-5 text-sm text-ink-500">Select a supplier</p></div>
         <p class="form-error" data-field-error="receipt_lines" hidden></p>
     </div>
 

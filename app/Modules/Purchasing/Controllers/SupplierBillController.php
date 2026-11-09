@@ -102,8 +102,11 @@ class SupplierBillController extends Controller
     {
         abort_unless($request->user()->can('purchases.bill.manage'), 403);
 
+        $receipt = $request->filled('receipt') ? $this->visibleReceipt($request) : null;
+
         return Ajax::success(null, ['title' => 'New Supplier Bill', 'html' => view('purchasing.bills._form', [
-            'supplier' => Supplier::findByPublicId($request->input('supplier')),
+            'supplier' => $receipt?->supplier ?? Supplier::findByPublicId($request->input('supplier')),
+            'receipt' => $receipt,
         ])->render()]);
     }
 
@@ -118,7 +121,15 @@ class SupplierBillController extends Controller
             ->whereHas('lines', fn ($q) => $q->whereNull('billed_bill_id'))
             ->with(['lines.material.unit', 'purchaseOrder:id,po_no'])->orderBy('received_at')->get();
 
-        return Ajax::success(null, ['html' => view('purchasing.bills._billable', ['receipts' => $receipts])->render()]);
+        return Ajax::success(null, ['html' => view('purchasing.bills._billable', [
+            'receipts' => $receipts, 'checked' => $request->filled('receipt') ? $this->visibleReceipt($request)->public_id : null,
+        ])->render()]);
+    }
+
+    private function visibleReceipt(Request $request): GoodsReceipt
+    {
+        return GoodsReceipt::query()->where('public_id', (string) $request->input('receipt'))
+            ->whereHas('purchaseOrder', fn ($q) => $q->visibleTo($request->user()))->with('supplier')->first() ?? abort(404);
     }
 
     public function store(Request $request): JsonResponse

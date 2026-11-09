@@ -86,8 +86,14 @@
                 @forelse ($order->receipts as $receipt)
                     <div class="border-b border-line px-5 py-4 last:border-0">
                         <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div><p class="font-semibold text-ink-900">{{ $receipt->grn_no }}</p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($receipt->received_at) }} · {{ $receipt->receiver->name }}@if ($receipt->supplier_challan_no) · Challan {{ $receipt->supplier_challan_no }}@endif</p></div>
+                            @php $billState = $billing[$receipt->id] ?? null; @endphp
+                            <div><p class="font-semibold text-ink-900">{{ $receipt->grn_no }}
+                                @if ($billState)<x-badge :tone="['not_billed' => 'warning', 'partly_billed' => 'info', 'billed' => 'violet'][$billState]" class="ml-1">{{ ['not_billed' => 'Not Billed', 'partly_billed' => 'Partly Billed', 'billed' => 'Billed'][$billState] }}</x-badge>@endif
+                            </p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($receipt->received_at) }} · {{ $receipt->receiver->name }}@if ($receipt->supplier_challan_no) · Challan {{ $receipt->supplier_challan_no }}@endif</p></div>
                             <div class="flex items-center gap-2">
+                            @if (in_array($billState, ['not_billed', 'partly_billed'], true))
+                                @can('purchases.bill.manage')<x-button size="sm" icon="file" data-remote-modal="{{ route('supplier-bills.create', ['receipt' => $receipt->public_id]) }}" data-size="max-w-4xl">Create Bill</x-button>@endcan
+                            @endif
                             <x-document-menu compact :url="route('purchase-orders.receipt.document', [$order, $receipt])" />
                             @if (Gate::allows('po:return', $order) && $receipt->lines->contains(fn ($l) => App\Support\Money::isPositive($l->returnable())))
                                 <x-button size="sm" variant="secondary" icon="restore" data-remote-modal="{{ route('purchase-orders.return.form', [$order, $receipt]) }}" data-size="max-w-3xl">Return</x-button>

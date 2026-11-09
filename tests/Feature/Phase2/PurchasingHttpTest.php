@@ -156,12 +156,21 @@ class PurchasingHttpTest extends TestCase
         $this->assertStringContainsString('22,670', $this->actingAs($this->buyer)->ajax()->get(route('suppliers.table'))->json('data.stats'));
         $this->assertStringContainsString('22,670', $this->actingAs($this->buyer)->ajax()->get(route('supplier-bills.table'))->json('data.stats'));
 
-        // A draft bill for the cement takes it out of Not Billed; cancelling the bill puts it back.
+        $this->actingAs($this->buyer)->get(route('purchase-orders.show', $po))->assertOk()->assertSee('Not Billed')->assertSee(route('supplier-bills.create', ['receipt' => $grn->public_id]), false);
+        $form = $this->actingAs($this->buyer)->ajax()->get(route('supplier-bills.create', ['receipt' => $grn->public_id]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('value="'.$supplier->public_id.'" selected', $form);
+        $this->assertStringContainsString(e(route('supplier-bills.billable', ['receipt' => $grn->public_id])), $form);
+        $billable = $this->actingAs($this->buyer)->ajax()->get(route('supplier-bills.billable', ['supplier' => $supplier->public_id, 'receipt' => $grn->public_id]))->json('data.html');
+        $this->assertSame(2, substr_count($billable, 'checked data-bill-line'));
+        $this->actingAs($this->userWith(['purchases.bill.manage']))->ajax()->get(route('supplier-bills.create', ['receipt' => $grn->public_id]))->assertNotFound();
+
+        // A draft bill for the cement takes it out of Not Billed.
         $this->actingAs($this->buyer)->ajax()->post(route('supplier-bills.store'), [
             'supplier' => $supplier->public_id, 'invoice_date' => now()->toDateString(), 'tax_amount' => '0', 'receipt_lines' => [$grn->public_id.':0'],
         ])->assertOk();
         $this->assertSame(['amount' => '4050.00', 'receipts' => 1], Unbilled::totals(Unbilled::lines($this->buyer)));
         $this->assertSame('partly_billed', Unbilled::status($grn->fresh()->load('lines')));
+        $this->actingAs($this->buyer)->get(route('purchase-orders.show', $po))->assertOk()->assertSee('Partly Billed');
         $this->assertStringNotContainsString($po->po_no, $table(['unbilled' => 'any', 'search' => 'none'])['html']);
     }
 
