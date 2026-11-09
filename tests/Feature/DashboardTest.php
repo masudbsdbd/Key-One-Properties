@@ -75,4 +75,16 @@ class DashboardTest extends TestCase
         $html = $this->actingAs($clerk)->ajax()->get(route('dashboard.panel', ['projects', 'project' => $project->public_id]))->assertOk()->json('data.html');
         $this->assertStringNotContainsString($project->code, $html);
     }
+
+    public function test_new_reports_agree_with_the_list_tiles(): void
+    {
+        $csv = $this->actingAs($this->admin)->get(route('reports.export', ['key' => 'collection-forecast', 'format' => 'csv']))->assertOk()->streamedContent();
+        $total = str_getcsv(trim(collect(explode("\n", trim($csv)))->last()));
+        $this->assertSame($this->tiles('dues.table')['All Open Dues'], $this->money(end($total)));
+
+        $csv = $this->actingAs($this->admin)->get(route('reports.export', ['key' => 'project-summary', 'format' => 'csv']))->assertOk()->streamedContent();
+        $rows = array_map('str_getcsv', array_slice(explode("\n", trim($csv)), 1));
+        $spent = Money::add('0', ...array_map(fn ($r) => $r[5], $rows));
+        $this->assertSame($this->tiles('projects.table')['Spent'], $this->money($spent));
+    }
 }
