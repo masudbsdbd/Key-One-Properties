@@ -93,7 +93,7 @@ distributions and payouts; investor ledger. Every list exports CSV/PDF/print; re
 | --- | --- | --- |
 | Revenue recognition / profit eligibility | **Decided:** after the sale is approved, when an admin approves the calculation (`sale_approved`, set by migration) | Settings → Investor Profit Policy |
 | Loss treatment | **Decided (keep):** loss gives zero distributable profit; investors are not charged | — |
-| Cost pool | **Waiting for client confirmation.** All project-level Phase 2 cost is shared by saleable area across all flats with area > 0; costs tagged with a flat are direct | Per run (area snapshot) |
+| Cost pool | **Decided (2026-11-09):** All project-level Phase 2 cost is shared by saleable area across all flats with area > 0; costs tagged with a flat are direct | Per run (area snapshot) |
 | Cancellation / refund | Cancellation needs approval; the flat is released when the cancellation is approved; refund is a separate request with its own approval and payment, amount up to what the customer paid. **Decided:** no deduction by default; the approver may deduct a percentage | Refund approval |
 | Late fee | None unless a policy exists for the customer. Percent is applied to the unpaid principal of the overdue item; grace days; once or per month. **Decided:** default 0; posted (not waived) late fees count as unit revenue in flat profit | Customer late-fee policy |
 | Payment application order | Oldest due date first; within an item, fee before principal; then future items; any rest is unapplied advance. **Decided (keep)** | — |

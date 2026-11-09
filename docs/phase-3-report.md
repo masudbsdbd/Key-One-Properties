@@ -58,9 +58,7 @@ Answered by the client on 2026-11-09:
 | Payment order | Oldest due first, fee before principal, then future items, rest as advance |
 | Investment share changes | Investors share by their percentage |
 | Payment methods | Cash, bank transfer, cheque, mobile banking |
-
-Still open: **cost policy** (unit-tagged expenses direct, other project cost shared by saleable area).
-Profit approval stays blocked until it is confirmed in Settings → Investor Profit Policy.
+| Cost policy | Unit-tagged project expenses are direct; other project cost is shared by saleable area (default set by migration). Material, labour and contractor cost are not unit-taggable for now |
 
 ## Known limitations
 

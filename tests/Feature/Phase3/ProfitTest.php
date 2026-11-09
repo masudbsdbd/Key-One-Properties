@@ -117,6 +117,9 @@ class ProfitTest extends TestCase
 
     public function test_profit_is_provisional_until_policy_is_set_then_posts_payables(): void
     {
+        $policy = app(ProfitPolicy::class);
+        $this->assertSame(['sale_approved', 'area_shared'], [$policy->revenueRecognition(), $policy->costPolicy()]);
+        app(Settings::class)->put(['investors.cost_policy' => null]);
         $c = $this->calc('33.33');
         // 5,000,000 − direct 100,000 − shared 1,000,000 (1000/4000 of 4,000,000) − 33.33
         $this->assertSame('3899966.67', (string) $c->net_profit_amount);
@@ -171,6 +174,7 @@ class ProfitTest extends TestCase
 
     public function test_screens(): void
     {
+        app(Settings::class)->put(['investors.cost_policy' => null]);
         $maker = $this->userWith(['projects.view', 'investor.cost.view', 'investor.profit.calculate', 'investor.profit.submit', 'investor.ledger.export']);
         $checker = $this->userWith(['projects.view', 'investor.cost.view', 'investor.profit.approve']);
         $this->project->members()->attach([$maker->id, $checker->id]);
