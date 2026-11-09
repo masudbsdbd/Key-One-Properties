@@ -56,6 +56,7 @@ Route::prefix('customer-payments')->name('customer-payments.')->controller(Custo
 });
 
 Route::prefix('late-fees')->name('late-fees.')->controller(LateFeeController::class)->group(function () {
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::get('/', 'index')->name('index');
     Route::get('policies', 'policies')->name('policies');
     Route::get('assessments', 'assessments')->name('assessments');

@@ -3,6 +3,7 @@
 namespace App\Support\Export;
 
 use App\Support\Format;
+use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonInterface;
 use Closure;
@@ -30,6 +31,8 @@ class Report
     private string $orientation = 'portrait';
 
     private Closure $rows;
+
+    private bool $sumMoney = false;
 
     public function __construct(private string $title) {}
 
@@ -61,6 +64,14 @@ class Report
     public function meta(array $meta): self
     {
         $this->meta = array_filter($meta, fn ($v) => $v !== null && $v !== '');
+
+        return $this;
+    }
+
+    /** Adds a Total row summing every money column (used when no explicit totals are given). */
+    public function sumMoney(): self
+    {
+        $this->sumMoney = true;
 
         return $this;
     }
@@ -97,10 +108,13 @@ class Report
         $count = 0;
         fwrite($out, "\xEF\xBB\xBF");
         fputcsv($out, array_column($this->columns, 'label'));
+        $sums = [];
         foreach (($this->rows)() as $row) {
             fputcsv($out, array_map(fn ($v, $i) => $this->plain($v, $this->columns[$i]['type']), $row, array_keys($row)));
+            $this->accumulate($sums, $row);
             $count++;
         }
+        $this->totals ??= $this->summed($sums);
         if ($this->totals) {
             fputcsv($out, array_map(fn ($v, $i) => $v === null ? '' : $this->plain($v, $this->columns[$i]['type']), $this->totals, array_keys($this->totals)));
         }
@@ -170,9 +184,12 @@ class Report
     private function viewData(bool $pdf): array
     {
         $rows = [];
+        $sums = [];
         foreach (($this->rows)() as $row) {
             $rows[] = array_map(fn ($v, $i) => $this->display($v, $this->columns[$i]['type']), $row, array_keys($row));
+            $this->accumulate($sums, $row);
         }
+        $this->totals ??= $this->summed($sums);
 
         return [
             'title' => $this->title,
@@ -183,6 +200,32 @@ class Report
             'pdf' => $pdf,
             'orientation' => $this->orientation,
         ];
+    }
+
+    private function accumulate(array &$sums, array $row): void
+    {
+        if (! $this->sumMoney) {
+            return;
+        }
+        foreach ($this->columns as $i => $column) {
+            if ($column['type'] === 'money' && is_numeric($row[$i] ?? null)) {
+                $sums[$i] = Money::add($sums[$i] ?? '0', (string) $row[$i]);
+            }
+        }
+    }
+
+    private function summed(array $sums): ?array
+    {
+        if (! $this->sumMoney) {
+            return null;
+        }
+        $totals = array_map(fn ($c, $i) => $c['type'] === 'money' ? Money::amount($sums[$i] ?? '0') : null, $this->columns, array_keys($this->columns));
+        $first = array_search(null, $totals, true);
+        if ($first !== false) {
+            $totals[$first] = 'Total';
+        }
+
+        return $totals;
     }
 
     private function plain(mixed $value, string $type): string

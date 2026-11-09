@@ -16,6 +16,7 @@ use App\Support\Ajax;
 use App\Support\Export\Document;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
@@ -44,14 +45,14 @@ class InstallmentPlanController extends Controller
     {
         $plans = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('collections.plans._rows', ['plans' => $plans])->render(), $plans);
+        return Ajax::table(view('collections.plans._rows', ['plans' => $plans])->render(), $plans, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('collections.payment.statement.export'), 403);
 
-        return Report::make('Installment Plans')->meta(['Status' => InstallmentPlan::STATUSES[(string) $request->input('status')] ?? null])
+        return Report::make('Installment Plans')->sumMoney()->meta(['Status' => InstallmentPlan::STATUSES[(string) $request->input('status')] ?? null])
             ->columns(['Plan No' => 'text', 'Sale' => 'text', 'Customer' => 'text', 'Contract' => 'money', 'Booking Credit' => 'money', 'Principal' => 'money', 'Items' => 'number', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (InstallmentPlan $p) => [$p->plan_no, $p->sale->sale_no, $p->customer->full_name, $p->contract_value, $p->booking_credit, $p->principal_amount, $p->items_count, InstallmentPlan::STATUSES[$p->status]]))
             ->respond($request);
@@ -196,6 +197,23 @@ class InstallmentPlanController extends Controller
             ->summary(['Principal' => $plan->principal_amount])
             ->signatures(['Customer', 'Collections', 'Authorised signatory'])
             ->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $items = fn (string $expr) => "(SELECT COALESCE(SUM({$expr}), 0) FROM installment_schedule_items i WHERE i.plan_id = installment_plans.id AND i.status <> 'rescheduled')";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'active' => "SUM(CASE WHEN installment_plans.status = 'active' THEN 1 ELSE 0 END)",
+            'due' => "SUM(CASE WHEN installment_plans.status = 'active' THEN {$items('i.principal_due + i.fee_due')} ELSE 0 END)",
+            'paid' => "SUM(CASE WHEN installment_plans.status = 'active' THEN {$items('i.principal_paid + i.fee_paid')} ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN installment_plans.status = 'pending' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Scheduled', $row->due, 'calendar', 'info', ['status' => 'active'], ListSummary::many($row->active, 'active plan'))
+            ->money('Collected', $row->paid, 'check', 'success')
+            ->money('Outstanding', Money::sub((string) ($row->due ?? 0), (string) ($row->paid ?? 0)), 'clock', 'warning')
+            ->count('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending']);
     }
 
     private function listing(Request $request): Builder

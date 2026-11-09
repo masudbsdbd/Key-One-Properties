@@ -9,11 +9,14 @@ use App\Models\Project;
 use App\Models\SalesCancellation;
 use App\Modules\Sales\Services\SalesService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class CancellationController extends Controller
 {
@@ -28,6 +31,34 @@ class CancellationController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $query = $this->listing($request);
+        $rows = TableQuery::apply(clone $query, $request, ['cancellation_no', 'reason'], ['date' => 'created_at'], 'date', 'desc');
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'requested' => "SUM(CASE WHEN sales_cancellations.status = 'requested' THEN 1 ELSE 0 END)",
+            'approved' => "SUM(CASE WHEN sales_cancellations.status = 'approved' THEN 1 ELSE 0 END)",
+            'refund' => "SUM(CASE WHEN sales_cancellations.status = 'approved' THEN COALESCE(sales_cancellations.refund_expected, 0) ELSE 0 END)",
+        ]);
+        $summary = ListSummary::make($request)
+            ->count('Awaiting Decision', $row->requested, 'alert', 'accent', ['status' => 'requested'])
+            ->count('Approved', $row->approved, 'check', 'danger', ['status' => 'approved'])
+            ->money('Refund Expected', $row->refund, 'restore', 'warning');
+
+        return Ajax::table(view('sales.cancellations._rows', ['cancellations' => $rows])->render(), $rows, ['stats' => $summary->render()]);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('sales.export'), 403);
+
+        return Report::make('Cancellations')->sumMoney()->meta(['Status' => SalesCancellation::STATUSES[(string) $request->input('status')] ?? null, 'Period' => TableQuery::periodLabel($request)])
+            ->columns(['Cancellation No' => 'text', 'Requested' => 'date', 'Against' => 'text', 'Unit' => 'text', 'Customer' => 'text', 'Reason' => 'text', 'Refund Expected' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->latest('created_at')->lazy()->map(fn (SalesCancellation $c) => [$c->cancellation_no, $c->created_at, $c->sale?->sale_no ?? $c->booking?->booking_no,
+                ($c->sale ?? $c->booking)?->flat?->flat_no, ($c->sale ?? $c->booking)?->customer?->full_name, $c->reason, $c->refund_expected, SalesCancellation::STATUSES[$c->status] ?? $c->status]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->canAny(['sales.booking.cancel.request', 'sales.booking.cancel.approve']), 403);
         $visible = Project::query()->visibleTo($request->user())->select('projects.id');
         $query = SalesCancellation::query()->with(['booking.flat', 'booking.customer', 'sale.flat', 'sale.customer', 'requester'])
@@ -35,9 +66,8 @@ class CancellationController extends Controller
         if (array_key_exists($status = (string) $request->input('status'), SalesCancellation::STATUSES)) {
             $query->where('status', $status);
         }
-        $rows = TableQuery::apply($query, $request, ['cancellation_no', 'reason'], ['date' => 'created_at'], 'date', 'desc');
 
-        return Ajax::table(view('sales.cancellations._rows', ['cancellations' => $rows])->render(), $rows);
+        return TableQuery::period($query, $request, 'created_at');
     }
 
     public function approve(Request $request, SalesCancellation $cancellation): JsonResponse

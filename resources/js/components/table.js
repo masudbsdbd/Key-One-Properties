@@ -17,6 +17,7 @@ import { toast } from './toast';
  *   [data-table-view]        Table / Cards switch; html goes to [data-table-cards] in card view and the
  *                            choice is saved to the user's preferences (data-view-key, data-view-url)
  *   [data-table-stats]       receives data.stats when the endpoint sends it
+ *   [data-table-preset]      summary tile; clicking applies its JSON filters, clicking again clears them
  *   [data-table-history]     keeps the filters in the address bar (back/forward and shared links restore them)
  * Row actions:
  *   [data-row-action="delete|post"] with data-url, optional data-confirm.
@@ -148,6 +149,18 @@ function setup(table) {
             (mode === 'cards' ? body : cards).innerHTML = '';
             load();
             http.put(table.dataset.viewUrl, { key: table.dataset.viewKey, value: mode }, { silent: true }).catch(() => {});
+            return;
+        }
+
+        const tile = event.target.closest('[data-table-preset]');
+        if (tile && table.contains(tile)) {
+            const clear = tile.getAttribute('aria-pressed') === 'true';
+            Object.entries(JSON.parse(tile.dataset.tablePreset || '{}')).forEach(([name, value]) => {
+                const input = table.querySelector(`[data-table-filter][name="${name}"]`);
+                if (input) $(input).val(clear ? '' : value);
+            });
+            state.page = 1;
+            load();
             return;
         }
 

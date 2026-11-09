@@ -2,7 +2,7 @@
     <x-page-header title="Installment Plans" :breadcrumbs="['Dashboard' => route('dashboard'), 'Collections' => route('collections.overview'), 'Plans' => null]">
         <x-slot:actions>@can('collections.plan.create')<x-button icon="plus" data-remote-modal="{{ route('installment-plans.create') }}" data-size="max-w-4xl" data-auto-create>New Plan</x-button>@endcan</x-slot:actions>
     </x-page-header>
-    <x-data-table :url="route('installment-plans.table')" sort="date" dir="desc" search="Search plan, sale or customer" :columns="[
+    <x-data-table summary data-table-history :url="route('installment-plans.table')" sort="date" dir="desc" search="Search plan, sale or customer" :columns="[
         ['label' => 'Plan', 'sort' => 'date'], ['label' => 'Sale / Unit'], ['label' => 'Customer'], ['label' => 'Principal', 'class' => 'text-right', 'sort' => 'principal'], ['label' => 'Items', 'class' => 'text-right'], ['label' => 'Status'],
     ]">
         <x-slot:filters>
