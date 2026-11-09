@@ -152,4 +152,4 @@ browser checks for 13–14, and an empty-state check for 17.
 - [x] P5 Customer portal
 - [x] P6 Executive dashboard and report catalog
 - [x] P7 Queued exports, report runs and files
-- [ ] P8 Integration QA and release
+- [x] P8 Integration QA and release (`docs/phase-4-report.md`, `docs/uat-checklist-phase-4.md`)
