@@ -15,6 +15,7 @@ use App\Support\Ajax;
 use App\Support\Export\Document;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Carbon\Carbon;
@@ -43,14 +44,14 @@ class ProfitController extends Controller
     {
         $calcs = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('investors.profit._rows', ['calcs' => $calcs])->render(), $calcs);
+        return Ajax::table(view('investors.profit._rows', ['calcs' => $calcs])->render(), $calcs, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('investor.ledger.export'), 403);
 
-        return Report::make('Flat Profit Calculations')->meta(['Status' => FlatProfitCalculation::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+        return Report::make('Flat Profit Calculations')->sumMoney()->meta(['Status' => FlatProfitCalculation::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Calculation' => 'text', 'Project' => 'text', 'Unit' => 'text', 'Revenue' => 'money', 'Direct Cost' => 'money', 'Shared Cost' => 'money', 'Other Cost' => 'money', 'Net Profit' => 'money', 'Investor %' => 'text', 'Company Share' => 'money', 'Eligible' => 'text', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (FlatProfitCalculation $c) => [$c->calculation_no, $c->project->code, $c->flat->flat_no, $c->revenue_amount, $c->direct_cost_amount,
                 $c->shared_cost_amount, $c->other_approved_cost_amount, $c->net_profit_amount, AgreementController::pct($c->investor_share_percent), $c->company_share_amount, $c->revenue_eligible ? 'Yes' : 'No', FlatProfitCalculation::STATUSES[$c->status]]))
@@ -175,6 +176,22 @@ class ProfitController extends Controller
             ->respond($request);
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'net' => "SUM(CASE WHEN flat_profit_calculations.status = 'approved' THEN flat_profit_calculations.net_profit_amount ELSE 0 END)",
+            'investors' => "SUM(CASE WHEN flat_profit_calculations.status = 'approved' THEN flat_profit_calculations.net_profit_amount - flat_profit_calculations.company_share_amount ELSE 0 END)",
+            'submitted' => "SUM(CASE WHEN flat_profit_calculations.status = 'submitted' THEN 1 ELSE 0 END)",
+            'draft' => "SUM(CASE WHEN flat_profit_calculations.status = 'draft' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Approved Net Profit', $row->net, 'bar-chart', 'success', ['status' => 'approved'])
+            ->money('Investors\' Share', $row->investors, 'users', 'violet')
+            ->count('Awaiting Approval', $row->submitted, 'alert', 'accent', ['status' => 'submitted'])
+            ->count('Drafts', $row->draft, 'edit', 'info', ['status' => 'draft']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.cost.view'), 403);
@@ -185,6 +202,8 @@ class ProfitController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+
+        TableQuery::period($query, $request, 'created_at');
 
         return TableQuery::prepare($query, $request, ['calculation_no', 'flat.flat_no'], ['date' => 'created_at', 'net' => 'net_profit_amount'], 'date', 'desc');
     }

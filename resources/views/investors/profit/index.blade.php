@@ -10,12 +10,13 @@
             @can('settings.manage')<a href="{{ route('settings.edit') }}" class="font-medium underline">Settings</a>@endcan
         </div>
     @endif
-    <x-data-table :url="route('profit-calculations.table')" sort="date" dir="desc" search="Search calculation or unit" :columns="[
+    <x-data-table summary data-table-history :url="route('profit-calculations.table')" sort="date" dir="desc" search="Search calculation or unit" :columns="[
         ['label' => 'Calculation', 'sort' => 'date'], ['label' => 'Unit'], ['label' => 'Revenue', 'class' => 'text-right'], ['label' => 'Cost', 'class' => 'text-right'], ['label' => 'Net Profit', 'class' => 'text-right', 'sort' => 'net'], ['label' => 'Investors', 'class' => 'text-right'], ['label' => 'Status'],
     ]">
         <x-slot:filters>
             <select name="status" class="form-control w-40" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\FlatProfitCalculation::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
             <div class="w-52"><select name="project" class="form-control" data-table-filter data-select data-select-url="{{ route('options.projects') }}" data-placeholder="All projects" aria-label="Project"><option value=""></option></select></div>
+            <x-period />
         </x-slot:filters>
         <x-slot:toolbar>@can('investor.ledger.export')<x-export-menu :url="route('profit-calculations.export')" />@endcan</x-slot:toolbar>
     </x-data-table>

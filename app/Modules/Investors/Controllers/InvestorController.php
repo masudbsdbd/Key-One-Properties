@@ -11,6 +11,7 @@ use App\Models\InvestorLedgerEntry;
 use App\Modules\Investors\Services\InvestorService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
@@ -38,7 +39,7 @@ class InvestorController extends Controller
     {
         $investors = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('investors._rows', ['investors' => $investors])->render(), $investors);
+        return Ajax::table(view('investors._rows', ['investors' => $investors])->render(), $investors, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -157,6 +158,23 @@ class InvestorController extends Controller
             ->selectRaw("{$capital} AS capital_effect, {$profit} AS profit_effect")
             ->selectRaw("SUM({$capital}) OVER (ORDER BY e.entry_date, e.id) AS capital_balance, SUM({$profit}) OVER (ORDER BY e.entry_date, e.id) AS profit_balance")
             ->orderBy('e.entry_date')->orderBy('e.id');
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $kind = 'COALESCE(o.entry_kind, e.entry_kind)';
+        $row = InvestorLedgerEntry::query()->from('investor_ledger_entries as e')->leftJoin('investor_ledger_entries as o', 'o.id', '=', 'e.reversal_of_id')
+            ->whereIn('e.investor_id', $this->listing($request)->reorder()->select('investors.id'))
+            ->whereIn('e.flat_id', Flat::query()->visibleTo($request->user())->select('flats.id'))
+            ->selectRaw("SUM(CASE WHEN {$kind} = 'capital_in' THEN e.amount WHEN {$kind} = 'capital_out' THEN -e.amount ELSE 0 END) AS capital")
+            ->selectRaw("SUM(CASE WHEN {$kind} = 'profit_payable' THEN e.amount ELSE 0 END) AS payable")
+            ->selectRaw("SUM(CASE WHEN {$kind} = 'profit_paid' THEN e.amount ELSE 0 END) AS paid")->toBase()->first();
+
+        return ListSummary::make($request)
+            ->money('Capital Held', $row->capital, 'briefcase', 'info')
+            ->money('Profit Approved', $row->payable, 'bar-chart', 'violet')
+            ->money('Profit Paid', $row->paid, 'check', 'success')
+            ->money('Profit Due', Money::sub((string) ($row->payable ?? 0), (string) ($row->paid ?? 0)), 'clock', 'warning');
     }
 
     private function listing(Request $request): Builder

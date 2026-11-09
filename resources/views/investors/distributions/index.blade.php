@@ -14,11 +14,12 @@
         </x-data-table>
     </section>
     <section id="panel-distributions" role="tabpanel" aria-labelledby="tab-distributions" hidden>
-        <x-data-table :url="route('distributions.table')" sort="date" dir="desc" search="Search distribution or investor" :columns="[
+        <x-data-table summary :url="route('distributions.table')" sort="date" dir="desc" search="Search distribution or investor" :columns="[
             ['label' => 'Distribution', 'sort' => 'date'], ['label' => 'Investor'], ['label' => 'Unit'], ['label' => 'Amount', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Status'],
         ]">
             <x-slot:filters>
                 <select name="status" class="form-control w-44" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\InvestorProfitDistribution::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
+                <x-period />
             </x-slot:filters>
             <x-slot:toolbar>@can('investor.ledger.export')<x-export-menu :url="route('distributions.export')" />@endcan</x-slot:toolbar>
         </x-data-table>

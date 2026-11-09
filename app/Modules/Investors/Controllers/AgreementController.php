@@ -12,6 +12,7 @@ use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Carbon\Carbon;
@@ -42,7 +43,7 @@ class AgreementController extends Controller
     {
         $agreements = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('investors.agreements._rows', ['agreements' => $agreements, 'showInvestor' => ! $request->filled('investor')])->render(), $agreements);
+        return Ajax::table(view('investors.agreements._rows', ['agreements' => $agreements, 'showInvestor' => ! $request->filled('investor')])->render(), $agreements, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -221,6 +222,23 @@ class AgreementController extends Controller
 
         return Documents::investorAgreement($agreement)
             ->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $received = "(SELECT COALESCE(SUM(CASE WHEN t.transaction_type = 'contribution' THEN t.amount ELSE -t.amount END), 0) FROM investor_capital_transactions t WHERE t.investor_id = investor_flat_agreements.investor_id AND t.flat_id = investor_flat_agreements.flat_id AND t.status = 'posted')";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'active' => "SUM(CASE WHEN investor_flat_agreements.status = 'active' THEN 1 ELSE 0 END)",
+            'committed' => "SUM(CASE WHEN investor_flat_agreements.status = 'active' THEN investor_flat_agreements.committed_capital ELSE 0 END)",
+            'received' => "SUM(CASE WHEN investor_flat_agreements.status = 'active' THEN {$received} ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN investor_flat_agreements.status = 'pending' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->count('Active', $row->active, 'check-square', 'success', ['status' => 'active'])
+            ->money('Committed Capital', $row->committed, 'briefcase', 'info')
+            ->money('Capital Received', $row->received, 'check', 'violet')
+            ->count('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending']);
     }
 
     private function listing(Request $request): Builder
