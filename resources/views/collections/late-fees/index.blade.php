@@ -12,10 +12,11 @@
         ]" />
     </section>
     <section id="panel-charges" role="tabpanel" aria-labelledby="tab-charges" hidden>
-        <x-data-table :url="route('late-fees.assessments')" sort="date" dir="desc" :search="false" :columns="[
+        <x-data-table summary :url="route('late-fees.assessments')" sort="date" dir="desc" :search="false" :columns="[
             ['label' => 'Charged', 'sort' => 'date'], ['label' => 'Customer'], ['label' => 'Installment'], ['label' => 'Amount', 'class' => 'text-right'], ['label' => 'Status'], ['label' => '', 'class' => 'w-16'],
         ]">
-            <x-slot:filters><select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All</option>@foreach (App\Models\LateFeeAssessment::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select></x-slot:filters>
+            <x-slot:filters><select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All</option>@foreach (App\Models\LateFeeAssessment::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select><x-period /></x-slot:filters>
+            <x-slot:toolbar>@can('collections.payment.statement.export')<x-export-menu :url="route('late-fees.export')" />@endcan</x-slot:toolbar>
         </x-data-table>
     </section>
 </x-layouts.app>

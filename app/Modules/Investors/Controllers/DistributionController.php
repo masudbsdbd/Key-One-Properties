@@ -13,6 +13,7 @@ use App\Modules\Investors\Services\InvestorLedger;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -53,14 +54,14 @@ class DistributionController extends Controller
     {
         $rows = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('investors.distributions._rows', ['distributions' => $rows])->render(), $rows);
+        return Ajax::table(view('investors.distributions._rows', ['distributions' => $rows])->render(), $rows, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('investor.ledger.export'), 403);
 
-        return Report::make('Profit Distributions')->meta(['Status' => InvestorProfitDistribution::STATUSES[(string) $request->input('status')] ?? null])
+        return Report::make('Profit Distributions')->sumMoney()->meta(['Status' => InvestorProfitDistribution::STATUSES[(string) $request->input('status')] ?? null, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Distribution No' => 'text', 'Date' => 'date', 'Investor' => 'text', 'Project' => 'text', 'Unit' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (InvestorProfitDistribution $d) => [$d->distribution_no, $d->created_at, $d->investor->name, $d->flat->project->code, $d->flat->flat_no, $d->amount, InvestorProfitDistribution::STATUSES[$d->status]]))
             ->respond($request);
@@ -205,6 +206,21 @@ class DistributionController extends Controller
         return $query;
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $paid = "(SELECT COALESCE(SUM(p.amount), 0) FROM investor_payouts p WHERE p.distribution_id = investor_profit_distributions.id AND p.status = 'posted')";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'pending' => "SUM(CASE WHEN investor_profit_distributions.status = 'pending_approval' THEN investor_profit_distributions.amount ELSE 0 END)",
+            'unpaid' => "SUM(CASE WHEN investor_profit_distributions.status IN ('approved', 'partially_paid') THEN investor_profit_distributions.amount - {$paid} ELSE 0 END)",
+            'paid' => "SUM({$paid})",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending_approval'])
+            ->money('Approved, Unpaid', $row->unpaid, 'clock', 'warning', ['status' => 'approved'])
+            ->money('Paid Out', $row->paid, 'check', 'success', ['status' => 'paid']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.view'), 403);
@@ -215,6 +231,8 @@ class DistributionController extends Controller
         if ($investor = Investor::findByPublicId($request->input('investor'))) {
             $query->where('investor_id', $investor->id);
         }
+
+        TableQuery::period($query, $request, 'created_at');
 
         return TableQuery::prepare($query, $request, ['distribution_no', 'investor.name'], ['date' => 'created_at', 'amount' => 'amount'], 'date', 'desc');
     }

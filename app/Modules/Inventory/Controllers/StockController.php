@@ -16,6 +16,7 @@ use App\Modules\Inventory\Services\InventoryService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -192,10 +193,24 @@ class StockController extends Controller
 
         $movements = TableQuery::apply($this->movementQuery($request), $request, ['movement_no', 'notes'], ['date' => 'posted_at'], 'date', 'desc');
 
+        $valued = $request->user()->can('materials.valuation.view');
+        $row = ListSummary::aggregate($this->movementQuery(ListSummary::without($request, ['type'])), [
+            'in' => 'SUM(CASE WHEN stock_movements.to_warehouse_id IS NOT NULL AND stock_movements.from_warehouse_id IS NULL THEN stock_movements.total_value ELSE 0 END)',
+            'in_n' => 'SUM(CASE WHEN stock_movements.to_warehouse_id IS NOT NULL AND stock_movements.from_warehouse_id IS NULL THEN 1 ELSE 0 END)',
+            'out' => 'SUM(CASE WHEN stock_movements.from_warehouse_id IS NOT NULL AND stock_movements.to_warehouse_id IS NULL THEN stock_movements.total_value ELSE 0 END)',
+            'out_n' => 'SUM(CASE WHEN stock_movements.from_warehouse_id IS NOT NULL AND stock_movements.to_warehouse_id IS NULL THEN 1 ELSE 0 END)',
+            'moved' => 'SUM(CASE WHEN stock_movements.from_warehouse_id IS NOT NULL AND stock_movements.to_warehouse_id IS NOT NULL THEN 1 ELSE 0 END)',
+        ]);
+        $summary = ListSummary::make($request)
+            ->when($valued, fn ($s) => $s->money('Stock In', $row->in, 'arrow-down', 'success', note: ListSummary::many($row->in_n, 'movement'))
+                ->money('Stock Out', $row->out, 'arrow-up', 'warning', note: ListSummary::many($row->out_n, 'movement')))
+            ->when(! $valued, fn ($s) => $s->count('Stock In', $row->in_n, 'arrow-down', 'success')->count('Stock Out', $row->out_n, 'arrow-up', 'warning'))
+            ->count('Between Warehouses', $row->moved, 'arrow-right', 'info');
+
         return Ajax::table(view('inventory.stock._movement_rows', [
             'movements' => $movements,
-            'showValue' => $request->user()->can('materials.valuation.view'),
-        ])->render(), $movements);
+            'showValue' => $valued,
+        ])->render(), $movements, ['stats' => $summary->render()]);
     }
 
     public function export(Request $request): Response
@@ -250,7 +265,7 @@ class StockController extends Controller
             $query->where('movement_type', $type);
         }
 
-        return $query;
+        return TableQuery::period($query, $request, 'posted_at');
     }
 
     private function warehouse(Request $request, string $publicId, string $permission): Warehouse

@@ -6,6 +6,7 @@
     'dir' => 'asc',
     'viewKey' => null,
     'view' => 'table',
+    'summary' => false,
 ])
 {{--
     columns: [['label' => 'Name', 'sort' => 'name', 'class' => '']] ; a column without 'sort' is static.
@@ -39,6 +40,9 @@
     </div>
     @endif
     @isset($stats)<div class="border-b border-line p-4" data-table-stats>{{ $stats }}</div>@endisset
+    @if ($summary && ! isset($stats))
+        <div class="border-b border-line p-4" data-table-stats><div class="grid grid-cols-2 gap-3 lg:grid-cols-4">@for ($i = 0; $i < 4; $i++)<div class="h-[66px] animate-pulse rounded-card bg-surface-muted"></div>@endfor</div></div>
+    @endif
     @if ($viewKey)
         <div class="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" data-table-cards aria-live="polite" @unless ($cards) hidden @endunless></div>
     @endif

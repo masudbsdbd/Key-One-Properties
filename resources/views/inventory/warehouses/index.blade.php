@@ -7,5 +7,7 @@
     <x-data-table :url="route('warehouses.table')" sort="name" search="Search code or name" :columns="[
         ['label' => 'Code', 'sort' => 'code'], ['label' => 'Warehouse', 'sort' => 'name'], ['label' => 'Belongs To'], ['label' => 'Items', 'class' => 'text-right'],
         ['label' => 'Stock Value', 'class' => 'text-right'], ['label' => 'Status'], ['label' => '', 'class' => 'w-16'],
-    ]" />
+    ]">
+        <x-slot:toolbar>@can('materials.export')<x-export-menu :url="route('warehouses.export')" />@endcan</x-slot:toolbar>
+    </x-data-table>
 </x-layouts.app>

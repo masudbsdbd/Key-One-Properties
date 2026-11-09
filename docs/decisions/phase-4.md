@@ -103,11 +103,11 @@ browser checks for 13–14, and an empty-state check for 17.
 
 | Question (blueprint §12) | Default built |
 | --- | --- |
-| Aggregate project financials for investors | Denied by default; explicit grant per project and per cost category |
-| Customers viewing project progress | Off in Phase 4 |
+| Aggregate project financials for investors | Confirmed by client 2026-11-09: the company decides. Off by default; an admin opens project financials and each cost category per investor and project (Portal tab → Add Grant), or for all investors through the Investor role |
+| Customers viewing project progress | Confirmed by client 2026-11-09: off by default; an admin opens it per customer on a project or unit (Portal tab → Add Grant), or for all customers through the Customer role. Only portal-published progress updates are shown |
 | Phase 3 profit recognition | Finalised 2026-11-09 (after sale approval, admin approves). Portal shows approved payable and paid from the ledger; draft or submitted calculations appear only as "Estimated" |
 | Export retention and storage | Private disk, 7-day expiry (configurable), PDFs carry the app branding |
-| Excel | CSV (opens in Excel) until an `.xlsx` library is approved |
+| Excel | Confirmed by client 2026-11-09: keep CSV (opens in Excel) |
 
 ## 8. Investor portal notes
 

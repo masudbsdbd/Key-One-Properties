@@ -11,6 +11,7 @@ use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Modules\Sales\Services\SalesService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -38,14 +39,14 @@ class BookingController extends Controller
     {
         $bookings = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('sales.bookings._rows', ['bookings' => $bookings])->render(), $bookings);
+        return Ajax::table(view('sales.bookings._rows', ['bookings' => $bookings])->render(), $bookings, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('sales.export'), 403);
 
-        return Report::make('Bookings')->meta(['Status' => FlatBooking::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+        return Report::make('Bookings')->sumMoney()->meta(['Status' => FlatBooking::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Booking No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Unit' => 'text', 'Customer' => 'text', 'Agreed Price' => 'money', 'Booking Money' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (FlatBooking $b) => [$b->booking_no, $b->booking_date, $b->project->code, $b->flat->flat_no, $b->customer->full_name,
                 $b->agreed_price, $b->booking_amount_expected, FlatBooking::STATUSES[$b->status]]))
@@ -186,6 +187,25 @@ class BookingController extends Controller
         return Ajax::success('Cancellation '.$c->cancellation_no.' sent for approval.');
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $today = now(config('app.display_timezone'))->toDateString();
+        $week = now(config('app.display_timezone'))->addDays(7)->toDateString();
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['status', 'expiring'])), [
+            'pending' => "SUM(CASE WHEN flat_bookings.status = 'pending' THEN 1 ELSE 0 END)",
+            'confirmed' => "SUM(CASE WHEN flat_bookings.status = 'confirmed' THEN flat_bookings.agreed_price ELSE 0 END)",
+            'confirmed_n' => "SUM(CASE WHEN flat_bookings.status = 'confirmed' THEN 1 ELSE 0 END)",
+            'expiring' => ["SUM(CASE WHEN flat_bookings.status = 'confirmed' AND flat_bookings.booking_expires_at BETWEEN ? AND ? THEN 1 ELSE 0 END)", [$today, $week]],
+            'money' => "SUM((SELECT COALESCE(SUM(p.amount), 0) FROM customer_payments p WHERE p.status = 'posted' AND p.booking_id = flat_bookings.id))",
+        ]);
+
+        return ListSummary::make($request)
+            ->count('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending'])
+            ->money('Confirmed', $row->confirmed, 'calendar-check', 'info', ['status' => 'confirmed'], ListSummary::many($row->confirmed_n, 'booking'))
+            ->count('Expiring in 7 Days', $row->expiring, 'clock', 'danger', ['expiring' => '1'])
+            ->money('Booking Money Received', $row->money, 'check', 'success');
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.booking.view'), 403);
@@ -198,6 +218,11 @@ class BookingController extends Controller
         }
         if ($customer = Customer::findByPublicId($request->input('customer'))) {
             $query->where('customer_id', $customer->id);
+        }
+        TableQuery::period($query, $request, 'booking_date');
+        if ($request->input('expiring') === '1') {
+            $today = now(config('app.display_timezone'))->toDateString();
+            $query->where('status', 'confirmed')->whereDate('booking_expires_at', '>=', $today)->whereDate('booking_expires_at', '<=', now(config('app.display_timezone'))->addDays(7)->toDateString());
         }
 
         return TableQuery::prepare($query, $request, ['booking_no', 'flat.flat_no', 'customer.full_name'], ['date' => 'booking_date', 'price' => 'agreed_price'], 'date', 'desc');

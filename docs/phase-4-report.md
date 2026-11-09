@@ -39,14 +39,14 @@ changing its schema or behaviour; decisions are in `docs/decisions/phase-4.md`.
 | Accessibility and layout | Playwright sweep of 19 staff and portal pages at 390 px and 1440 px | No horizontal overflow, no unnamed buttons or links, no unlabelled inputs, no images without alt |
 | Performance | Query count per request on dev data | Portal pages 6–25 queries, report tables 4–10, executive shell 9; all under 55 ms locally. Widgets load separately and are cached per user for 5 minutes |
 
-## Decisions still open with the client (defaults built)
+## Client decisions (2026-11-09)
 
-| Question | Default |
+| Question | Decision |
 | --- | --- |
-| Investor access to aggregate project financials | Denied; explicit grant per project and cost category |
-| Customers viewing project progress | Off |
-| Export retention | Private storage, 7 days (`REPORT_EXPORT_DAYS`) |
-| Excel exports | CSV (opens in Excel) until an `.xlsx` library is approved |
+| Investor access to aggregate project financials | The company decides: off by default, opened per investor and project/cost category, or for all investors through the role |
+| Customers viewing project progress | Off by default; opened per customer on a project or unit, or for all customers through the role |
+| Export retention | Private storage, 7 days (`REPORT_EXPORT_DAYS`); awaiting client confirmation |
+| Excel exports | Keep CSV (opens in Excel) |
 
 ## Open risks
 

@@ -21,6 +21,7 @@
                 <div class="w-48"><select name="category" class="form-control" data-table-filter data-select data-placeholder="All categories" aria-label="Category"><option value=""></option>@foreach ($categories as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach</select></div>
                 <select name="active" class="form-control w-32" data-table-filter aria-label="Status"><option value="">All</option><option value="1">Active</option><option value="0">Inactive</option></select>
             </x-slot:filters>
+        <x-slot:toolbar>@can('materials.export')<x-export-menu :url="route('materials.export')" />@endcan</x-slot:toolbar>
         </x-data-table>
     </section>
 

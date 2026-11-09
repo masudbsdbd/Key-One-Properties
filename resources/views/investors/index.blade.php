@@ -4,7 +4,7 @@
             <x-slot:actions><x-button icon="plus" data-remote-modal="{{ route('investors.create') }}" data-size="max-w-2xl" data-auto-create>New Investor</x-button></x-slot:actions>
         @endcan
     </x-page-header>
-    <x-data-table :url="route('investors.table')" sort="name" dir="asc" search="Search name, code or mobile" :columns="[
+    <x-data-table summary data-table-history :url="route('investors.table')" sort="name" dir="asc" search="Search name, code or mobile" :columns="[
         ['label' => 'Investor', 'sort' => 'name'], ['label' => 'Contact'], ['label' => 'Active Units', 'class' => 'text-right'], ['label' => 'Capital', 'class' => 'text-right'], ['label' => 'Status'],
     ]">
         <x-slot:filters>

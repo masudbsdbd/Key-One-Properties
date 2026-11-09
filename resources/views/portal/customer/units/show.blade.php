@@ -20,7 +20,7 @@
                 <div><dt class="detail-label">Project</dt><dd class="detail-value">{{ $unit->project->name }}</dd></div>
                 <div><dt class="detail-label">Building / Floor</dt><dd class="detail-value">{{ $flat->building->name }} · {{ $flat->floor->label }}</dd></div>
                 <div><dt class="detail-label">Saleable Area</dt><dd class="detail-value">{{ number_format((float) $flat->saleable_area) }} {{ $flat->area_unit }}</dd></div>
-                <div><dt class="detail-label">Type</dt><dd class="detail-value">{{ $flat->flat_type ?: '—' }}@if ($flat->bedrooms !== null) · {{ $flat->bedrooms }} Bed · {{ $flat->bathrooms ?? 0 }} Bath @endif</dd></div>
+                <div><dt class="detail-label">Type</dt><dd class="detail-value">{{ collect([$flat->flat_type, $flat->bedrooms !== null && ! str_contains((string) $flat->flat_type, 'Bed') ? $flat->bedrooms.' Bed' : null, $flat->bathrooms !== null ? $flat->bathrooms.' Bath' : null])->filter()->join(' · ') ?: '—' }}</dd></div>
                 <div><dt class="detail-label">{{ $isSale ? 'Sale' : 'Booking' }}</dt><dd class="detail-value">{{ $isSale ? $unit->sale_no : $unit->booking_no }} · {{ App\Support\Format::date($isSale ? $unit->agreement_date : $unit->booking_date) }}</dd></div>
                 @if (App\Support\Money::isPositive($position['late_fees']))<div><dt class="detail-label">Late Fees Billed</dt><dd class="detail-value">{{ $money($position['late_fees']) }}</dd></div>@endif
                 @if (App\Support\Money::isPositive($position['refunded']))<div><dt class="detail-label">Refunded</dt><dd class="detail-value">{{ $money($position['refunded']) }}</dd></div>@endif
@@ -36,4 +36,19 @@
             </x-card>
         @endif
     </div>
+
+    @if ($progressProject)
+        <x-card title="Construction" class="mt-6">
+            <x-slot:actions><x-button size="sm" variant="secondary" icon="activity" href="{{ route('customer.projects.show', $progressProject->public_id) }}">View Progress</x-button></x-slot:actions>
+            <x-progress :value="$progressProject->overallProgress()" size="h-3" />
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                @foreach ($progressProject->stages as $stage)
+                    <div class="rounded-control border border-line px-3 py-2.5">
+                        <p class="truncate text-sm font-medium text-ink-900">{{ $stage->name }}</p>
+                        <x-progress :value="$stage->progress_percent" class="mt-1.5" />
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+    @endif
 </x-layouts.portal>

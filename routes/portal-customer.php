@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Modules\Portal\Controllers\Customer\InstallmentController;
 use App\Modules\Portal\Controllers\Customer\OverviewController;
 use App\Modules\Portal\Controllers\Customer\PaymentController;
+use App\Modules\Portal\Controllers\Customer\ProjectController;
 use App\Modules\Portal\Controllers\Customer\StatementController;
 use App\Modules\Portal\Controllers\Customer\UnitController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,8 @@ Route::get('profile', [ProfileController::class, 'edit'])->name('profile');
 
 Route::get('units', [UnitController::class, 'index'])->name('flats.index');
 Route::get('units/{unit}', [UnitController::class, 'show'])->name('flats.show');
+Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+Route::get('progress-photos/{file}', [ProjectController::class, 'photo'])->middleware('throttle:120,1')->name('projects.photo');
 Route::get('installments', [InstallmentController::class, 'index'])->name('installments.index');
 Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
 Route::get('payments/table', [PaymentController::class, 'table'])->name('payments.table');

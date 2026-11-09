@@ -31,9 +31,10 @@ class Ajax
         return response()->json($payload, $status);
     }
 
-    public static function table(string $html, LengthAwarePaginator $paginator): JsonResponse
+    /** @param array<string, mixed> $data extra keys next to html, e.g. ['stats' => ListSummary html] */
+    public static function table(string $html, LengthAwarePaginator $paginator, array $data = []): JsonResponse
     {
-        return self::success(null, ['html' => $html], [
+        return self::success(null, ['html' => $html] + $data, [
             'total' => $paginator->total(),
             'from' => $paginator->firstItem(),
             'to' => $paginator->lastItem(),

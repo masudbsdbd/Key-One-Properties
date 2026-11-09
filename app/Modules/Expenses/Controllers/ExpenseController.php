@@ -12,6 +12,7 @@ use App\Modules\Expenses\Services\ExpenseService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -37,14 +38,23 @@ class ExpenseController extends Controller
     {
         abort_unless($request->user()->canAny(['expenses.view.general', 'expenses.view.project']), 403);
         $query = $this->filtered($request)->with(['project:id,public_id,code,name', 'category:id,code,name,parent_id', 'category.parent:id,name']);
-        $totals = (clone $this->filtered($request))->selectRaw("
-            COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN amount END),0) AS approved_total,
-            COALESCE(SUM(CASE WHEN status = 'paid' THEN amount END),0) AS paid_total,
-            COALESCE(SUM(CASE WHEN status = 'submitted' THEN amount END),0) AS pending_total")->toBase()->first();
 
         $expenses = TableQuery::apply($query, $request, ['expense_no', 'description', 'payee_name'], ['date' => 'expense_date', 'amount' => 'amount'], 'date', 'desc');
 
-        return Ajax::table(view('expenses._rows', ['expenses' => $expenses, 'totals' => $totals])->render(), $expenses);
+        $row = ListSummary::aggregate($this->filtered(ListSummary::without($request)), [
+            'approved' => "SUM(CASE WHEN expenses.status IN ('approved', 'paid') THEN expenses.amount ELSE 0 END)",
+            'paid' => "SUM(CASE WHEN expenses.status = 'paid' THEN expenses.amount ELSE 0 END)",
+            'unpaid' => "SUM(CASE WHEN expenses.status = 'approved' THEN expenses.amount ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN expenses.status = 'submitted' THEN expenses.amount ELSE 0 END)",
+            'pending_n' => "SUM(CASE WHEN expenses.status = 'submitted' THEN 1 ELSE 0 END)",
+        ]);
+        $summary = ListSummary::make($request)
+            ->money('Approved Spend', $row->approved, 'note', 'info')
+            ->money('Paid', $row->paid, 'check', 'success', ['status' => 'paid'])
+            ->money('Approved, Unpaid', $row->unpaid, 'clock', 'warning', ['status' => 'approved'])
+            ->money('Awaiting Approval', $row->pending, 'alert', 'accent', ['status' => 'submitted'], ListSummary::many($row->pending_n, 'expense'));
+
+        return Ajax::table(view('expenses._rows', ['expenses' => $expenses])->render(), $expenses, ['stats' => $summary->render()]);
     }
 
     public function export(Request $request): Response
@@ -53,7 +63,7 @@ class ExpenseController extends Controller
         $query = $this->filtered($request)->with(['project:id,code', 'category:id,code,name'])->orderBy('expense_date')->orderBy('id');
         $total = (string) (clone $this->filtered($request))->whereIn('status', ['approved', 'paid'])->sum('amount');
 
-        return Report::make('Expenses')
+        return Report::make('Expenses')->sumMoney()
             ->meta($this->filterSummary($request))
             ->columns(['Expense No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Category' => 'text', 'Description' => 'text', 'Payee' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $query->lazy()->map(fn (Expense $e) => [$e->expense_no, $e->expense_date, $e->project?->code ?? 'General', $e->category->name,

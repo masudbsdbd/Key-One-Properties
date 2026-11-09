@@ -15,6 +15,7 @@ use App\Models\Project;
 use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\Phone;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,7 +65,17 @@ class CollectionsController extends Controller
         $page = max(1, (int) $request->input('page', 1));
         $rows = $all->forPage($page, 25)->values();
 
-        return Ajax::table(view('collections.dues._rows', ['items' => $rows])->render(), new LengthAwarePaginator($rows, $all->count(), 25, $page));
+        $today = now(config('app.display_timezone'))->startOfDay();
+        $open = $this->filteredDues(ListSummary::without($request, ['filter']));
+        $sum = fn ($items) => Money::add('0', ...$items->map(fn ($i) => $i->outstanding())->all());
+        $overdue = $open->filter(fn ($i) => $i->due_date->lt($today));
+        $summary = ListSummary::make($request)
+            ->money('Overdue', $sum($overdue), 'alert', 'danger', ['filter' => 'overdue'], ListSummary::many($overdue->pluck('plan.customer_id')->unique()->count(), 'customer'))
+            ->money('Due This Week', $sum($open->filter(fn ($i) => $i->due_date->between($today, $today->copy()->addDays(6)))), 'clock', 'warning', ['filter' => 'week'])
+            ->money('Due This Month', $sum($open->filter(fn ($i) => $i->due_date->between($today->copy()->startOfMonth(), $today->copy()->endOfMonth()))), 'calendar', 'info', ['filter' => 'month'])
+            ->money('All Open Dues', $sum($open), 'tag', 'accent', note: ListSummary::many($open->pluck('plan.customer_id')->unique()->count(), 'customer'));
+
+        return Ajax::table(view('collections.dues._rows', ['items' => $rows])->render(), new LengthAwarePaginator($rows, $all->count(), 25, $page), ['stats' => $summary->render()]);
     }
 
     public function duesExport(Request $request): Response
@@ -156,6 +167,7 @@ class CollectionsController extends Controller
 
         return $items->filter(fn ($i) => match ((string) $request->input('filter')) {
             'overdue' => $i->due_date->lt($today),
+            'week' => $i->due_date->between($today, $today->copy()->addDays(6)),
             'month' => $i->due_date->between($today->copy()->startOfMonth(), $today->copy()->endOfMonth()),
             default => true,
         })->filter(fn ($i) => $term === '' || str_contains(mb_strtolower($i->plan->customer->full_name.' '.$i->plan->sale->sale_no.' '.$i->plan->sale->flat->flat_no), $term))->values();

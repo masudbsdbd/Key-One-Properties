@@ -1,28 +1,6 @@
 import $ from 'jquery';
 import { http } from '../core/http';
-
-const pad = (n) => String(n).padStart(2, '0');
-const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-function range(preset) {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    switch (preset) {
-        case 'this-month':
-            return [new Date(y, m, 1), new Date(y, m + 1, 0)];
-        case 'last-month':
-            return [new Date(y, m - 1, 1), new Date(y, m, 0)];
-        case 'this-quarter': {
-            const q = Math.floor(m / 3) * 3;
-            return [new Date(y, q, 1), new Date(y, q + 3, 0)];
-        }
-        case 'this-year':
-            return [new Date(y, 0, 1), new Date(y, 11, 31)];
-        default:
-            return null;
-    }
-}
+import { initPeriods } from '../components/period';
 
 function initExports() {
     // Queue opens a modal carrying the table's current filters.
@@ -48,21 +26,7 @@ function initExports() {
 export function initReportPages() {
     initExecutive();
     initExports();
-    document.querySelectorAll('[data-period-preset]').forEach((select) => {
-        const scope = select.closest('[data-ajax-table], [data-executive]') || document;
-        const from = scope.querySelector('[name=from]');
-        const to = scope.querySelector('[name=to]');
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('from') || params.get('to')) select.value = 'custom';
-        select.addEventListener('change', () => {
-            if (select.value === 'custom') return;
-            const r = range(select.value);
-            from.value = r ? iso(r[0]) : '';
-            to.value = r ? iso(r[1]) : '';
-            $(to).trigger('change');
-        });
-        [from, to].forEach((input) => input?.addEventListener('input', () => { select.value = 'custom'; }));
-    });
+    initPeriods();
 }
 
 function initExecutive() {

@@ -29,9 +29,7 @@ class PortalAccessController extends Controller
         abort_unless($request->user()->canAny(['portal.links.manage', 'portal.grants.manage']), 403);
         $record = $this->owner($request, $type, $owner);
         $links = $this->linkModel($type)::query()->where("{$type}_id", $record->id)->with(['user:id,name,email,mobile,last_login_at', 'user.roles:id,name'])->latest('id')->get();
-        $grants = $type === 'investor'
-            ? PortalAccessGrant::query()->whereIn('user_id', $links->pluck('user_id'))->with('granter:id,name')->latest('id')->get()->groupBy('user_id')
-            : collect();
+        $grants = PortalAccessGrant::query()->whereIn('user_id', $links->pluck('user_id'))->with('granter:id,name')->latest('id')->get()->groupBy('user_id');
 
         return Ajax::success(null, ['html' => view('portal.admin._panel', [
             'type' => $type, 'owner' => $record, 'links' => $links, 'grants' => $grants, 'service' => $this->service,
@@ -115,23 +113,24 @@ class PortalAccessController extends Controller
         return Ajax::success('Password reset. The account must change it at next sign-in.');
     }
 
-    public function grantForm(Request $request, string $link): JsonResponse
+    public function grantForm(Request $request, string $type, string $link): JsonResponse
     {
         abort_unless($request->user()->can('portal.grants.manage'), 403);
-        $record = $this->link($request, 'investor', $link);
+        $record = $this->link($request, $type, $link);
 
         return Ajax::success(null, ['title' => 'Add Grant · '.$record->user->name, 'html' => view('portal.admin._grant-form', [
-            'link' => $record, 'resources' => $this->grantResources($record->investor),
+            'type' => $type, 'link' => $record, 'resources' => $this->grantResources($type === 'investor' ? $record->investor : $record->customer),
+            'capabilities' => PortalAccess::grantable($type),
         ])->render()]);
     }
 
-    public function grant(Request $request, string $link): JsonResponse
+    public function grant(Request $request, string $type, string $link): JsonResponse
     {
         abort_unless($request->user()->can('portal.grants.manage'), 403);
-        $record = $this->link($request, 'investor', $link);
+        $record = $this->link($request, $type, $link);
         $data = $request->validate([
             'resource' => ['required', 'string', 'regex:/^(project|flat):[A-Za-z0-9]{16}$/'],
-            'capability' => ['required', Rule::in(array_keys(PortalAccess::GRANTABLE))],
+            'capability' => ['required', Rule::in(array_keys(PortalAccess::grantable($type)))],
             'expires_at' => ['nullable', 'date', 'after:today'],
         ]);
         [$kind, $publicId] = explode(':', $data['resource']);
@@ -145,19 +144,23 @@ class PortalAccessController extends Controller
     public function revokeGrant(Request $request, PortalAccessGrant $grant): JsonResponse
     {
         abort_unless($request->user()->can('portal.grants.manage'), 403);
-        $link = InvestorUserLink::query()->where('user_id', $grant->user_id)->firstOrFail();
-        $this->owner($request, 'investor', $link->investor->public_id);
+        $link = InvestorUserLink::query()->where('user_id', $grant->user_id)->first();
+        $link ? $this->owner($request, 'investor', $link->investor->public_id)
+            : $this->owner($request, 'customer', (CustomerUserLink::query()->where('user_id', $grant->user_id)->first() ?? abort(404))->customer->public_id);
         $this->service->revokeGrant($grant, $request->user());
 
         return Ajax::success('Grant revoked.');
     }
 
     /** @return array<string, string> "project:{public_id}" or "flat:{public_id}" => label */
-    private function grantResources(Investor $investor): array
+    private function grantResources(Investor|Customer $owner): array
     {
-        $projects = Project::query()->whereIn('id', PortalAccess::investorProjectIds($investor))->orderBy('code')->get(['id', 'public_id', 'code', 'name'])
+        [$projectIds, $flatIds] = $owner instanceof Investor
+            ? [PortalAccess::investorProjectIds($owner), PortalAccess::investorFlatIds($owner)]
+            : [PortalAccess::customerProjectIds($owner), PortalAccess::customerFlatIds($owner)];
+        $projects = Project::query()->whereIn('id', $projectIds)->orderBy('code')->get(['id', 'public_id', 'code', 'name'])
             ->mapWithKeys(fn ($p) => ['project:'.$p->public_id => 'Project · '.$p->code.' · '.$p->name]);
-        $flats = Flat::query()->whereIn('id', PortalAccess::investorFlatIds($investor))->with('project:id,code')->orderBy('project_id')->orderBy('flat_no')->get(['id', 'public_id', 'flat_no', 'project_id'])
+        $flats = Flat::query()->whereIn('id', $flatIds)->with('project:id,code')->orderBy('project_id')->orderBy('flat_no')->get(['id', 'public_id', 'flat_no', 'project_id'])
             ->mapWithKeys(fn ($f) => ['flat:'.$f->public_id => 'Unit · '.$f->project->code.' · '.$f->flat_no]);
 
         return $projects->merge($flats)->all();

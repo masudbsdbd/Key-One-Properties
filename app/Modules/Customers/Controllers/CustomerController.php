@@ -4,11 +4,13 @@ namespace App\Modules\Customers\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\FlatSale;
 use App\Models\User;
 use App\Modules\Customers\Requests\CustomerRequest;
 use App\Modules\Customers\Services\CustomerService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,7 +37,7 @@ class CustomerController extends Controller
         $query = $this->listing($request);
         $customers = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('customers._rows', ['customers' => $customers])->render(), $customers);
+        return Ajax::table(view('customers._rows', ['customers' => $customers])->render(), $customers, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -46,6 +48,25 @@ class CustomerController extends Controller
             ->columns(['Code' => 'text', 'Name' => 'text', 'Mobile' => 'text', 'Email' => 'text', 'Source' => 'text', 'Status' => 'text', 'Created' => 'date'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (Customer $c) => [$c->customer_code, $c->full_name, Phone::display($c->primary_mobile), $c->email, Customer::SOURCES[$c->source] ?? null, Customer::STATUSES[$c->status], $c->created_at]))
             ->respond($request);
+    }
+
+    private function summary(Request $request): ListSummary
+    {
+        $user = $request->user();
+        $active = ListSummary::marks(FlatSale::ACTIVE);
+        $today = now(config('app.display_timezone'))->toDateString();
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['dues'])), [
+            'all' => 'COUNT(*)',
+            'buyers' => ["SUM(CASE WHEN EXISTS (SELECT 1 FROM flat_sales s WHERE s.customer_id = customers.id AND s.status IN ({$active})) THEN 1 ELSE 0 END)", FlatSale::ACTIVE],
+            'receivable' => 'SUM((SELECT COALESCE(SUM(e.charge_amount - e.credit_amount), 0) FROM customer_statement_entries e WHERE e.customer_id = customers.id))',
+            'overdue' => ["SUM(CASE WHEN EXISTS (SELECT 1 FROM installment_schedule_items i JOIN installment_plans pl ON pl.id = i.plan_id WHERE pl.customer_id = customers.id AND pl.status = 'active' AND i.status NOT IN ('paid', 'rescheduled') AND i.due_date < ? AND i.principal_due + i.fee_due - i.principal_paid - i.fee_paid > 0) THEN 1 ELSE 0 END)", [$today]],
+        ]);
+
+        return ListSummary::make($request)
+            ->count('Customers', $row->all, 'users', 'info')
+            ->count('Buyers', $row->buyers, 'door', 'success')
+            ->when($user->can('collections.payment.view'), fn ($s) => $s->money('Receivable', $row->receivable, 'tag', 'warning'))
+            ->when($user->can('collections.plan.view'), fn ($s) => $s->count('With Overdue Dues', $row->overdue, 'alert', 'danger', ['dues' => 'overdue']));
     }
 
     private function listing(Request $request): Builder
@@ -67,6 +88,12 @@ class CustomerController extends Controller
         }
         if ($user->can('customers.view_all') && ($owner = User::findByPublicId($request->input('owner')))) {
             $query->where('created_by', $owner->id);
+        }
+
+        if ($request->input('dues') === 'overdue' && $user->can('collections.plan.view')) {
+            $query->whereExists(fn ($q) => $q->selectRaw('1')->from('installment_schedule_items as i')->join('installment_plans as pl', 'pl.id', '=', 'i.plan_id')
+                ->whereColumn('pl.customer_id', 'customers.id')->where('pl.status', 'active')->whereNotIn('i.status', ['paid', 'rescheduled'])
+                ->whereDate('i.due_date', '<', now(config('app.display_timezone'))->toDateString())->whereRaw('i.principal_due + i.fee_due - i.principal_paid - i.fee_paid > 0'));
         }
 
         // Mobile searches match the normalised number too.

@@ -12,8 +12,11 @@ use App\Modules\Inventory\Services\BorrowService;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
+use App\Support\Export\Report;
 use App\Support\LineKeys;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -34,9 +37,39 @@ class BorrowController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $rows = TableQuery::apply($this->listing($request), $request, ['borrow_no', 'notes'], ['date' => 'created_at'], 'date', 'desc');
+        $open = ListSummary::marks(MaterialBorrow::OPEN);
+        $outstanding = '(SELECT COALESCE(SUM((l.issued_qty - l.returned_qty - l.converted_qty) * l.locked_unit_cost), 0) FROM material_borrow_lines l WHERE l.borrow_id = material_borrows.id)';
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'open' => ["SUM(CASE WHEN material_borrows.status IN ({$open}) THEN 1 ELSE 0 END)", MaterialBorrow::OPEN],
+            'value' => ["SUM(CASE WHEN material_borrows.status IN ({$open}) THEN {$outstanding} ELSE 0 END)", MaterialBorrow::OPEN],
+            'submitted' => "SUM(CASE WHEN material_borrows.status = 'submitted' THEN 1 ELSE 0 END)",
+            'approved' => "SUM(CASE WHEN material_borrows.status = 'approved' THEN 1 ELSE 0 END)",
+        ]);
+        $summary = ListSummary::make($request)
+            ->count('Open Borrows', $row->open, 'refresh', 'warning', ['status' => 'open'])
+            ->when($request->user()->can('materials.valuation.view'), fn ($s) => $s->money('Not Yet Returned', $row->value, 'layers', 'danger'))
+            ->count('Awaiting Approval', $row->submitted, 'alert', 'accent', ['status' => 'submitted'])
+            ->count('Awaiting Issue', $row->approved, 'clock', 'info', ['status' => 'approved']);
+
+        return Ajax::table(view('inventory.borrows._rows', ['borrows' => $rows])->render(), $rows, ['stats' => $summary->render()]);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('materials.export'), 403);
+
+        return Report::make('Material Borrows')->meta(['Status' => MaterialBorrow::STATUSES[(string) $request->input('status')] ?? ($request->input('status') === 'open' ? 'Open' : null), 'Period' => TableQuery::periodLabel($request)])
+            ->columns(['Borrow No' => 'text', 'Date' => 'date', 'From Project' => 'text', 'To Project' => 'text', 'Items' => 'number', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->latest('created_at')->lazy()->map(fn (MaterialBorrow $b) => [$b->borrow_no, $b->created_at, $b->sourceProject?->name, $b->destinationProject?->name,
+                $b->lines->count(), MaterialBorrow::STATUSES[$b->status] ?? $b->status]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('materials.view'), 403);
         $visible = Project::query()->visibleTo($request->user())->select('id');
-
         $query = MaterialBorrow::query()->with(['sourceProject:id,public_id,name,code', 'destinationProject:id,public_id,name,code', 'lines'])
             ->where(fn ($q) => $q->whereIn('source_project_id', $visible)->orWhereIn('destination_project_id', $visible));
         if (array_key_exists($status = (string) $request->input('status'), MaterialBorrow::STATUSES)) {
@@ -44,10 +77,11 @@ class BorrowController extends Controller
         } elseif ($request->input('status') === 'open') {
             $query->whereIn('status', MaterialBorrow::OPEN);
         }
+        if ($project = Project::findByPublicId($request->input('project'))) {
+            $query->where(fn ($q) => $q->where('source_project_id', $project->id)->orWhere('destination_project_id', $project->id));
+        }
 
-        $rows = TableQuery::apply($query, $request, ['borrow_no', 'notes'], ['date' => 'created_at'], 'date', 'desc');
-
-        return Ajax::table(view('inventory.borrows._rows', ['borrows' => $rows])->render(), $rows);
+        return TableQuery::period($query, $request, 'created_at');
     }
 
     public function create(Request $request): JsonResponse

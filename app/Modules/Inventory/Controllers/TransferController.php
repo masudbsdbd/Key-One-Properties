@@ -12,8 +12,11 @@ use App\Modules\Inventory\Services\StockMath;
 use App\Modules\Inventory\Services\TransferService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
+use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -34,6 +37,36 @@ class TransferController extends Controller
 
     public function table(Request $request): JsonResponse
     {
+        $rows = TableQuery::apply($this->listing($request), $request, ['transfer_no', 'reason'], ['date' => 'created_at'], 'date', 'desc');
+        $value = '(SELECT COALESCE(SUM(l.total_value), 0) FROM material_transfer_lines l WHERE l.transfer_id = material_transfers.id)';
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'submitted' => "SUM(CASE WHEN material_transfers.status = 'submitted' THEN 1 ELSE 0 END)",
+            'approved' => "SUM(CASE WHEN material_transfers.status = 'approved' THEN 1 ELSE 0 END)",
+            'posted' => "SUM(CASE WHEN material_transfers.status = 'posted' THEN {$value} ELSE 0 END)",
+            'posted_n' => "SUM(CASE WHEN material_transfers.status = 'posted' THEN 1 ELSE 0 END)",
+        ]);
+        $summary = ListSummary::make($request)
+            ->count('Awaiting Approval', $row->submitted, 'alert', 'accent', ['status' => 'submitted'])
+            ->count('Approved, Not Posted', $row->approved, 'clock', 'warning', ['status' => 'approved'])
+            ->when($request->user()->can('materials.valuation.view'), fn ($s) => $s->money('Posted Value', $row->posted, 'arrow-right', 'success', ['status' => 'posted'], ListSummary::many($row->posted_n, 'transfer')));
+
+        return Ajax::table(view('inventory.transfers._rows', ['transfers' => $rows])->render(), $rows, ['stats' => $summary->render()]);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('materials.export'), 403);
+        $value = $request->user()->can('materials.valuation.view');
+
+        return Report::make('Material Transfers')->sumMoney()->meta(['Status' => MaterialTransfer::STATUSES[(string) $request->input('status')] ?? null, 'Period' => TableQuery::periodLabel($request)])
+            ->columns(['Transfer No' => 'text', 'Date' => 'date', 'Kind' => 'text', 'From' => 'text', 'To' => 'text', 'Status' => 'text'] + ($value ? ['Value' => 'money'] : []))
+            ->rows(fn () => $this->listing($request)->latest('created_at')->lazy()->map(fn (MaterialTransfer $t) => [$t->transfer_no, $t->created_at, MaterialTransfer::KINDS[$t->kind] ?? $t->kind,
+                $t->sourceWarehouse?->name, $t->destinationWarehouse?->name, MaterialTransfer::STATUSES[$t->status] ?? $t->status, ...($value ? [(string) $t->lines->sum('total_value')] : [])]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         abort_unless($request->user()->can('materials.view'), 403);
         $visible = Warehouse::query()->visibleTo($request->user())->select('id');
 
@@ -46,9 +79,7 @@ class TransferController extends Controller
             $query->where('kind', $kind);
         }
 
-        $rows = TableQuery::apply($query, $request, ['transfer_no', 'reason'], ['date' => 'created_at'], 'date', 'desc');
-
-        return Ajax::table(view('inventory.transfers._rows', ['transfers' => $rows])->render(), $rows);
+        return TableQuery::period($query, $request, 'created_at');
     }
 
     public function create(Request $request): JsonResponse

@@ -16,6 +16,8 @@ use App\Modules\Sales\Services\SalesService;
 use App\Support\Ajax;
 use App\Support\Export\Document;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
+use App\Support\Money;
 use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,14 +46,14 @@ class SaleController extends Controller
     {
         $sales = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('sales.sales._rows', ['sales' => $sales])->render(), $sales);
+        return Ajax::table(view('sales.sales._rows', ['sales' => $sales])->render(), $sales, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('sales.export'), 403);
 
-        return Report::make('Sales')->meta(['Status' => FlatSale::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+        return Report::make('Sales')->sumMoney()->meta(['Status' => FlatSale::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Sale No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Unit' => 'text', 'Customer' => 'text', 'Price' => 'money', 'Discount' => 'money', 'Contract Value' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (FlatSale $s) => [$s->sale_no, $s->agreement_date, $s->project->code, $s->flat->flat_no, $s->customer->full_name,
                 $s->sale_price, $s->discount_amount, $s->net_contract_value, FlatSale::STATUSES[$s->status]]))
@@ -206,6 +208,24 @@ class SaleController extends Controller
             ->respond($request);
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $in = ListSummary::marks(FlatSale::ACTIVE);
+        $paid = "(SELECT COALESCE(SUM(p.amount), 0) FROM customer_payments p WHERE p.status = 'posted' AND (p.sale_id = flat_sales.id OR (flat_sales.booking_id IS NOT NULL AND p.booking_id = flat_sales.booking_id AND p.sale_id IS NULL)))";
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'n' => ["SUM(CASE WHEN flat_sales.status IN ({$in}) THEN 1 ELSE 0 END)", FlatSale::ACTIVE],
+            'value' => ["SUM(CASE WHEN flat_sales.status IN ({$in}) THEN flat_sales.net_contract_value ELSE 0 END)", FlatSale::ACTIVE],
+            'paid' => ["SUM(CASE WHEN flat_sales.status IN ({$in}) THEN {$paid} ELSE 0 END)", FlatSale::ACTIVE],
+            'pending' => "SUM(CASE WHEN flat_sales.status = 'pending' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Contract Value', $row->value, 'file', 'info', note: ListSummary::many($row->n, 'sale'))
+            ->money('Collected', $row->paid, 'check', 'success')
+            ->money('Outstanding', Money::sub((string) ($row->value ?? 0), (string) ($row->paid ?? 0)), 'clock', 'warning')
+            ->count('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.sale.view'), 403);
@@ -219,6 +239,7 @@ class SaleController extends Controller
         if ($customer = Customer::findByPublicId($request->input('customer'))) {
             $query->where('customer_id', $customer->id);
         }
+        TableQuery::period($query, $request, 'agreement_date');
 
         return TableQuery::prepare($query, $request, ['sale_no', 'flat.flat_no', 'customer.full_name'], ['date' => 'agreement_date', 'value' => 'net_contract_value'], 'date', 'desc');
     }

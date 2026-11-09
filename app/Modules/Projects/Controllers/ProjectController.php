@@ -4,10 +4,14 @@ namespace App\Modules\Projects\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\ProjectCostAllocation;
 use App\Modules\Projects\Requests\ProjectRequest;
 use App\Modules\Projects\Services\ProjectService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\Format;
+use App\Support\ListSummary;
+use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -34,7 +38,7 @@ class ProjectController extends Controller
 
         $view = $request->input('view') === 'cards' ? 'projects._cards' : 'projects._rows';
 
-        return Ajax::table(view($view, ['projects' => $projects])->render(), $projects);
+        return Ajax::table(view($view, ['projects' => $projects])->render(), $projects, ['stats' => $this->listSummary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -45,6 +49,20 @@ class ProjectController extends Controller
             ->columns(['Code' => 'text', 'Name' => 'text', 'Location' => 'text', 'Status' => 'text', 'Start' => 'date', 'Target' => 'date', 'Progress %' => 'number', 'Budget' => 'money'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (Project $p) => [$p->code, $p->name, $p->location_text, Project::STATUSES[$p->status] ?? $p->status, $p->start_date, $p->target_completion_date, round($p->overallProgress(), 1), $p->estimated_budget]))
             ->respond($request);
+    }
+
+    private function listSummary(Request $request): ListSummary
+    {
+        $projects = $this->listing(ListSummary::without($request))->reorder()->get();
+        $active = $projects->where('status', 'active');
+        $canCost = $request->user()->can('construction.cost.view');
+        $spent = $canCost ? ProjectCostAllocation::query()->whereIn('project_id', $projects->pluck('id'))->sum('amount') : null;
+
+        return ListSummary::make($request)
+            ->count('Active', $active->count(), 'activity', 'success', ['status' => 'active'], ListSummary::many($projects->count(), 'project'))
+            ->money('Budget', Money::add('0', ...$projects->map(fn ($p) => (string) ($p->estimated_budget ?? 0))->all()), 'briefcase', 'info')
+            ->when($canCost, fn ($s) => $s->money('Spent', $spent, 'tag', 'warning'))
+            ->text('Average Progress', Format::percent($projects->isNotEmpty() ? round($projects->avg(fn ($p) => $p->overallProgress()), 1) : 0), 'bar-chart', 'violet');
     }
 
     private function listing(Request $request): Builder

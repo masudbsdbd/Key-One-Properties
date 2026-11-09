@@ -13,6 +13,7 @@ use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,14 +42,15 @@ class CustomerPaymentController extends Controller
     {
         $payments = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('collections.payments._rows', ['payments' => $payments])->render(), $payments);
+        return Ajax::table(view('collections.payments._rows', ['payments' => $payments])->render(), $payments, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('collections.payment.statement.export'), 403);
 
-        return Report::make('Customer Payments')->meta(['Status' => CustomerPayment::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name])
+        return Report::make('Customer Payments')->meta(['Status' => CustomerPayment::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name,
+            'Method' => CustomerPayment::METHODS[(string) $request->input('method')] ?? null, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Payment No' => 'text', 'Date' => 'date', 'Customer' => 'text', 'For' => 'text', 'Method' => 'text', 'Reference' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (CustomerPayment $p) => [$p->payment_no, $p->payment_date, $p->customer->full_name, $p->sale?->sale_no ?? $p->booking?->booking_no,
                 CustomerPayment::METHODS[$p->method] ?? $p->method, $p->reference_no, $p->amount, CustomerPayment::STATUSES[$p->status]]))
@@ -160,6 +162,22 @@ class CustomerPaymentController extends Controller
         return [$booking, $sale];
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'posted' => "SUM(CASE WHEN customer_payments.status = 'posted' THEN customer_payments.amount ELSE 0 END)",
+            'posted_n' => "SUM(CASE WHEN customer_payments.status = 'posted' THEN 1 ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN customer_payments.status = 'pending' THEN customer_payments.amount ELSE 0 END)",
+            'pending_n' => "SUM(CASE WHEN customer_payments.status = 'pending' THEN 1 ELSE 0 END)",
+            'reversed' => "SUM(CASE WHEN customer_payments.status = 'reversed' THEN customer_payments.amount ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Collected', $row->posted, 'check', 'success', ['status' => 'posted'], ListSummary::many($row->posted_n, 'payment'))
+            ->money('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending'], ListSummary::many($row->pending_n, 'payment'))
+            ->money('Reversed', $row->reversed, 'refresh', 'danger', ['status' => 'reversed']);
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('collections.payment.view'), 403);
@@ -173,6 +191,10 @@ class CustomerPaymentController extends Controller
         if ($customer = Customer::findByPublicId($request->input('customer'))) {
             $query->where('customer_id', $customer->id);
         }
+        if (array_key_exists($method = (string) $request->input('method'), CustomerPayment::METHODS)) {
+            $query->where('method', $method);
+        }
+        TableQuery::period($query, $request, 'payment_date');
 
         return TableQuery::prepare($query, $request, ['payment_no', 'reference_no', 'customer.full_name'], ['date' => 'payment_date', 'amount' => 'amount'], 'date', 'desc');
     }

@@ -96,4 +96,31 @@ class TableQuery
 
         return [$items->take($perPage)->map($map)->values()->all(), $items->count() > $perPage];
     }
+
+    /** Restricts a list to the from/to dates of the request (YYYY-MM-DD; anything else is ignored). */
+    public static function period(Builder $query, Request $request, string $column): Builder
+    {
+        foreach (['from' => '>=', 'to' => '<='] as $key => $op) {
+            if ($date = self::date($request->input($key))) {
+                $query->whereDate($column, $op, $date);
+            }
+        }
+
+        return $query;
+    }
+
+    /** "2026-11-01 to 2026-11-30" for export headers, or null when no period is set. */
+    public static function periodLabel(Request $request): ?string
+    {
+        [$from, $to] = [self::date($request->input('from')), self::date($request->input('to'))];
+
+        return $from || $to ? ($from ?? '…').' to '.($to ?? '…') : null;
+    }
+
+    private static function date(mixed $value): ?string
+    {
+        $value = (string) $value;
+
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) && checkdate((int) substr($value, 5, 2), (int) substr($value, 8, 2), (int) substr($value, 0, 4)) ? $value : null;
+    }
 }

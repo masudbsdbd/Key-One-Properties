@@ -59,6 +59,7 @@ Route::prefix('sales')->name('sales.')->controller(SaleController::class)->group
 Route::prefix('cancellations')->name('cancellations.')->controller(CancellationController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('table', 'table')->name('table');
+    Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
     Route::post('{cancellation}/approve', 'approve')->name('approve');
     Route::get('{cancellation}/reject', 'rejectForm')->name('reject.form');
     Route::post('{cancellation}/reject', 'reject')->name('reject');

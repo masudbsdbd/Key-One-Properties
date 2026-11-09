@@ -82,27 +82,33 @@ class PortalAccountService
     }
 
     /** A grant can only point at a project or unit the investor holds through an approved agreement. */
-    public function grant(InvestorUserLink $link, Project|Flat $resource, string $capability, ?string $expiresAt, User $actor): PortalAccessGrant
+    public function grant(InvestorUserLink|CustomerUserLink $link, Project|Flat $resource, string $capability, ?string $expiresAt, User $actor): PortalAccessGrant
     {
-        if (! array_key_exists($capability, PortalAccess::GRANTABLE)) {
+        $type = $link instanceof InvestorUserLink ? 'investor' : 'customer';
+        if (! array_key_exists($capability, PortalAccess::grantable($type))) {
             throw ValidationException::withMessages(['capability' => 'Select a capability.']);
         }
         if (! $link->isUsable()) {
             throw ValidationException::withMessages(['account' => 'The account link is not active.']);
         }
-        $investor = $link->investor;
-        $held = $resource instanceof Project ? PortalAccess::investorProjectIds($investor) : PortalAccess::investorFlatIds($investor);
+        $owner = $type === 'investor' ? $link->investor : $link->customer;
+        $held = match (true) {
+            $type === 'investor' && $resource instanceof Project => PortalAccess::investorProjectIds($owner),
+            $type === 'investor' => PortalAccess::investorFlatIds($owner),
+            $resource instanceof Project => PortalAccess::customerProjectIds($owner),
+            default => PortalAccess::customerFlatIds($owner),
+        };
         if (! $held->contains($resource->id)) {
-            throw ValidationException::withMessages(['resource' => 'The investor holds nothing in this '.($resource instanceof Project ? 'project' : 'unit').'.']);
+            throw ValidationException::withMessages(['resource' => 'The '.$type.' holds nothing in this '.($resource instanceof Project ? 'project' : 'unit').'.']);
         }
 
-        return DB::transaction(function () use ($link, $resource, $capability, $expiresAt, $actor) {
+        return DB::transaction(function () use ($link, $type, $owner, $resource, $capability, $expiresAt, $actor) {
             $grant = PortalAccessGrant::query()->create([
-                'user_id' => $link->user_id, 'portal_type' => 'investor', 'resource_type' => $resource instanceof Project ? 'project' : 'flat',
+                'user_id' => $link->user_id, 'portal_type' => $type, 'resource_type' => $resource instanceof Project ? 'project' : 'flat',
                 'resource_id' => $resource->id, 'capability' => $capability, 'granted_by' => $actor->id, 'starts_at' => now(), 'expires_at' => $expiresAt,
             ]);
             PortalAccess::forgetCache($link->user_id);
-            activity('portal')->causedBy($actor)->performedOn($link->investor)->event('portal_grant_added')
+            activity('portal')->causedBy($actor)->performedOn($owner)->event('portal_grant_added')
                 ->withProperties(['account' => $link->user->name, 'capability' => PortalAccess::GRANTABLE[$capability], 'resource' => $this->resourceLabel($resource)])->log('portal_grant_added');
 
             return $grant;
@@ -118,8 +124,9 @@ class PortalAccountService
             }
             $grant->forceFill(['revoked_at' => now(), 'revoked_by' => $actor->id])->save();
             PortalAccess::forgetCache($grant->user_id);
-            $investor = InvestorUserLink::query()->where('user_id', $grant->user_id)->latest('id')->first()?->investor;
-            activity('portal')->causedBy($actor)->performedOn($investor ?? $grant)->event('portal_grant_revoked')
+            $owner = InvestorUserLink::query()->where('user_id', $grant->user_id)->latest('id')->first()?->investor
+                ?? CustomerUserLink::query()->where('user_id', $grant->user_id)->latest('id')->first()?->customer;
+            activity('portal')->causedBy($actor)->performedOn($owner ?? $grant)->event('portal_grant_revoked')
                 ->withProperties(['account' => $grant->user->name, 'capability' => PortalAccess::GRANTABLE[$grant->capability] ?? $grant->capability])->log('portal_grant_revoked');
         });
     }

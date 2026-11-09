@@ -122,6 +122,16 @@
     /* Unit cards */
     .unit-card { @apply relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-md; }
     .unit-stat { @apply flex items-center gap-3 rounded-card px-4 py-3; }
+    .summary-tile { @apply flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface px-4 py-3 transition-colors; }
+    .summary-tile-icon { @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control; }
+    .summary-tile.st-info .summary-tile-icon { @apply bg-info-50 text-info-600; }
+    .summary-tile.st-success .summary-tile-icon { @apply bg-success-50 text-success-600; }
+    .summary-tile.st-warning .summary-tile-icon { @apply bg-warning-50 text-warning-600; }
+    .summary-tile.st-danger .summary-tile-icon { @apply bg-danger-50 text-danger-600; }
+    .summary-tile.st-violet .summary-tile-icon { @apply bg-violet-50 text-violet-600; }
+    .summary-tile.st-accent .summary-tile-icon { @apply bg-accent-50 text-accent-700; }
+    .summary-tile.is-clickable { @apply hover:border-accent-300 hover:bg-accent-50/40; }
+    .summary-tile.is-active { @apply border-accent-500 bg-accent-50/60 ring-1 ring-accent-500; }
 
     /* Tabs */
     .tab {

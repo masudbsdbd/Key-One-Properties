@@ -12,6 +12,8 @@ use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
+use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -42,15 +44,15 @@ class CapitalController extends Controller
     {
         $rows = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('investors.capital._rows', ['transactions' => $rows, 'showInvestor' => ! $request->filled('investor')])->render(), $rows);
+        return Ajax::table(view('investors.capital._rows', ['transactions' => $rows, 'showInvestor' => ! $request->filled('investor')])->render(), $rows, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('investor.ledger.export'), 403);
 
-        return Report::make('Investor Capital')
-            ->meta(['Type' => InvestorCapitalTransaction::TYPES[(string) $request->input('type')] ?? null, 'Status' => InvestorCapitalTransaction::STATUSES[(string) $request->input('status')] ?? null,
+        return Report::make('Investor Capital')->sumMoney()
+            ->meta(['Period' => TableQuery::periodLabel($request), 'Type' => InvestorCapitalTransaction::TYPES[(string) $request->input('type')] ?? null, 'Status' => InvestorCapitalTransaction::STATUSES[(string) $request->input('status')] ?? null,
                 'Investor' => Investor::findByPublicId($request->input('investor'))?->name, 'Project' => Project::findByPublicId($request->input('project'))?->name])
             ->columns(['Transaction No' => 'text', 'Date' => 'date', 'Investor' => 'text', 'Project' => 'text', 'Unit' => 'text', 'Type' => 'text', 'Method' => 'text', 'Reference' => 'text', 'Amount' => 'money', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (InvestorCapitalTransaction $t) => [$t->transaction_no, $t->transaction_date, $t->investor->name, $t->project->code, $t->flat->flat_no,
@@ -146,6 +148,22 @@ class CapitalController extends Controller
             ->respond($request);
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['status', 'type'])), [
+            'in' => "SUM(CASE WHEN investor_capital_transactions.status = 'posted' AND investor_capital_transactions.transaction_type = 'contribution' THEN investor_capital_transactions.amount ELSE 0 END)",
+            'out' => "SUM(CASE WHEN investor_capital_transactions.status = 'posted' AND investor_capital_transactions.transaction_type = 'capital_return' THEN investor_capital_transactions.amount ELSE 0 END)",
+            'pending' => "SUM(CASE WHEN investor_capital_transactions.status = 'pending' THEN investor_capital_transactions.amount ELSE 0 END)",
+            'pending_n' => "SUM(CASE WHEN investor_capital_transactions.status = 'pending' THEN 1 ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->money('Received', $row->in, 'arrow-down', 'success', ['status' => 'posted', 'type' => 'contribution'])
+            ->money('Returned', $row->out, 'arrow-up', 'warning', ['status' => 'posted', 'type' => 'capital_return'])
+            ->money('Net Capital', Money::sub((string) ($row->in ?? 0), (string) ($row->out ?? 0)), 'briefcase', 'info')
+            ->money('Pending Posting', $row->pending, 'alert', 'accent', ['status' => 'pending'], ListSummary::many($row->pending_n, 'entry'));
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('investor.view'), 403);
@@ -165,6 +183,8 @@ class CapitalController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+
+        TableQuery::period($query, $request, 'transaction_date');
 
         return TableQuery::prepare($query, $request, ['transaction_no', 'reference_no', 'investor.name'], ['date' => 'transaction_date', 'amount' => 'amount'], 'date', 'desc');
     }

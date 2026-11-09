@@ -14,6 +14,7 @@ use App\Modules\Sales\Services\SalesService;
 use App\Support\Ajax;
 use App\Support\Export\Document;
 use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\Phone;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,14 +42,14 @@ class RefundController extends Controller
     {
         $refunds = TableQuery::paginate($this->listing($request), $request);
 
-        return Ajax::table(view('sales.refunds._rows', ['refunds' => $refunds])->render(), $refunds);
+        return Ajax::table(view('sales.refunds._rows', ['refunds' => $refunds])->render(), $refunds, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
     {
         abort_unless($request->user()->can('sales.export'), 403);
 
-        return Report::make('Customer Refunds')->meta(['Status' => CustomerRefund::STATUSES[(string) $request->input('status')] ?? null])
+        return Report::make('Customer Refunds')->sumMoney()->meta(['Status' => CustomerRefund::STATUSES[(string) $request->input('status')] ?? null, 'Period' => TableQuery::periodLabel($request)])
             ->columns(['Refund No' => 'text', 'Requested' => 'date', 'Customer' => 'text', 'Against' => 'text', 'Requested Amount' => 'money', 'Deduction' => 'money', 'Refund' => 'money', 'Paid On' => 'date', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (CustomerRefund $r) => [$r->refund_no, $r->created_at, $r->customer->full_name, $r->sale?->sale_no ?? $r->booking?->booking_no, $r->amount, $r->deduction_amount, $r->payable(), $r->paid_on, CustomerRefund::STATUSES[$r->status]]))
             ->respond($request);
@@ -171,6 +172,23 @@ class RefundController extends Controller
         return [$booking, $sale];
     }
 
+    private function summary(Request $request): ListSummary
+    {
+        $payable = 'COALESCE(customer_refunds.net_amount, customer_refunds.amount)';
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request)), [
+            'pending' => "SUM(CASE WHEN customer_refunds.status = 'pending' THEN 1 ELSE 0 END)",
+            'due' => "SUM(CASE WHEN customer_refunds.status = 'approved' THEN {$payable} ELSE 0 END)",
+            'paid' => "SUM(CASE WHEN customer_refunds.status = 'paid' THEN {$payable} ELSE 0 END)",
+            'deducted' => "SUM(CASE WHEN customer_refunds.status IN ('approved', 'paid') THEN COALESCE(customer_refunds.deduction_amount, 0) ELSE 0 END)",
+        ]);
+
+        return ListSummary::make($request)
+            ->count('Pending Approval', $row->pending, 'alert', 'accent', ['status' => 'pending'])
+            ->money('Approved, Unpaid', $row->due, 'clock', 'warning', ['status' => 'approved'])
+            ->money('Paid', $row->paid, 'check', 'success', ['status' => 'paid'])
+            ->money('Deductions', $row->deducted, 'minus', 'info');
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('sales.refund.view'), 403);
@@ -181,6 +199,8 @@ class RefundController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+
+        TableQuery::period($query, $request, 'created_at');
 
         return TableQuery::prepare($query, $request, ['refund_no', 'reason', 'customer.full_name'], ['date' => 'created_at', 'amount' => 'amount'], 'date', 'desc');
     }

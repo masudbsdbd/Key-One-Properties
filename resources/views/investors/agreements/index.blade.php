@@ -4,7 +4,7 @@
             <x-slot:actions><x-button icon="plus" data-remote-modal="{{ route('investor-agreements.create') }}" data-size="max-w-3xl" data-auto-create>New Agreement</x-button></x-slot:actions>
         @endcan
     </x-page-header>
-    <x-data-table :url="route('investor-agreements.table')" sort="from" dir="desc" search="Search agreement, investor or unit" :columns="[
+    <x-data-table summary data-table-history :url="route('investor-agreements.table')" sort="from" dir="desc" search="Search agreement, investor or unit" :columns="[
         ['label' => 'Agreement', 'sort' => 'from'], ['label' => 'Investor'], ['label' => 'Unit'], ['label' => 'Share', 'class' => 'text-right', 'sort' => 'share'], ['label' => 'Committed', 'class' => 'text-right', 'sort' => 'capital'], ['label' => 'Status'],
     ]">
         <x-slot:filters>

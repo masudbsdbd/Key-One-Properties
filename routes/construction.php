@@ -13,6 +13,7 @@ Route::get('options/work-packages', [WorkPackageController::class, 'options'])->
 Route::prefix('construction')->name('construction.')->group(function () {
     Route::get('/', [ConstructionController::class, 'index'])->name('index');
     Route::get('table', [ConstructionController::class, 'table'])->name('table');
+    Route::get('export', [ConstructionController::class, 'export'])->middleware('throttle:20,1')->name('export');
     Route::get('{project}', [ConstructionController::class, 'show'])->name('show');
 
     Route::prefix('{project}/work-packages')->name('work-packages.')->controller(WorkPackageController::class)->scopeBindings()->group(function () {

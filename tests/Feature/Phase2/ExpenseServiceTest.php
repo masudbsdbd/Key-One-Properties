@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\User;
 use App\Modules\Expenses\Services\ExpenseService;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -35,7 +36,7 @@ class ExpenseServiceTest extends TestCase
 
     private function category(string $scope = 'both'): ExpenseCategory
     {
-        return ExpenseCategory::query()->create(['code' => strtoupper(substr($scope, 0, 3)).random_int(10, 99), 'name' => 'Cat '.$scope, 'allowed_scope' => $scope]);
+        return ExpenseCategory::query()->create(['code' => strtoupper(substr($scope, 0, 3)).strtoupper(Str::random(6)), 'name' => 'Cat '.$scope, 'allowed_scope' => $scope]);
     }
 
     private function expense(string $scope, ?Project $project, string $amount = '1500'): Expense

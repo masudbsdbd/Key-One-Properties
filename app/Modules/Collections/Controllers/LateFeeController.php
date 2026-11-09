@@ -10,12 +10,16 @@ use App\Models\InstallmentPlan;
 use App\Models\LateFeeAssessment;
 use App\Modules\Collections\Services\LateFeeService;
 use App\Support\Ajax;
+use App\Support\Export\Report;
+use App\Support\ListSummary;
 use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class LateFeeController extends Controller
 {
@@ -39,15 +43,41 @@ class LateFeeController extends Controller
 
     public function assessments(Request $request): JsonResponse
     {
+        $query = $this->assessmentQuery($request);
+        $rows = TableQuery::apply(clone $query, $request, [], ['date' => 'assessed_on'], 'date', 'desc');
+        $row = ListSummary::aggregate($this->assessmentQuery(ListSummary::without($request)), [
+            'charged' => "SUM(CASE WHEN late_fee_assessments.status = 'posted' THEN late_fee_assessments.amount ELSE 0 END)",
+            'charged_n' => "SUM(CASE WHEN late_fee_assessments.status = 'posted' THEN 1 ELSE 0 END)",
+            'waived' => "SUM(CASE WHEN late_fee_assessments.status = 'waived' THEN late_fee_assessments.amount ELSE 0 END)",
+        ]);
+        $summary = ListSummary::make($request)
+            ->money('Charged', $row->charged, 'tag', 'warning', ['status' => 'posted'], ListSummary::many($row->charged_n, 'charge'))
+            ->money('Waived', $row->waived, 'x', 'info', ['status' => 'waived']);
+
+        return Ajax::table(view('collections.late-fees._assessments', ['assessments' => $rows])->render(), $rows, ['stats' => $summary->render()]);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('collections.payment.statement.export'), 403);
+
+        return Report::make('Late Fees')->sumMoney()->meta(['Status' => LateFeeAssessment::STATUSES[(string) $request->input('status')] ?? null, 'Period' => TableQuery::periodLabel($request)])
+            ->columns(['Charged On' => 'date', 'Customer' => 'text', 'Sale' => 'text', 'Unit' => 'text', 'Installment' => 'text', 'Amount' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->assessmentQuery($request)->orderByDesc('assessed_on')->lazy()->map(fn (LateFeeAssessment $a) => [$a->assessed_on, $a->item->plan->customer->full_name,
+                $a->item->plan->sale?->sale_no, $a->item->plan->sale?->flat?->flat_no, '#'.$a->item->sequence_no, $a->amount, LateFeeAssessment::STATUSES[$a->status] ?? $a->status]))
+            ->respond($request);
+    }
+
+    private function assessmentQuery(Request $request): Builder
+    {
         abort_unless($request->user()->can('collections.latefee.view'), 403);
         $plans = InstallmentPlan::query()->visibleTo($request->user())->select('id');
         $query = LateFeeAssessment::query()->whereHas('item', fn ($q) => $q->whereIn('plan_id', $plans))->with(['item.plan.customer', 'item.plan.sale.flat']);
         if (array_key_exists($status = (string) $request->input('status'), LateFeeAssessment::STATUSES)) {
             $query->where('status', $status);
         }
-        $rows = TableQuery::apply($query, $request, [], ['date' => 'assessed_on'], 'date', 'desc');
 
-        return Ajax::table(view('collections.late-fees._assessments', ['assessments' => $rows])->render(), $rows);
+        return TableQuery::period($query, $request, 'assessed_on');
     }
 
     public function create(Request $request): JsonResponse
