@@ -13,6 +13,7 @@ use App\Models\FlatBooking;
 use App\Models\FlatHandover;
 use App\Models\FlatSale;
 use App\Models\Investor;
+use App\Models\LabourType;
 use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
@@ -339,6 +340,9 @@ class DemoDataSeeder extends Seeder
             ['carpenter', 'WP-2F', 3, 1000], ['mason', 'WP-BRK', 5, 900], ['helper', 'WP-BRK', 6, 650],
             ['electrician', null, 1, 1100], ['other', null, 2, 700],
         ];
+        foreach ($crews as [$type, , , $rate]) {
+            LabourType::query()->where('code', $type)->update(['default_rate' => $rate]);
+        }
         $n = 0;
         for ($daysAgo = 29; $daysAgo >= 0; $daysAgo--) {
             if (Carbon::parse($this->day($daysAgo))->isFriday()) {
