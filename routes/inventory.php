@@ -56,6 +56,7 @@ Route::prefix('stock')->name('stock.')->controller(StockController::class)->grou
     Route::get('movements', 'movements')->name('movements');
     Route::get('movements/table', 'movementsTable')->name('movements.table');
     Route::get('movements/export', 'export')->name('movements.export');
+    Route::get('issues/table', 'issuesTable')->name('issues.table');
     Route::get('issues/{issue}/reverse', 'reverseIssueForm')->name('issues.reverse.form');
     Route::post('issues/{issue}/reverse', 'reverseIssue')->name('issues.reverse');
 });

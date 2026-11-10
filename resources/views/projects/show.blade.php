@@ -232,7 +232,23 @@
                 ['label' => 'Borrowed In', 'class' => 'text-right'], ['label' => 'Lent Out', 'class' => 'text-right'], ['label' => 'Physical', 'class' => 'text-right'],
                 $user->can('materials.valuation.view') ? ['label' => 'Avg Cost', 'class' => 'text-right'] : null,
                 $user->can('materials.valuation.view') ? ['label' => 'Value', 'sort' => 'value', 'class' => 'text-right'] : null,
-            ]))" />
+                $user->can('materials.issue') ? ['label' => '', 'class' => 'w-12'] : null,
+            ]))">
+                @can('materials.issue')
+                    <x-slot:toolbar><x-button size="sm" icon="upload" data-remote-modal="{{ route('stock.issue.form', ['project' => $project->public_id]) }}" data-size="max-w-4xl">Issue</x-button></x-slot:toolbar>
+                @endcan
+            </x-data-table>
+            <h2 class="card-title mb-3 mt-8">Issues</h2>
+            <x-data-table :url="route('stock.issues.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search issue number or purpose" :columns="array_values(array_filter([
+                ['label' => 'Issue', 'sort' => 'date'], ['label' => 'Date'], ['label' => 'Warehouse'], ['label' => 'Materials'], ['label' => 'Work Package'],
+                $user->can('materials.valuation.view') ? ['label' => 'Value', 'class' => 'text-right'] : null,
+                ['label' => 'Status'], ['label' => '', 'class' => 'w-24'],
+            ]))">
+                <x-slot:filters>
+                    <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All</option><option value="posted">Posted</option><option value="reversed">Reversed</option></select>
+                    <x-period />
+                </x-slot:filters>
+            </x-data-table>
         </section>
     @endisset
     @isset($tabs['purchases'])

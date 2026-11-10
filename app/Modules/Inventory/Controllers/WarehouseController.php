@@ -105,6 +105,9 @@ class WarehouseController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+        if ($target = Project::findByPublicId($request->input('issue_to'))) {
+            $query->where(fn ($q) => $q->where('project_id', $target->id)->orWhereNull('project_id'));
+        }
         if ($exclude = $request->input('exclude')) {
             $query->where('public_id', '!=', $exclude);
         }

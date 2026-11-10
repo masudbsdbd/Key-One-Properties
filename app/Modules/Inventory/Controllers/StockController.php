@@ -55,6 +55,8 @@ class StockController extends Controller
         return Ajax::table(view('inventory.stock._rows', [
             'balances' => $balances,
             'showValue' => $request->user()->can('materials.valuation.view'),
+            'canIssue' => $request->user()->can('materials.issue'),
+            'project' => Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first(),
         ])->render(), $balances);
     }
 
@@ -149,11 +151,44 @@ class StockController extends Controller
         return Ajax::success('Stock received ('.$receipt->receipt_no.').');
     }
 
+    /** Opened from a project, its store and the chosen material come pre-filled; the project cannot be changed. */
     public function issueForm(Request $request): JsonResponse
     {
-        abort_unless($request->user()->can('materials.issue'), 403);
+        $user = $request->user();
+        abort_unless($user->can('materials.issue'), 403);
+        $project = $request->filled('project') ? (Project::query()->visibleTo($user)->where('public_id', (string) $request->input('project'))->first() ?? abort(404)) : null;
+        $usable = fn () => Warehouse::query()->visibleTo($user)->where('is_active', true);
+        $warehouse = $usable()->where('public_id', (string) $request->input('warehouse'))->first();
+        if (! $warehouse && $project) {
+            $stores = $usable()->where('project_id', $project->id)->limit(2)->get();
+            $warehouse = $stores->count() === 1 ? $stores->first() : null;
+        }
+        if ($warehouse && $project && ! InventoryAccess::issueTo($user, $warehouse, $project)) {
+            $warehouse = null;
+        }
+        $material = Material::query()->active()->with('unit:id,code')->where('public_id', (string) $request->input('material'))->first();
 
-        return Ajax::success(null, ['title' => 'Issue Stock', 'html' => view('inventory.stock._issue', ['key' => (string) Str::uuid()])->render()]);
+        return Ajax::success(null, ['title' => 'Issue Stock', 'html' => view('inventory.stock._issue', [
+            'key' => (string) Str::uuid(), 'project' => $project, 'warehouse' => $warehouse,
+            'lines' => $material ? [['material' => $material->public_id, 'text' => $material->label().' ('.$material->unit->code.')']] : [],
+        ])->render()]);
+    }
+
+    public function issuesTable(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->can('materials.view'), 403);
+        $project = Project::query()->visibleTo($user)->where('public_id', (string) $request->input('project'))->first() ?? abort(404);
+        $query = StockIssue::query()->where('project_id', $project->id)
+            ->with(['warehouse:id,name,code', 'workPackage:id,code,name', 'creator:id,name', 'lines.material:id,name,unit_id', 'lines.material.unit:id,code'])
+            ->withSum('lines as total_value', 'total_value');
+        if (in_array($status = (string) $request->input('status'), ['posted', 'reversed'], true)) {
+            $query->where('status', $status);
+        }
+        TableQuery::period($query, $request, 'issued_at');
+        $issues = TableQuery::apply($query, $request, ['issue_no', 'purpose'], ['date' => 'issued_at'], 'date', 'desc');
+
+        return Ajax::table(view('inventory.stock._issue_rows', ['issues' => $issues, 'showValue' => $user->can('materials.valuation.view')])->render(), $issues);
     }
 
     public function issue(Request $request): JsonResponse

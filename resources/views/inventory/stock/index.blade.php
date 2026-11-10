@@ -19,6 +19,7 @@
         ['label' => 'Borrowed In', 'class' => 'text-right'], ['label' => 'Lent Out', 'class' => 'text-right'], ['label' => 'Physical', 'class' => 'text-right'],
         auth()->user()->can('materials.valuation.view') ? ['label' => 'Avg Cost', 'class' => 'text-right'] : null,
         auth()->user()->can('materials.valuation.view') ? ['label' => 'Value', 'sort' => 'value', 'class' => 'text-right'] : null,
+        auth()->user()->can('materials.issue') ? ['label' => '', 'class' => 'w-12'] : null,
     ]))">
         <x-slot:filters>
             <div class="w-56"><select name="warehouse" data-table-filter data-select data-select-url="{{ route('options.warehouses') }}" data-placeholder="All warehouses" class="form-control" aria-label="Warehouse"><option value=""></option></select></div>

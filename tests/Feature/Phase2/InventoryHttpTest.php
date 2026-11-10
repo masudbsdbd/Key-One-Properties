@@ -203,4 +203,42 @@ class InventoryHttpTest extends TestCase
         $this->assertStringNotContainsString('800.00', $html);
         $this->actingAs($noValue)->get(route('stock.movements.export'))->assertForbidden();
     }
+
+    public function test_a_project_issues_stock_from_its_own_page(): void
+    {
+        $central = $this->warehouse('WH-CEN', null);
+        $this->receive($this->whA);
+        $this->receive($central, '500', '90');
+
+        $form = fn (array $q) => $this->actingAs($this->keeper)->ajax()->get(route('stock.issue.form', $q))->assertOk()->json('data.html');
+        $html = $form(['project' => $this->a->public_id]);
+        $this->assertStringContainsString('name="project" id="issue-project" value="'.$this->a->public_id.'"', $html);
+        $this->assertStringContainsString('value="'.$this->whA->public_id.'" selected', $html);
+        $this->assertStringContainsString(e(route('options.warehouses', ['issue_to' => $this->a->public_id])), $html);
+        $html = $form(['project' => $this->a->public_id, 'warehouse' => $this->whB->public_id, 'material' => $this->rod->public_id]);
+        $this->assertStringNotContainsString('value="'.$this->whB->public_id.'" selected', $html);
+        $this->assertStringContainsString($this->rod->public_id, $html);
+        $this->actingAs($this->userWith(['materials.issue']))->ajax()->get(route('stock.issue.form', ['project' => $this->a->public_id]))->assertNotFound();
+
+        $options = collect($this->actingAs($this->keeper)->ajax()->get(route('options.warehouses', ['issue_to' => $this->a->public_id]))->json('results'))->pluck('id')->all();
+        $this->assertEqualsCanonicalizing([$this->whA->public_id, $central->public_id], $options);
+
+        $rows = $this->actingAs($this->keeper)->ajax()->get(route('stock.table', ['project' => $this->a->public_id]))->json('data.html');
+        $this->assertStringContainsString(e(route('stock.issue.form', ['project' => $this->a->public_id, 'warehouse' => $this->whA->public_id, 'material' => $this->rod->public_id])), $rows);
+
+        $this->actingAs($this->keeper)->ajax()->post(route('stock.issue'), [
+            'warehouse' => $central->public_id, 'project' => $this->a->public_id, 'issued_at' => now()->toDateString(), 'purpose' => 'Roof slab',
+            'idempotency_key' => (string) Str::uuid(), 'lines' => [['material' => $this->rod->public_id, 'quantity' => '100']],
+        ])->assertOk();
+        $this->assertSame('9000.00', CostAttribution::totals($this->a)['material']);
+
+        $issues = $this->actingAs($this->keeper)->ajax()->get(route('stock.issues.table', ['project' => $this->a->public_id]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('Roof slab', $issues);
+        $this->assertStringContainsString('MS Rod 12mm', $issues);
+        $this->assertStringContainsString('9,000', $issues);
+        $this->assertStringNotContainsString('Reverse', $issues);
+        $this->assertStringContainsString('Reverse', $this->actingAs($this->manager)->ajax()->get(route('stock.issues.table', ['project' => $this->a->public_id]))->json('data.html'));
+        $this->assertStringContainsString('No issues', $this->actingAs($this->keeper)->ajax()->get(route('stock.issues.table', ['project' => $this->b->public_id]))->json('data.html'));
+        $this->actingAs($this->userWith(['materials.view']))->ajax()->get(route('stock.issues.table', ['project' => $this->a->public_id]))->assertNotFound();
+    }
 }

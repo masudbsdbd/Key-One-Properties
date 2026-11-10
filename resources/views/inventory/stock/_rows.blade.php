@@ -11,7 +11,14 @@
             <td class="text-right"><x-money :value="$balance->avg_unit_cost" /></td>
             <td class="text-right"><x-money :value="$balance->owned_value" /></td>
         @endif
+        @if ($canIssue ?? false)
+            <td class="text-right">
+                @if ((float) $balance->owned_qty > 0 && $balance->material->is_active && (! ($project ?? null) || $balance->warehouse->project_id === null || $balance->warehouse->project_id === $project->id))
+                    <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('stock.issue.form', array_filter(['project' => ($project ?? null)?->public_id, 'warehouse' => $balance->warehouse->public_id, 'material' => $balance->material->public_id])) }}" data-size="max-w-4xl" aria-label="Issue {{ $balance->material->name }}"><x-icon name="upload" size="h-4 w-4" /></button>
+                @endif
+            </td>
+        @endif
     </tr>
 @empty
-    <tr><td colspan="{{ $showValue ? 8 : 6 }}"><x-empty-state icon="layers" title="No stock" /></td></tr>
+    <tr><td colspan="{{ ($showValue ? 8 : 6) + (($canIssue ?? false) ? 1 : 0) }}"><x-empty-state icon="layers" title="No stock" /></td></tr>
 @endforelse
