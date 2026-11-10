@@ -29,6 +29,9 @@
                 @php $timing = $milestone->timing(); @endphp
                 <x-badge :tone="$timing['tone']" class="shrink-0">{{ $timing['label'] }}</x-badge>
                 @if ($canManage)
+                    @if ($milestone->status !== 'completed')
+                        <button type="button" class="btn btn-ghost btn-icon text-success-600" data-action="post" data-url="{{ route('construction.milestones.complete', [$project, $milestone]) }}" data-confirm="Mark {{ $milestone->title }} done today?" data-confirm-text="Mark Done" data-tone="primary" aria-label="Mark {{ $milestone->title }} done"><x-icon name="check" size="h-4 w-4" /></button>
+                    @endif
                     <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('construction.milestones.edit', [$project, $milestone]) }}" aria-label="Edit {{ $milestone->title }}"><x-icon name="edit" size="h-4 w-4" /></button>
                     <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-action="delete" data-url="{{ route('construction.milestones.destroy', [$project, $milestone]) }}" data-confirm="Delete {{ $milestone->title }}?" data-confirm-text="Delete" aria-label="Delete {{ $milestone->title }}"><x-icon name="trash" size="h-4 w-4" /></button>
                 @endif

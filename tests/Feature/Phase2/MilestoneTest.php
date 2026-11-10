@@ -54,4 +54,18 @@ class MilestoneTest extends TestCase
         $this->assertStringContainsString('1 late', $html);
         $this->assertStringContainsString('Due today', $html);
     }
+
+    public function test_a_milestone_is_marked_done_today_in_one_click(): void
+    {
+        $milestone = $this->milestone('2026-11-07');
+        $this->actingAs($this->userWith(['projects.view', 'construction.view']))->ajax()->post(route('construction.milestones.complete', [$this->project, $milestone]))->assertForbidden();
+
+        $this->assertStringContainsString(route('construction.milestones.complete', [$this->project, $milestone]),
+            $this->actingAs($this->manager)->ajax()->get(route('construction.milestones.index', $this->project))->json('data.html'));
+        $this->actingAs($this->manager)->ajax()->post(route('construction.milestones.complete', [$this->project, $milestone]))->assertOk();
+        $milestone->refresh();
+        $this->assertSame(['completed', '2026-11-10'], [$milestone->status, $milestone->completed_at->toDateString()]);
+        $this->assertSame('Done 3 days late', $milestone->timing()['label']);
+        $this->actingAs($this->manager)->ajax()->post(route('construction.milestones.complete', [$this->project, $milestone]))->assertStatus(409);
+    }
 }

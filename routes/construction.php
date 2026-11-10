@@ -28,6 +28,7 @@ Route::prefix('construction')->name('construction.')->group(function () {
 
     Route::prefix('{project}/milestones')->name('milestones.')->controller(MilestoneController::class)->scopeBindings()->group(function () {
         Route::get('/', 'index')->name('index');
+        Route::post('{milestone}/complete', 'complete')->name('complete');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::get('{milestone}/edit', 'edit')->name('edit');

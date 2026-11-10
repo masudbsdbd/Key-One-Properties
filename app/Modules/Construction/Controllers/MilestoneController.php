@@ -59,6 +59,15 @@ class MilestoneController extends Controller
         return Ajax::success('Milestone updated.');
     }
 
+    public function complete(Project $project, Milestone $milestone): JsonResponse
+    {
+        Gate::authorize('construction:manage', $project);
+        abort_if($milestone->status === 'completed', 409, 'This milestone is already done.');
+        $milestone->update(['status' => 'completed', 'completed_at' => now(config('app.display_timezone'))->toDateString()]);
+
+        return Ajax::success($milestone->title.' done.');
+    }
+
     public function destroy(Project $project, Milestone $milestone): JsonResponse
     {
         Gate::authorize('construction:manage', $project);
