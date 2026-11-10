@@ -118,7 +118,7 @@ class ConstructionTest extends TestCase
         $package = $this->package();
         $package->forceFill(['budget_amount' => '10000'])->save();
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
-            'project' => $this->project->public_id, 'work_package' => $package->public_id, 'work_date' => now()->toDateString(), 'labour_type' => 'mason', 'headcount' => 15, 'units' => 1, 'rate' => '800',
+            'project' => $this->project->public_id, 'work_package' => $package->public_id, 'work_date' => now()->toDateString(), 'rows' => [['type' => 'mason', 'headcount' => 15, 'units' => 1, 'rate' => '800']],
         ])->assertOk();
         $this->actingAs($this->manager)->ajax()->post(route('labour.approve', LabourEntry::query()->firstOrFail()))->assertOk();
 
@@ -132,11 +132,37 @@ class ConstructionTest extends TestCase
         $this->assertStringNotContainsString('Spent', $html);
     }
 
+    public function test_a_daily_sheet_records_one_entry_per_labour_row(): void
+    {
+        $package = $this->package();
+        $sheet = ['project' => $this->project->public_id, 'work_package' => $package->public_id, 'work_date' => now()->toDateString(), 'notes' => 'Roof slab'];
+
+        $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [...$sheet, 'rows' => [
+            0 => ['type' => 'mason', 'headcount' => 4, 'units' => 1, 'rate' => '900'],
+            1 => ['type' => '', 'headcount' => '', 'units' => '1', 'rate' => ''],
+            2 => ['type' => 'helper', 'headcount' => 6, 'units' => 1, 'rate' => ''],
+        ]])->assertStatus(422)->assertJsonValidationErrors('rows.2.rate')->assertJsonMissingValidationErrors(['rows.1.type', 'rows.0.type']);
+        $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [...$sheet, 'rows' => [1 => ['type' => '', 'headcount' => '', 'units' => '1', 'rate' => '']]])
+            ->assertStatus(422)->assertJsonPath('errors.rows.0', 'Add at least one labour row.');
+        $this->assertSame(0, LabourEntry::query()->count());
+
+        $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [...$sheet, 'rows' => [
+            ['type' => 'mason', 'headcount' => 4, 'units' => 1, 'rate' => '900'],
+            ['type' => 'helper', 'headcount' => 6, 'units' => 1, 'rate' => '600'],
+            ['type' => 'rod_binder', 'headcount' => 2, 'units' => '0.5', 'rate' => '1,000'],
+        ]])->assertOk()->assertJsonPath('message', fn ($m) => str_starts_with($m, '3 labour entries recorded'));
+
+        $entries = LabourEntry::query()->orderBy('id')->get();
+        $this->assertSame(['mason', 'helper', 'rod_binder'], $entries->pluck('labour_type')->all());
+        $this->assertSame(['3600.00', '3600.00', '1000.00'], $entries->pluck('total_amount')->all());
+        $this->assertSame([$package->id], $entries->pluck('work_package_id')->unique()->values()->all());
+        $this->assertSame(['Roof slab'], $entries->pluck('notes')->unique()->values()->all());
+    }
+
     public function test_labour_total_is_computed_on_server_and_cost_posted_once(): void
     {
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
-            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'labour_type' => 'mason',
-            'headcount' => 12, 'units' => '1.5', 'rate' => '850', 'total_amount' => '1',
+            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'rows' => [['type' => 'mason', 'headcount' => 12, 'units' => '1.5', 'rate' => '850']], 'total_amount' => '1',
         ])->assertOk();
         $entry = LabourEntry::query()->firstOrFail();
         $this->assertSame('15300.00', $entry->total_amount);
@@ -160,7 +186,7 @@ class ConstructionTest extends TestCase
         $outsider = $this->userWith(self::ALL);
         $package = $this->package();
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
-            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'labour_type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => 500,
+            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'rows' => [['type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => 500]],
         ]);
         $entry = LabourEntry::query()->firstOrFail();
 
@@ -173,7 +199,7 @@ class ConstructionTest extends TestCase
         $this->actingAs($outsider)->ajax()->get(route('construction.cost', $this->project))->assertForbidden();
         $this->actingAs($outsider)->get(route('construction.cost.export', $this->project))->assertForbidden();
         $this->actingAs($outsider)->ajax()->post(route('labour.store'), [
-            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'labour_type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => 500,
+            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'rows' => [['type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => 500]],
         ])->assertStatus(422)->assertJsonValidationErrors('project');
         $this->assertSame(0, count($this->actingAs($outsider)->ajax()->get(route('options.work-packages', ['project' => $this->project->public_id]))->json('results')));
         $this->assertStringNotContainsString($entry->entry_no, $this->actingAs($outsider)->ajax()->get(route('labour.table'))->json('data.html'));
@@ -199,7 +225,7 @@ class ConstructionTest extends TestCase
         $package = $this->package();
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
             'project' => $this->project->public_id, 'work_package' => $package->public_id, 'work_date' => now()->toDateString(),
-            'labour_type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => 500,
+            'rows' => [['type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => 500]],
         ])->assertOk();
 
         $this->actingAs($this->engineer)->ajax()->delete(route('construction.work-packages.destroy', [$this->project, $package]))->assertStatus(409);

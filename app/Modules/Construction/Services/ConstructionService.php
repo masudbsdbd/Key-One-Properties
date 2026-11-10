@@ -13,6 +13,7 @@ use App\Support\DocumentNumber;
 use App\Support\FinancialEvents\FinancialEventRecorder;
 use App\Support\Money;
 use App\Support\Workflow\Approval;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ConstructionService
@@ -109,6 +110,18 @@ class ConstructionService
 
             return $entry;
         });
+    }
+
+    /**
+     * @param  array<int, array{type: string, headcount: int|string, units: string, rate: string}>  $rows
+     * @return Collection<int, LabourEntry>
+     */
+    public function createLabourSheet(Project $project, array $header, array $rows, User $user): Collection
+    {
+        return DB::transaction(fn () => collect($rows)->map(fn (array $row) => $this->createLabour($project, [
+            'work_package' => $header['work_package'] ?? null, 'work_date' => $header['work_date'], 'notes' => $header['notes'] ?? null,
+            'labour_type' => $row['type'], 'headcount' => $row['headcount'], 'units' => $row['units'], 'rate' => $row['rate'],
+        ], $user)));
     }
 
     public static function labourTotal(int $headcount, string $units, string $rate): string

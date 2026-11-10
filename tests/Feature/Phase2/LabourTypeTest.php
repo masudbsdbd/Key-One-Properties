@@ -27,7 +27,7 @@ class LabourTypeTest extends TestCase
         $form = $this->actingAs($recorder)->ajax()->get(route('labour.create', ['project' => $project->public_id]))->json('data.html');
         $this->assertStringContainsString('"scaffolder":"1050"', $form);
         $entry = fn (string $code) => $this->actingAs($recorder)->ajax()->post(route('labour.store'), [
-            'project' => $project->public_id, 'work_date' => now()->toDateString(), 'labour_type' => $code, 'headcount' => 2, 'units' => 1, 'rate' => '1050',
+            'project' => $project->public_id, 'work_date' => now()->toDateString(), 'rows' => [['type' => $code, 'headcount' => 2, 'units' => 1, 'rate' => '1050']],
         ]);
         $entry('scaffolder')->assertOk();
         $this->assertSame('scaffolder', LabourEntry::query()->value('labour_type'));
@@ -35,7 +35,7 @@ class LabourTypeTest extends TestCase
         // Renaming keeps old entries pointing at the type; an inactive type can no longer be chosen or deleted once used.
         $this->actingAs($manager)->ajax()->put(route('labour.types.update', $type), ['name' => 'Scaffolding Crew', 'default_rate' => '', 'is_active' => '0'])->assertOk();
         $this->assertStringContainsString('Scaffolding Crew', $this->actingAs($recorder)->ajax()->get(route('labour.table', ['project' => $project->public_id]))->json('data.html'));
-        $entry('scaffolder')->assertStatus(422)->assertJsonValidationErrors('labour_type');
+        $entry('scaffolder')->assertStatus(422)->assertJsonValidationErrors('rows.0.type');
         $this->actingAs($manager)->ajax()->delete(route('labour.types.destroy', $type))->assertStatus(422);
 
         $unused = LabourType::query()->where('code', 'welder')->sole();

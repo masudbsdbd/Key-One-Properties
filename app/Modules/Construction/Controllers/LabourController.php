@@ -99,21 +99,29 @@ class LabourController extends Controller
         return Ajax::success(null, ['title' => 'Record Labour', 'html' => view('construction.labour._form', ['project' => $project])->render()]);
     }
 
+    /** One daily sheet: shared project, date and work package; one labour entry per row. */
     public function store(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('construction.labour.manage'), 403);
-        $request->merge(['rate' => str_replace(',', '', (string) $request->input('rate'))]);
+        $rows = collect((array) $request->input('rows', []))
+            ->filter(fn ($row) => is_array($row) && collect($row)->except('units')->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty())
+            ->map(fn ($row) => [...$row, 'rate' => str_replace(',', '', (string) ($row['rate'] ?? ''))]);
+        $request->merge(['rows' => $rows->all()]);
 
         $data = $request->validate([
             'project' => ['required', 'string', 'size:16'],
             'work_package' => ['nullable', 'string', 'size:16'],
             'work_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
-            'labour_type' => ['required', 'string', Rule::exists('labour_types', 'code')->where('is_active', true)],
-            'headcount' => ['required', 'integer', 'between:1,10000'],
-            'units' => ['required', 'numeric', 'gt:0', 'max:1000'],
-            'rate' => ['required', 'numeric', 'gt:0', 'max:99999999'],
+            'rows' => ['required', 'array', 'max:30'],
+            'rows.*.type' => ['required', 'string', Rule::exists('labour_types', 'code')->where('is_active', true)],
+            'rows.*.headcount' => ['required', 'integer', 'between:1,10000'],
+            'rows.*.units' => ['required', 'numeric', 'gt:0', 'max:1000'],
+            'rows.*.rate' => ['required', 'numeric', 'gt:0', 'max:99999999'],
             'notes' => ['nullable', 'string', 'max:2000'],
-        ], ['units.gt' => 'Days or units must be greater than zero.']);
+        ], [
+            'rows.required' => 'Add at least one labour row.', 'rows.*.type.required' => 'Select a labour type.', 'rows.*.type.exists' => 'Select an active labour type.',
+            'rows.*.units.gt' => 'Days must be greater than zero.', 'rows.*.headcount.required' => 'Enter the headcount.', 'rows.*.rate.required' => 'Enter the rate.',
+        ]);
 
         $project = Project::query()->where('public_id', $data['project'])->first();
         if (! $project || ! Gate::allows('construction:labour-manage', $project)) {
@@ -124,9 +132,10 @@ class LabourController extends Controller
             return Ajax::error('Validation failed', 422, ['work_package' => ['Select a work package of this project.']]);
         }
 
-        $entry = $this->service->createLabour($project, $data, $request->user());
+        $entries = $this->service->createLabourSheet($project, $data, array_values($data['rows']), $request->user());
 
-        return Ajax::success('Labour '.$entry->entry_no.' recorded.');
+        return Ajax::success($entries->count() === 1 ? 'Labour '.$entries->first()->entry_no.' recorded.'
+            : $entries->count().' labour entries recorded ('.$entries->first()->entry_no.' – '.$entries->last()->entry_no.').');
     }
 
     public function approve(Request $request, LabourEntry $entry): JsonResponse
