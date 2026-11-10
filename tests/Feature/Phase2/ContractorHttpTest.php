@@ -165,6 +165,46 @@ class ContractorHttpTest extends TestCase
         $this->assertStringNotContainsString($payLink, $page());
     }
 
+    public function test_project_cost_shows_what_is_still_unpaid(): void
+    {
+        $wo = $this->approvedOrder();
+        $this->actingAs($this->engineer)->ajax()->post(route('work-orders.measurements.store', $wo), [
+            'measurement_date' => now()->toDateString(), 'description' => 'Ground floor', 'quantity' => '100', 'unit' => 'sft', 'rate' => '10',
+        ])->assertOk();
+        $m = ContractorMeasurement::query()->firstOrFail();
+        $this->actingAs($this->manager)->ajax()->post(route('work-orders.measurements.approve', [$wo, $m]))->assertOk();
+        $this->actingAs($this->engineer)->ajax()->post(route('work-orders.bills.store', $wo), ['bill_date' => now()->toDateString(), 'measurements' => [$m->public_id]])->assertOk();
+        $bill = ContractorBill::query()->firstOrFail();
+
+        $viewer = $this->userWith(['projects.view', 'construction.view', 'construction.cost.view', 'construction.cost.export']);
+        $this->project->members()->attach($viewer->id);
+        $cost = fn (array $q = []) => $this->actingAs($viewer)->ajax()->get(route('construction.cost', [$this->project, ...$q]))->assertOk()->json('data');
+
+        // A draft bill is not cost; approving it is, paid or not.
+        $this->assertStringContainsString('No cost posted yet', $cost()['html']);
+        $this->actingAs($this->manager)->ajax()->post(route('contractor-bills.approve', $bill))->assertOk();
+        $this->assertStringContainsString('Unpaid', $cost()['html']);
+        $this->assertStringContainsString('1,000 unpaid', $cost()['stats']);
+        $this->assertStringContainsString($bill->bill_no, $cost(['payment' => 'unpaid'])['html']);
+        $this->assertStringContainsString('No cost posted yet', $cost(['payment' => 'paid'])['html']);
+
+        $pay = function (string $amount) use ($wo, $bill) {
+            $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), [
+                'work_order' => $wo->public_id, 'bill' => $bill->public_id, 'payment_date' => now()->toDateString(), 'amount' => $amount, 'payment_method' => 'cash', 'idempotency_key' => (string) Str::uuid(),
+            ])->assertOk();
+            $this->actingAs($this->manager)->ajax()->post(route('contractor-payments.approve', ContractorPayment::query()->latest('id')->firstOrFail()))->assertOk();
+        };
+        $pay('400');
+        $this->assertStringContainsString('Partly Paid', $cost()['html']);
+        $this->assertStringContainsString('600 unpaid', $cost()['stats']);
+
+        $pay('600');
+        $this->assertStringContainsString('Paid', $cost(['payment' => 'paid'])['html']);
+        $this->assertStringNotContainsString('unpaid', $cost()['stats']);
+        $this->assertStringContainsString('No cost posted yet', $cost(['payment' => 'unpaid'])['html']);
+        $this->assertStringContainsString('Paid', $this->actingAs($viewer)->get(route('construction.cost.export', [$this->project, 'format' => 'csv']))->assertOk()->streamedContent());
+    }
+
     public function test_work_orders_follow_project_visibility(): void
     {
         $wo = $this->approvedOrder();

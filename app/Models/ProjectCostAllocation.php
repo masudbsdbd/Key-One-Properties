@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -57,6 +58,32 @@ class ProjectCostAllocation extends Model
             $source instanceof StockIssueReturn => 'Returned from '.$source->issue?->issue_no,
             default => null,
         };
+    }
+
+    /**
+     * Whether the document behind this cost has been paid. Only contractor bills and expenses carry a payment;
+     * material is paid through supplier bills and labour has no payment record, so those return null.
+     *
+     * @return array{label: string, tone: string, due: string}|null
+     */
+    public function payment(): ?array
+    {
+        $source = $this->source;
+        if ($this->reversal_of_id || ! $source instanceof ContractorBill && ! $source instanceof Expense) {
+            return null;
+        }
+        if ($source->status === 'paid') {
+            return ['label' => 'Paid', 'tone' => 'success', 'due' => '0.00'];
+        }
+        if ($source->status !== 'approved') {
+            return null;
+        }
+        if ($source instanceof Expense) {
+            return ['label' => 'Unpaid', 'tone' => 'warning', 'due' => Money::amount((string) $source->amount)];
+        }
+        $paid = Money::add('0', ...$source->payments->where('status', 'approved')->map(fn ($p) => (string) $p->amount)->all());
+
+        return ['label' => Money::isPositive($paid) ? 'Partly Paid' : 'Unpaid', 'tone' => 'warning', 'due' => Money::amount(Money::sub($source->net_payable, $paid))];
     }
 
     public function reversalOf(): BelongsTo

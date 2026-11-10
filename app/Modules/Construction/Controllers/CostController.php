@@ -4,6 +4,7 @@ namespace App\Modules\Construction\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContractorBill;
+use App\Models\ContractorPayment;
 use App\Models\Expense;
 use App\Models\LabourEntry;
 use App\Models\LabourType;
@@ -14,7 +15,9 @@ use App\Models\StockIssueReturn;
 use App\Models\WorkPackage;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\Format;
 use App\Support\ListSummary;
+use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -46,10 +49,10 @@ class CostController extends Controller
             ->meta(['Project' => $project->name.' ('.$project->code.')', 'Category' => ProjectCostAllocation::CATEGORIES[(string) $request->input('category')] ?? null,
                 'Work Package' => WorkPackage::query()->whereBelongsTo($project)->where('public_id', (string) $request->input('work_package'))->value('name'),
                 'Period' => TableQuery::periodLabel($request)])
-            ->columns(['Date' => 'date', 'Category' => 'text', 'Source' => 'text', 'Details' => 'text', 'Work Package' => 'text', 'Reversal' => 'text', 'Amount' => 'money'])
+            ->columns(['Date' => 'date', 'Category' => 'text', 'Source' => 'text', 'Details' => 'text', 'Work Package' => 'text', 'Reversal' => 'text', 'Payment' => 'text', 'Amount' => 'money'])
             ->rows(fn () => $this->listing($request, $project)->lazy()->map(fn (ProjectCostAllocation $row) => [
                 $row->effective_at, ProjectCostAllocation::CATEGORIES[$row->cost_category] ?? $row->cost_category,
-                $row->sourceLabel(), $row->sourceDetail($types), $row->workPackage?->code, $row->reversal_of_id ? 'Yes' : '', $row->amount,
+                $row->sourceLabel(), $row->sourceDetail($types), $row->workPackage?->code, $row->reversal_of_id ? 'Yes' : '', $row->payment()['label'] ?? '', $row->amount,
             ]))
             ->respond($request);
     }
@@ -63,12 +66,33 @@ class CostController extends Controller
         $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['category']), $project), $sums);
         $icons = ['material' => 'layers', 'labour' => 'users', 'contractor' => 'user', 'expense' => 'note'];
 
-        $summary = ListSummary::make($request)->money('Total Cost', $row->total, 'bar-chart', 'accent', ['category' => '']);
+        $due = $this->unpaid(ListSummary::without($request, ['category']), $project);
+        $note = fn (string $amount) => Money::isPositive($amount) ? Format::money($amount).' unpaid' : null;
+
+        $summary = ListSummary::make($request)->money('Total Cost', $row->total, 'bar-chart', 'accent', ['category' => ''], $note(Money::add(...array_values($due))));
         foreach (ProjectCostAllocation::CATEGORIES as $key => $label) {
-            $summary->money($label, $row->{$key}, $icons[$key] ?? 'tag', 'info', ['category' => $key]);
+            $summary->money($label, $row->{$key}, $icons[$key] ?? 'tag', 'info', ['category' => $key], $note($due[$key] ?? '0'));
         }
 
         return $summary;
+    }
+
+    /**
+     * Money still owed on the listed costs: what is left on approved contractor bills, and approved expenses not yet paid.
+     *
+     * @return array{contractor: string, expense: string}
+     */
+    private function unpaid(Request $request, Project $project): array
+    {
+        $open = fn (string $model) => $model::query()->where('status', 'approved')->whereIn('id', $this->listing($request, $project)->reorder()
+            ->where('source_type', (new $model)->getMorphClass())->whereNull('reversal_of_id')->select('source_id'));
+        $bills = $open(ContractorBill::class);
+        $paid = ContractorPayment::query()->where('status', 'approved')->whereIn('bill_id', (clone $bills)->select('id'))->sum('amount');
+
+        return [
+            'contractor' => Money::amount(Money::sub((string) (clone $bills)->sum('net_payable'), (string) $paid)),
+            'expense' => Money::amount((string) $open(Expense::class)->sum('amount')),
+        ];
     }
 
     private function listing(Request $request, Project $project): Builder
@@ -76,7 +100,7 @@ class CostController extends Controller
         $query = ProjectCostAllocation::query()->where('project_cost_allocations.project_id', $project->id)->with([
             'workPackage:id,code,name',
             'source' => fn (MorphTo $source) => $source->morphWith([
-                StockIssue::class => ['warehouse.project', 'lines.material:id,name'], StockIssueReturn::class => ['issue.warehouse.project'], LabourEntry::class => ['project'], ContractorBill::class => ['contractor:id,name'],
+                StockIssue::class => ['warehouse.project', 'lines.material:id,name'], StockIssueReturn::class => ['issue.warehouse.project'], LabourEntry::class => ['project'], ContractorBill::class => ['contractor:id,name', 'payments:id,bill_id,amount,status'],
             ]),
         ]);
         if (array_key_exists($category = (string) $request->input('category'), ProjectCostAllocation::CATEGORIES)) {
@@ -84,6 +108,10 @@ class CostController extends Controller
         }
         if ($package = WorkPackage::query()->whereBelongsTo($project)->where('public_id', (string) $request->input('work_package'))->first()) {
             $query->where('work_package_id', $package->id);
+        }
+        if (in_array($payment = (string) $request->input('payment'), ['unpaid', 'paid'], true)) {
+            $query->whereNull('reversal_of_id')->whereHasMorph('source', [ContractorBill::class, Expense::class],
+                fn (Builder $q) => $q->where('status', $payment === 'paid' ? 'paid' : 'approved'));
         }
         $term = trim((string) $request->input('search', ''));
         if ($term !== '') {
