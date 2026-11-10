@@ -62,6 +62,7 @@ Route::prefix('labour')->name('labour.')->controller(LabourController::class)->g
     Route::get('export', 'export')->name('export');
     Route::get('create', 'create')->name('create');
     Route::post('/', 'store')->name('store');
+    Route::post('bulk-approve', 'bulkApprove')->name('bulk-approve');
     Route::post('{entry}/approve', 'approve')->name('approve');
     Route::get('{entry}/{action}', 'reasonForm')->whereIn('action', ['reject', 'reverse'])->name('reason');
     Route::post('{entry}/reject', 'reject')->name('reject');

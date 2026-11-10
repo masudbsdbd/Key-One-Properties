@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,7 +39,7 @@ class LabourController extends Controller
         $project = Project::findByPublicId($request->input('project'));
         $entries = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('construction.labour._rows', ['entries' => $entries, 'showProject' => ! $project])->render(), $entries, ['stats' => $this->summary($request)->render()]);
+        return Ajax::table(view('construction.labour._rows', ['entries' => $entries, 'showProject' => ! $project, 'selectable' => $request->user()->can('construction.labour.approve')])->render(), $entries, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -144,6 +145,42 @@ class LabourController extends Controller
         $this->service->approveLabour($entry, $request->user());
 
         return Ajax::success('Labour approved.');
+    }
+
+    /** Approves the selected entries; entries the user recorded, cannot approve or that are no longer pending are skipped. */
+    public function bulkApprove(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('construction.labour.approve'), 403);
+        $data = $request->validate([
+            'ids' => ['array', 'max:500', Rule::requiredIf(! $request->boolean('all'))],
+            'ids.*' => ['string', 'size:16'],
+            'all' => ['boolean'],
+        ]);
+        $user = $request->user();
+        $entries = ($request->boolean('all') ? $this->listing($request)->reorder() : LabourEntry::query()->whereHas('project', fn ($q) => $q->visibleTo($user))->whereIn('public_id', $data['ids']))
+            ->with('project')->orderBy('work_date')->orderBy('id')->limit(500)->get();
+
+        $done = 0;
+        $skipped = ['own' => 0, 'state' => 0, 'access' => 0];
+        foreach ($entries as $entry) {
+            if (! Gate::allows('construction:labour-approve', $entry->project)) {
+                $skipped['access']++;
+            } elseif ($entry->status !== 'submitted') {
+                $skipped['state']++;
+            } elseif ($entry->created_by === $user->id) {
+                $skipped['own']++;
+            } else {
+                $this->service->approveLabour($entry, $user);
+                $done++;
+            }
+        }
+        $notes = array_filter([
+            $skipped['own'] ? $skipped['own'].' recorded by you' : null,
+            $skipped['state'] ? $skipped['state'].' not awaiting approval' : null,
+            $skipped['access'] ? $skipped['access'].' outside your projects' : null,
+        ]);
+
+        return Ajax::success(Str::plural('entry', $done, true).' approved.'.($notes ? ' Skipped: '.implode(', ', $notes).'.' : ''), ['approved' => $done]);
     }
 
     public function reasonForm(Request $request, LabourEntry $entry, string $action): JsonResponse

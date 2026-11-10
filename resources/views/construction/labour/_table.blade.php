@@ -1,4 +1,4 @@
-<x-data-table summary :url="route('labour.table', $project ? ['project' => $project->public_id] : [])" sort="date" dir="desc" search="Search entry number or notes" :columns="array_values(array_filter([
+<x-data-table summary :selectable="auth()->user()->can('construction.labour.approve')" :url="route('labour.table', $project ? ['project' => $project->public_id] : [])" sort="date" dir="desc" search="Search entry number or notes" :columns="array_values(array_filter([
     ['label' => 'Entry'],
     $project ? null : ['label' => 'Project'],
     ['label' => 'Date', 'sort' => 'date'],
@@ -24,6 +24,9 @@
         </div>
         <x-period />
     </x-slot:filters>
+    <x-slot:bulk>
+        <x-button size="sm" icon="check" data-bulk-action data-url="{{ route('labour.bulk-approve') }}" data-confirm="Approve the selected labour entries?" data-confirm-text="Approve" data-tone="primary">Approve</x-button>
+    </x-slot:bulk>
     <x-slot:toolbar>
         @can('construction.cost.export')<x-export-menu :url="route('labour.export', $project ? ['project' => $project->public_id] : [])" />@endcan
         @if ($project)

@@ -3,6 +3,7 @@
 @forelse ($entries as $entry)
     @php($canApprove = $actor->can('construction:labour-approve', $entry->project))
     <tr>
+        @if ($selectable ?? false)<td>@if ($canApprove && $entry->status === 'submitted')<input type="checkbox" class="form-check" value="{{ $entry->public_id }}" data-select-row aria-label="Select {{ $entry->entry_no }}">@endif</td>@endif
         <td class="whitespace-nowrap"><p class="font-medium text-ink-900">{{ $entry->entry_no }}</p><p class="text-[13px] text-ink-500">{{ $entry->creator?->name }}</p></td>
         @if ($showProject)<td class="whitespace-nowrap text-ink-600"><x-ref :to="$entry->project">{{ $entry->project->name }}</x-ref></td>@endif
         <td class="whitespace-nowrap">{{ App\Support\Format::date($entry->work_date) }}</td>
@@ -20,5 +21,5 @@
         </td>
     </tr>
 @empty
-    <tr><td colspan="{{ $showProject ? 8 : 7 }}"><x-empty-state icon="users" title="No labour entries" /></td></tr>
+    <tr><td colspan="{{ ($showProject ? 8 : 7) + (($selectable ?? false) ? 1 : 0) }}"><x-empty-state icon="users" title="No labour entries" /></td></tr>
 @endforelse

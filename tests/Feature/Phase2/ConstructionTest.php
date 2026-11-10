@@ -159,6 +159,30 @@ class ConstructionTest extends TestCase
         $this->assertSame(['Roof slab'], $entries->pluck('notes')->unique()->values()->all());
     }
 
+    public function test_approvers_approve_many_labour_entries_at_once(): void
+    {
+        $sheet = fn (User $by, array $rows) => $this->actingAs($by)->ajax()->post(route('labour.store'), [
+            'project' => $this->project->public_id, 'work_date' => now()->toDateString(), 'rows' => $rows,
+        ])->assertOk();
+        $sheet($this->engineer, [['type' => 'mason', 'headcount' => 4, 'units' => 1, 'rate' => '900'], ['type' => 'helper', 'headcount' => 6, 'units' => 1, 'rate' => '600']]);
+        $sheet($this->manager, [['type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => '600']]);
+        $ids = LabourEntry::query()->pluck('public_id')->all();
+
+        $this->assertStringContainsString('data-select-row', $this->actingAs($this->manager)->ajax()->get(route('labour.table'))->json('data.html'));
+        $this->actingAs($this->userWith(['construction.view']))->ajax()->post(route('labour.bulk-approve'), ['ids' => $ids])->assertForbidden();
+
+        $this->actingAs($this->manager)->ajax()->post(route('labour.bulk-approve'), ['ids' => $ids])->assertOk()
+            ->assertJsonPath('message', '2 entries approved. Skipped: 1 recorded by you.');
+        $this->assertSame('7200.00', CostAttribution::totals($this->project)['labour']);
+
+        $this->actingAs($this->manager)->ajax()->post(route('labour.bulk-approve'), ['ids' => $ids])->assertOk()
+            ->assertJsonPath('message', '0 entries approved. Skipped: 1 recorded by you, 2 not awaiting approval.');
+        $this->actingAs($this->engineer)->ajax()->post(route('labour.bulk-approve'), ['all' => 1, 'status' => 'submitted'])->assertOk()
+            ->assertJsonPath('message', '1 entry approved.');
+        $this->assertSame('7800.00', CostAttribution::totals($this->project)['labour']);
+        $this->assertSame(0, LabourEntry::query()->where('status', 'submitted')->count());
+    }
+
     public function test_labour_total_is_computed_on_server_and_cost_posted_once(): void
     {
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
