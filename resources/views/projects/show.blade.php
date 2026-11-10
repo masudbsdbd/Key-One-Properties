@@ -310,7 +310,7 @@
             </div>
             <div id="mpanel-transfers" role="tabpanel" aria-labelledby="mtab-transfers" hidden>
                 <x-data-table summary :url="route('transfers.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search transfer number" :columns="[
-                    ['label' => 'Transfer', 'sort' => 'date'], ['label' => 'From'], ['label' => 'To'], ['label' => 'Type'], ['label' => 'Value', 'class' => 'text-right'], ['label' => 'Status'],
+                    ['label' => 'Transfer', 'sort' => 'date'], ['label' => 'From'], ['label' => 'To'], ['label' => 'Materials'], ['label' => 'Value', 'class' => 'text-right'], ['label' => 'Status'],
                 ]">
                     <x-slot:filters>
                         <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\MaterialTransfer::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>

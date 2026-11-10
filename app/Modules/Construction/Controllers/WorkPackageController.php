@@ -52,6 +52,7 @@ class WorkPackageController extends Controller
         return Ajax::success(null, ['html' => view('construction.work-packages._list', [
             'project' => $project, 'packages' => $packages, 'money' => $own !== null,
             'totals' => $totals,
+            'unassigned' => $own === null ? null : (float) ProjectCostAllocation::query()->where('project_id', $project->id)->whereNull('work_package_id')->sum('amount'),
         ])->render()]);
     }
 

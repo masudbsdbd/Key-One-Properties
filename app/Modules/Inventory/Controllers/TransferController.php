@@ -71,7 +71,7 @@ class TransferController extends Controller
         abort_unless($request->user()->can('materials.view'), 403);
         $visible = Warehouse::query()->visibleTo($request->user())->select('id');
 
-        $query = MaterialTransfer::query()->with(['sourceWarehouse.project', 'destinationWarehouse.project', 'lines', 'borrow:id,public_id,borrow_no,source_project_id,destination_project_id', 'borrow.sourceProject:id', 'borrow.destinationProject:id'])
+        $query = MaterialTransfer::query()->with(['sourceWarehouse.project', 'destinationWarehouse.project', 'lines.material:id,name,unit_id', 'lines.material.unit:id,code', 'borrow:id,public_id,borrow_no,source_project_id,destination_project_id', 'borrow.sourceProject:id', 'borrow.destinationProject:id'])
             ->where(fn ($q) => $q->whereIn('source_warehouse_id', $visible)->orWhereIn('destination_warehouse_id', $visible));
         if (array_key_exists($status = (string) $request->input('status'), MaterialTransfer::STATUSES)) {
             $query->where('status', $status);

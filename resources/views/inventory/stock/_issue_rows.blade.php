@@ -13,7 +13,7 @@
             @if ($issue->lines->count() > 3)<span class="block text-[12px] text-ink-500">+{{ $issue->lines->count() - 3 }} more</span>@endif
             @if ($issue->purpose)<span class="block truncate text-[12px] text-ink-500">{{ $issue->purpose }}</span>@endif
         </td>
-        <td class="text-ink-600">{{ $issue->workPackage?->code ?? '—' }}</td>
+        <td class="text-ink-600">@if ($issue->workPackage)<span class="font-medium text-ink-800">{{ $issue->workPackage->code }}</span><span class="block max-w-40 truncate text-[12px] text-ink-500">{{ $issue->workPackage->name }}</span>@else — @endif</td>
         @if ($showValue)<td class="text-right"><x-money :value="$issue->total_value ?? 0" /></td>@endif
         <td>@if ($issue->status === 'reversed')<x-badge tone="danger">Reversed</x-badge>@else<x-badge tone="success">Posted</x-badge>@endif</td>
         <td class="whitespace-nowrap text-right">
