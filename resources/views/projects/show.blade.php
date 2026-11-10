@@ -4,7 +4,7 @@
     $tabs = array_filter([
         'overview' => 'Overview', 'stages' => 'Stages & Progress',
         'packages' => $construction ? 'Work Packages' : null,
-        'buildings' => Route::has('projects.buildings.index') ? 'Buildings' : null, 'flats' => Route::has('projects.buildings.index') ? 'Units' : null,
+        'flats' => Route::has('projects.buildings.index') ? 'Units' : null,
         'labour' => $construction ? 'Labour' : null,
         'materials' => $user->can('materials.view') ? 'Materials' : null,
         'purchases' => $user->can('purchases.view') ? 'Purchases' : null,
@@ -154,10 +154,8 @@
     </section>
 
     @if (Route::has('projects.buildings.index'))
-        <section id="panel-buildings" role="tabpanel" aria-labelledby="tab-buildings" hidden>
+        <section id="panel-flats" role="tabpanel" aria-labelledby="tab-flats" hidden class="space-y-6">
             @include('flats.partials.project-buildings', ['project' => $project])
-        </section>
-        <section id="panel-flats" role="tabpanel" aria-labelledby="tab-flats" hidden>
             @include('flats.partials.project-flats', ['project' => $project])
         </section>
     @endif
