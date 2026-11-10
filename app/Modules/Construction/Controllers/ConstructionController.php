@@ -3,11 +3,8 @@
 namespace App\Modules\Construction\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\ConstructionProgressUpdate;
-use App\Models\LabourEntry;
 use App\Models\Project;
 use App\Support\Ajax;
-use App\Support\Costing\CostAttribution;
 use App\Support\Export\Report;
 use App\Support\Format;
 use App\Support\ListSummary;
@@ -15,6 +12,7 @@ use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -73,20 +71,11 @@ class ConstructionController extends Controller
         return $query;
     }
 
-    public function show(Request $request, Project $project): View
+    /** Construction lives on the project page; old links land on its Work Packages tab. */
+    public function show(Project $project): RedirectResponse
     {
         Gate::authorize('construction:view', $project);
 
-        $packages = $project->workPackages()->get();
-
-        return view('construction.show', [
-            'project' => $project,
-            'packageProgress' => round((float) $packages->avg('progress_percent'), 1),
-            'stageProgress' => $project->load('stages')->overallProgress(),
-            'milestones' => $project->milestones()->get(),
-            'pendingUpdates' => ConstructionProgressUpdate::query()->whereBelongsTo($project)->where('status', 'submitted')->count(),
-            'pendingLabour' => LabourEntry::query()->whereBelongsTo($project)->where('status', 'submitted')->count(),
-            'costs' => Gate::allows('construction:cost-view', $project) ? CostAttribution::totals($project) : null,
-        ]);
+        return redirect()->to(route('projects.show', $project).'#packages');
     }
 }

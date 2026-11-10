@@ -17,12 +17,12 @@ class IntegrationTest extends TestCase
         $project->members()->attach([$full->id, $basic->id]);
 
         $html = $this->actingAs($full)->get(route('projects.show', $project))->assertOk()->getContent();
-        foreach (['tab-construction', 'tab-materials', 'tab-purchases', 'tab-contractors', 'tab-expenses'] as $tab) {
+        foreach (['tab-packages', 'tab-labour', 'tab-cost', 'tab-materials', 'tab-purchases', 'tab-contractors', 'tab-expenses'] as $tab) {
             $this->assertStringContainsString($tab, $html);
         }
 
         $html = $this->actingAs($basic)->get(route('projects.show', $project))->assertOk()->getContent();
-        foreach (['tab-construction', 'tab-materials', 'tab-purchases', 'tab-contractors', 'tab-expenses'] as $tab) {
+        foreach (['tab-packages', 'tab-labour', 'tab-cost', 'tab-materials', 'tab-purchases', 'tab-contractors', 'tab-expenses'] as $tab) {
             $this->assertStringNotContainsString($tab, $html);
         }
     }

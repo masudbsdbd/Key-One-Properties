@@ -146,6 +146,9 @@ class ConstructionTest extends TestCase
         $entry = LabourEntry::query()->firstOrFail();
 
         $this->actingAs($outsider)->get(route('construction.show', $this->project))->assertForbidden();
+        $this->actingAs($this->engineer)->get(route('construction.show', $this->project))->assertRedirect(route('projects.show', $this->project).'#packages');
+        $this->actingAs($this->engineer)->get(route('projects.show', $this->project))->assertOk()
+            ->assertSee('id="tab-packages"', false)->assertSee('id="tab-labour"', false)->assertSee(route('construction.milestones.index', $this->project), false);
         $this->actingAs($outsider)->ajax()->get(route('construction.work-packages.index', $this->project))->assertForbidden();
         $this->actingAs($outsider)->ajax()->post(route('labour.approve', $entry))->assertForbidden();
         $this->actingAs($outsider)->ajax()->get(route('construction.cost', $this->project))->assertForbidden();

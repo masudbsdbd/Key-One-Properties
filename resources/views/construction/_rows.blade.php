@@ -1,7 +1,7 @@
 @forelse ($projects as $project)
     <tr>
         <td>
-            <a href="{{ route('construction.show', $project) }}" class="block">
+            <a href="{{ route('projects.show', $project) }}#packages" class="block">
                 <span class="block font-medium text-ink-900 hover:text-accent-700">{{ $project->name }}</span>
                 <span class="block text-[13px] text-ink-500">{{ $project->code }}</span>
             </a>

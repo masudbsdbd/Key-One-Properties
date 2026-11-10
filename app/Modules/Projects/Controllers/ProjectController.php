@@ -3,6 +3,8 @@
 namespace App\Modules\Projects\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\ConstructionProgressUpdate;
+use App\Models\LabourEntry;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Modules\Projects\Requests\ProjectRequest;
@@ -108,8 +110,12 @@ class ProjectController extends Controller
         Gate::authorize('view', $project);
 
         $project->load(['stages', 'creator', 'cover'])->loadCount(['members', 'media', 'progressUpdates']);
+        $pending = [
+            'packages' => Gate::allows('construction:progress-approve', $project) ? ConstructionProgressUpdate::query()->whereBelongsTo($project)->where('status', 'submitted')->count() : 0,
+            'labour' => Gate::allows('construction:labour-approve', $project) ? LabourEntry::query()->whereBelongsTo($project)->where('status', 'submitted')->count() : 0,
+        ];
 
-        return view('projects.show', ['project' => $project]);
+        return view('projects.show', ['project' => $project, 'pending' => $pending]);
     }
 
     public function summary(Project $project): JsonResponse

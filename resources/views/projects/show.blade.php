@@ -1,13 +1,16 @@
 @php
     $user = auth()->user();
+    $construction = Gate::allows('construction:view', $project);
     $tabs = array_filter([
         'overview' => 'Overview', 'stages' => 'Stages & Progress',
+        'packages' => $construction ? 'Work Packages' : null,
         'buildings' => Route::has('projects.buildings.index') ? 'Buildings' : null, 'flats' => Route::has('projects.buildings.index') ? 'Units' : null,
-        'construction' => Gate::allows('construction:cost-view', $project) ? 'Cost' : null,
+        'labour' => $construction ? 'Labour' : null,
         'materials' => $user->can('materials.view') ? 'Materials' : null,
         'purchases' => $user->can('purchases.view') ? 'Purchases' : null,
         'contractors' => $user->can('contractors.view') ? 'Contractors' : null,
         'expenses' => $user->can('expenses.view.project') ? 'Expenses' : null,
+        'cost' => Gate::allows('construction:cost-view', $project) ? 'Cost' : null,
         'gallery' => 'Gallery', 'team' => 'Team', 'activity' => 'Activity',
     ]);
 @endphp
@@ -32,7 +35,7 @@
 
     <div class="mb-6 mt-8 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
         @foreach ($tabs as $key => $label)
-            <button type="button" role="tab" class="tab" id="tab-{{ $key }}" data-tab="{{ $key }}" aria-controls="panel-{{ $key }}">{{ $label }}</button>
+            <button type="button" role="tab" class="tab" id="tab-{{ $key }}" data-tab="{{ $key }}" aria-controls="panel-{{ $key }}">{{ $label }}@if ($pending[$key] ?? 0)<span class="badge badge-warning ml-1.5 h-5 px-1.5" data-tooltip="Awaiting approval">{{ $pending[$key] }}</span>@endif</button>
         @endforeach
     </div>
 
@@ -121,7 +124,8 @@
         </div>
     </section>
 
-    <section id="panel-stages" role="tabpanel" aria-labelledby="tab-stages" hidden class="grid gap-6 xl:grid-cols-[3fr_2fr]">
+    <section id="panel-stages" role="tabpanel" aria-labelledby="tab-stages" hidden class="grid items-start gap-6 xl:grid-cols-[3fr_2fr]">
+        <div class="space-y-6">
         <x-card title="Stages" :padded="false">
             @can('manageStages', $project)
                 <x-slot:actions>
@@ -133,6 +137,15 @@
                 @include('projects.stages._list')
             </div>
         </x-card>
+        @if ($construction)
+            <x-card title="Milestones" :padded="false">
+                @can('construction:manage', $project)
+                    <x-slot:actions><x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('construction.milestones.create', $project) }}">Add Milestone</x-button></x-slot:actions>
+                @endcan
+                <div data-partial-url="{{ route('construction.milestones.index', $project) }}" data-lazy><div class="p-5"><div class="skeleton h-12 w-full"></div></div></div>
+            </x-card>
+        @endif
+        </div>
         <x-card title="Progress Updates" :padded="false">
             <div data-partial-url="{{ route('projects.progress.index', $project) }}" data-lazy>
                 <div class="space-y-3 p-5"><div class="skeleton h-12 w-full"></div><div class="skeleton h-12 w-full"></div></div>
@@ -186,9 +199,30 @@
         </x-card>
     </section>
 
-    @isset($tabs['construction'])
-        <section id="panel-construction" role="tabpanel" aria-labelledby="tab-construction" hidden>
+    @isset($tabs['cost'])
+        <section id="panel-cost" role="tabpanel" aria-labelledby="tab-cost" hidden>
             <div data-partial-url="{{ route('construction.cost', $project) }}" data-lazy><div class="card p-5"><div class="skeleton h-24 w-full"></div></div></div>
+        </section>
+    @endisset
+    @isset($tabs['packages'])
+        <section id="panel-packages" role="tabpanel" aria-labelledby="tab-packages" hidden class="space-y-6">
+            <x-card title="Work Packages" :padded="false">
+                @can('construction:manage', $project)
+                    <x-slot:actions><x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('construction.work-packages.create', $project) }}" data-size="max-w-3xl">Add Work Package</x-button></x-slot:actions>
+                @endcan
+                <div data-partial-url="{{ route('construction.work-packages.index', $project) }}" data-lazy><div class="p-5"><div class="skeleton h-12 w-full"></div></div></div>
+            </x-card>
+            <x-card title="Work Package Updates" :padded="false">
+                @can('construction:progress-submit', $project)
+                    <x-slot:actions><x-button size="sm" variant="secondary" icon="plus" data-remote-modal="{{ route('construction.progress.create', $project) }}">Submit Progress</x-button></x-slot:actions>
+                @endcan
+                <div data-partial-url="{{ route('construction.progress.index', $project) }}" data-lazy><div class="p-5"><div class="skeleton h-12 w-full"></div></div></div>
+            </x-card>
+        </section>
+    @endisset
+    @isset($tabs['labour'])
+        <section id="panel-labour" role="tabpanel" aria-labelledby="tab-labour" hidden>
+            @include('construction.labour._table', ['project' => $project])
         </section>
     @endisset
     @isset($tabs['materials'])
