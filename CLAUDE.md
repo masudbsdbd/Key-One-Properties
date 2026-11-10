@@ -36,6 +36,7 @@ Follow these rules in every session on this repository.
 - Conventional Commits style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `style:`, `test:`.
 - Commit messages in English, short and specific.
 - Do not commit code until the user gives the project/feature prompt.
+- Always report to the user in Bengali (code, commits and UI text stay in English).
 
 ## UI copy
 
