@@ -196,6 +196,20 @@ browser checks for 13–14, and an empty-state check for 17.
   no longer be reversed. Movement type `issue_return`; financial event `material.site_returned` (positive amount,
   reduces project cost). `keyone:reconcile` includes returns.
 
+### Inventory: moving stock from a project (client, 2026-11-10)
+
+- The project's Materials tab has Stock, Issues, Transfers and Borrows sub-tabs, an Issue button and a Move Stock
+  menu (Transfer In, Transfer Out, Borrow From Site, Move All Leftover). With one active site store it is pre-filled.
+- **Move All Leftover** opens a transfer from a site store with every material it owns at its full owned quantity;
+  borrowed stock goes back through its borrow, not this transfer.
+
+### Future scope (client, 2026-11-10): do not build until the client asks
+
+- **Material requisition:** the site raises a request for materials; the store fulfils it with a transfer or a PO.
+- **Material plan per work package (BOQ):** planned quantity per material and work package, compared with issues.
+- **Reorder level per store:** today the low-stock level is per material for every store.
+- **Mandatory work package on issues and labour:** declined for now; the work package stays optional.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests
