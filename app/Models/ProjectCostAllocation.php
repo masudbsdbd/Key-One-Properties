@@ -54,6 +54,7 @@ class ProjectCostAllocation extends Model
             $source instanceof StockIssue => $source->purpose ?: $source->lines->map(fn ($l) => $l->material?->name)->filter()->unique()
                 ->pipe(fn ($names) => $names->take(2)->implode(', ').($names->count() > 2 ? ' +'.($names->count() - 2).' more' : '')),
             $source instanceof ContractorBill => $source->contractor?->name,
+            $source instanceof StockIssueReturn => 'Returned from '.$source->issue?->issue_no,
             default => null,
         };
     }
@@ -77,7 +78,7 @@ class ProjectCostAllocation extends Model
     public function sourceLabel(): string
     {
         $source = $this->source;
-        foreach (['expense_no', 'bill_no', 'issue_no', 'entry_no', 'payment_no'] as $field) {
+        foreach (['expense_no', 'bill_no', 'issue_no', 'return_no', 'entry_no', 'payment_no'] as $field) {
             if ($source && ! empty($source->{$field})) {
                 return $source->{$field};
             }

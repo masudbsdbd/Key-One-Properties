@@ -10,9 +10,13 @@ use App\Models\MaterialUnit;
 use App\Models\Project;
 use App\Models\StockAdjustment;
 use App\Models\StockBalance;
+use App\Models\StockIssue;
+use App\Models\StockIssueReturn;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Inventory\Services\StockReconciler;
 use App\Support\Costing\CostAttribution;
+use App\Support\Reconciliation\SubledgerReconciler;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -240,5 +244,50 @@ class InventoryHttpTest extends TestCase
         $this->assertStringContainsString('Reverse', $this->actingAs($this->manager)->ajax()->get(route('stock.issues.table', ['project' => $this->a->public_id]))->json('data.html'));
         $this->assertStringContainsString('No issues', $this->actingAs($this->keeper)->ajax()->get(route('stock.issues.table', ['project' => $this->b->public_id]))->json('data.html'));
         $this->actingAs($this->userWith(['materials.view']))->ajax()->get(route('stock.issues.table', ['project' => $this->a->public_id]))->assertNotFound();
+    }
+
+    public function test_part_of_an_issue_comes_back_to_the_store_at_its_cost(): void
+    {
+        $this->receive($this->whA, '3', '10');
+        $this->receive($this->whA, '4', '11');
+        $this->actingAs($this->keeper)->ajax()->post(route('stock.issue'), [
+            'warehouse' => $this->whA->public_id, 'project' => $this->a->public_id, 'issued_at' => now()->toDateString(),
+            'idempotency_key' => (string) Str::uuid(), 'lines' => [['material' => $this->rod->public_id, 'quantity' => '6']],
+        ])->assertOk();
+        $issue = StockIssue::query()->with('lines')->sole();
+        $issued = (string) $issue->lines->first()->total_value;
+        $this->assertSame($issued, CostAttribution::totals($this->a)['material']);
+
+        $this->actingAs($this->keeper)->ajax()->get(route('stock.issues.return.form', $issue))->assertOk()->assertJsonPath('data.html', fn ($h) => str_contains($h, 'quantities[0]'));
+        $this->actingAs($this->userWith(['materials.issue']))->ajax()->get(route('stock.issues.return.form', $issue))->assertForbidden();
+        $return = fn (string $qty) => $this->actingAs($this->keeper)->ajax()->post(route('stock.issues.return', $issue), [
+            'returned_at' => now()->toDateString(), 'reason' => 'Left over', 'idempotency_key' => (string) Str::uuid(), 'quantities' => [0 => $qty],
+        ]);
+
+        $return('7')->assertStatus(422)->assertJsonValidationErrors('quantities.0');
+        $return('')->assertStatus(422)->assertJsonValidationErrors('quantities');
+        $return('2')->assertOk()->assertJsonPath('message', fn ($m) => str_starts_with($m, 'Returned to store (SRN-'));
+        $first = StockIssueReturn::query()->with('lines')->sole()->lines->first();
+        $this->assertSame(2.0, (float) $first->quantity);
+        $this->assertSame(3.0, (float) StockBalance::query()->where('warehouse_id', $this->whA->id)->value('owned_qty'));
+        $this->assertEqualsWithDelta((float) $issued - (float) $first->total_value, (float) CostAttribution::totals($this->a)['material'], 0.001);
+
+        // The last part brings back exactly what is left, so the project cost lands on zero to the paisa.
+        $return('4')->assertOk();
+        $this->assertSame('0.00', CostAttribution::totals($this->a)['material']);
+        $this->assertSame(7.0, (float) StockBalance::query()->where('warehouse_id', $this->whA->id)->value('owned_qty'));
+        $this->assertFalse($issue->fresh()->load('lines')->isReturnable());
+        $this->actingAs($this->keeper)->ajax()->get(route('stock.issues.return.form', $issue))->assertStatus(409);
+        $this->actingAs($this->manager)->ajax()->post(route('stock.issues.reverse', $issue), ['reason' => 'x'])->assertStatus(409);
+
+        $this->assertSame([], app(StockReconciler::class)->differences());
+        $this->assertSame([], app(SubledgerReconciler::class)->differences());
+        $this->assertDatabaseHas('financial_events', ['event_type' => 'material.site_returned']);
+
+        $issues = $this->actingAs($this->keeper)->ajax()->get(route('stock.issues.table', ['project' => $this->a->public_id]))->json('data.html');
+        $this->assertStringContainsString('6 returned', $issues);
+        $this->assertStringNotContainsString(route('stock.issues.return.form', $issue), $issues);
+        $movements = $this->actingAs($this->keeper)->ajax()->get(route('stock.movements.table', ['issue' => $issue->public_id]))->json('data.html');
+        $this->assertSame(3, substr_count($movements, '<tr'));
     }
 }

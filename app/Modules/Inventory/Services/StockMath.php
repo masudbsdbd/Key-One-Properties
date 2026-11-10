@@ -15,7 +15,7 @@ class StockMath
 {
     public const OUTBOUND = ['issue', 'purchase_return', 'adjustment_out'];
 
-    public const INBOUND = ['receipt', 'purchase_receipt', 'adjustment_in'];
+    public const INBOUND = ['receipt', 'purchase_receipt', 'adjustment_in', 'issue_return'];
 
     /**
      * Deltas per warehouse id for a movement whose value is already known.

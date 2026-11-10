@@ -19,6 +19,7 @@ use App\Models\LateFeeAssessment;
 use App\Models\ProjectCostAllocation;
 use App\Models\PurchaseReturn;
 use App\Models\StockIssue;
+use App\Models\StockIssueReturn;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\SupplierLedgerEntry;
@@ -77,6 +78,8 @@ class SubledgerReconciler
         $expected = collect();
         StockIssue::query()->where('status', 'posted')->with('lines')->each(fn ($i) => $expected->put($this->key($i),
             Money::amount(Money::add('0', ...$i->lines->map(fn ($l) => (string) $l->total_value)->all()))));
+        StockIssueReturn::query()->with('lines')->each(fn ($r) => $expected->put($this->key($r),
+            Money::amount(Money::neg(Money::add('0', ...$r->lines->map(fn ($l) => (string) $l->total_value)->all())))));
         LabourEntry::query()->where('status', 'approved')->each(fn ($e) => $expected->put($this->key($e), Money::amount($e->total_amount)));
         ContractorBill::query()->whereIn('status', ['approved', 'paid'])->each(fn ($b) => $expected->put($this->key($b), $b->costAmount()));
         Expense::query()->where('scope', 'project')->whereIn('status', ['approved', 'paid'])->each(fn ($e) => $expected->put($this->key($e), Money::amount($e->amount)));

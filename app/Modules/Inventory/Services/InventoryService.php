@@ -7,6 +7,8 @@ use App\Models\Project;
 use App\Models\StockAdjustment;
 use App\Models\StockBalance;
 use App\Models\StockIssue;
+use App\Models\StockIssueReturn;
+use App\Models\StockIssueReturnLine;
 use App\Models\StockMovement;
 use App\Models\StockReceipt;
 use App\Models\User;
@@ -18,6 +20,7 @@ use App\Support\FinancialEvents\FinancialEventRecorder;
 use App\Support\Money;
 use App\Support\Workflow\Approval;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class InventoryService
@@ -109,11 +112,75 @@ class InventoryService
         });
     }
 
+    /**
+     * Brings part of an issue back to its store at the issue's cost and takes the same amount off the project's
+     * material cost (same work package).
+     *
+     * @param  array<int, string>  $quantities  issue line id => quantity
+     * @param  array{returned_at: string, reason?: ?string}  $data
+     */
+    public function returnToStore(StockIssue $issue, array $quantities, array $data, User $user, string $key): StockIssueReturn
+    {
+        return DB::transaction(function () use ($issue, $quantities, $data, $user, $key) {
+            if ($existing = StockIssueReturn::query()->where('idempotency_key', $key)->first()) {
+                return $existing;
+            }
+            $issue = StockIssue::query()->with(['warehouse', 'project'])->lockForUpdate()->findOrFail($issue->id);
+            Approval::ensureStatus($issue->status, 'posted', 'This issue was reversed.');
+            $lines = $issue->lines()->with('material')->lockForUpdate()->get()->keyBy('id');
+
+            $picked = [];
+            foreach ($quantities as $lineId => $qty) {
+                $qty = trim((string) $qty);
+                if ($qty === '' || ! is_numeric($qty) || (float) $qty == 0.0) {
+                    continue;
+                }
+                $line = $lines->get($lineId);
+                if (! $line || (float) $qty < 0 || Money::cmp(Money::qty($qty), $line->remaining()) > 0) {
+                    throw ValidationException::withMessages(["quantities.{$lineId}" => 'Up to '.rtrim(rtrim($line?->remaining() ?? '0', '0'), '.').' can come back.']);
+                }
+                $qty = Money::qty($qty);
+                $returnedValue = (string) StockIssueReturnLine::query()->where('stock_issue_line_id', $line->id)->sum('total_value');
+                $value = Money::cmp($qty, $line->remaining()) === 0
+                    ? Money::amount(Money::sub($line->total_value, $returnedValue))
+                    : Money::amount(Money::mul($qty, $line->unit_cost));
+                $picked[] = [$line, $qty, $value];
+            }
+            if ($picked === []) {
+                throw ValidationException::withMessages(['quantities' => 'Enter what came back.']);
+            }
+
+            $return = StockIssueReturn::query()->create([
+                'return_no' => DocumentNumber::next('SRN'), 'stock_issue_id' => $issue->id, 'returned_at' => $data['returned_at'],
+                'reason' => $data['reason'] ?? null, 'created_by' => $user->id, 'idempotency_key' => $key,
+            ]);
+            $this->ledger->post($return, array_map(fn ($p) => [
+                'type' => 'issue_return', 'material' => $p[0]->material, 'to' => $issue->warehouse, 'qty' => $p[1], 'unit_cost' => (string) $p[0]->unit_cost, 'value' => $p[2],
+                'from_project' => $issue->project_id, 'to_project' => $issue->warehouse->project_id, 'notes' => $data['reason'] ?? null,
+            ], $picked), $user, 'issue_return|'.$key);
+
+            foreach ($picked as [$line, $qty, $value]) {
+                $return->lines()->create(['stock_issue_line_id' => $line->id, 'material_id' => $line->material_id, 'quantity' => $qty, 'unit_cost' => $line->unit_cost, 'total_value' => $value]);
+                $line->forceFill(['returned_qty' => Money::qty(Money::add($line->returned_qty ?? '0', $qty))])->save();
+            }
+
+            $total = Money::add('0', ...array_column($picked, 2));
+            $this->costs->post($issue->project, $return, 'material', Money::neg($total), $return->returned_at, $issue->work_package_id);
+            $this->events->record('inventory', $return, 'material.site_returned', $total, $return->returned_at,
+                ['return_no' => $return->return_no, 'issue_no' => $issue->issue_no, 'warehouse' => $issue->warehouse->code], project: $issue->project, user: $user);
+
+            return $return;
+        });
+    }
+
     public function reverseIssue(StockIssue $issue, string $reason, User $user): void
     {
         DB::transaction(function () use ($issue, $reason, $user) {
             $issue = StockIssue::query()->lockForUpdate()->findOrFail($issue->id);
             Approval::ensureStatus($issue->status, 'posted', 'This issue was already reversed.');
+            if ($issue->returns()->exists()) {
+                throw new ConflictHttpException('Part of this issue came back to the store, so it cannot be reversed.');
+            }
 
             $this->ledger->reverse($issue, StockMovement::query()->where('reference_type', $issue->getMorphClass())->where('reference_id', $issue->id)->get(), $user, $reason);
             $issue->forceFill(['status' => 'reversed', 'reversed_by' => $user->id, 'reversed_at' => now(), 'reversal_reason' => $reason])->save();

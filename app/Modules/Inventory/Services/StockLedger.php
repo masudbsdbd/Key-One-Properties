@@ -151,6 +151,8 @@ class StockLedger
         $source = $from ? $balances[$from->id.'-'.$material->id] : null;
 
         [$unitCost, $value] = match (true) {
+            // A site return comes back at the issue's own cost; the last part brings back exactly what is left.
+            $type === 'issue_return' => [Money::rate($spec['unit_cost']), Money::amount($spec['value'])],
             in_array($type, StockMath::INBOUND, true) => [
                 Money::rate($spec['unit_cost'] ?? throw new InvalidArgumentException('Unit cost is required.')),
                 Money::mul($qty, $spec['unit_cost']),

@@ -10,6 +10,7 @@ use App\Models\LabourType;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\StockIssue;
+use App\Models\StockIssueReturn;
 use App\Models\WorkPackage;
 use App\Support\Ajax;
 use App\Support\Export\Report;
@@ -25,7 +26,7 @@ use Symfony\Component\HttpFoundation\Response;
 class CostController extends Controller
 {
     /** Document number column of each cost source, used by the search box. */
-    private const NUMBERS = [Expense::class => 'expense_no', StockIssue::class => 'issue_no', LabourEntry::class => 'entry_no', ContractorBill::class => 'bill_no'];
+    private const NUMBERS = [Expense::class => 'expense_no', StockIssue::class => 'issue_no', StockIssueReturn::class => 'return_no', LabourEntry::class => 'entry_no', ContractorBill::class => 'bill_no'];
 
     public function table(Request $request, Project $project): JsonResponse
     {
@@ -75,7 +76,7 @@ class CostController extends Controller
         $query = ProjectCostAllocation::query()->where('project_cost_allocations.project_id', $project->id)->with([
             'workPackage:id,code,name',
             'source' => fn (MorphTo $source) => $source->morphWith([
-                StockIssue::class => ['warehouse.project', 'lines.material:id,name'], LabourEntry::class => ['project'], ContractorBill::class => ['contractor:id,name'],
+                StockIssue::class => ['warehouse.project', 'lines.material:id,name'], StockIssueReturn::class => ['issue.warehouse.project'], LabourEntry::class => ['project'], ContractorBill::class => ['contractor:id,name'],
             ]),
         ]);
         if (array_key_exists($category = (string) $request->input('category'), ProjectCostAllocation::CATEGORIES)) {

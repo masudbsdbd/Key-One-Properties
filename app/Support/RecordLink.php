@@ -26,6 +26,7 @@ use App\Models\MaterialTransfer;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\StockIssue;
+use App\Models\StockIssueReturn;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
@@ -74,6 +75,9 @@ final class RecordLink
         $user ??= auth()->user();
         if ($user && $record instanceof LabourEntry) {
             return Gate::forUser($user)->allows('construction:view', $record->project) ? route('labour.index', ['search' => $record->entry_no]) : null;
+        }
+        if ($user && $record instanceof StockIssueReturn) {
+            $record = $record->issue;
         }
         if ($user && $record instanceof StockIssue) {
             return $user->can('materials.view') && $record->warehouse?->isVisibleTo($user) ? route('stock.movements', ['issue' => $record->public_id]) : null;

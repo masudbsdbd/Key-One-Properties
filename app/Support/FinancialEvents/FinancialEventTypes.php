@@ -12,6 +12,7 @@ class FinancialEventTypes
         // Phase 2: construction and operations
         'material.received' => 'Materials received into stock (opening or other receipt)',
         'material.consumed' => 'Materials issued to a project (project cost)',
+        'material.site_returned' => 'Issued materials brought back from site to the store (project cost reduced)',
         'stock.adjusted' => 'Stock quantity or value adjusted',
         'purchase.received' => 'Materials received against a purchase',
         'purchase.returned' => 'Materials returned to a supplier',

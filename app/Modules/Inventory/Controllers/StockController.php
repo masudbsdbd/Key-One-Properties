@@ -7,6 +7,7 @@ use App\Models\Material;
 use App\Models\Project;
 use App\Models\StockBalance;
 use App\Models\StockIssue;
+use App\Models\StockIssueReturn;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Models\WorkPackage;
@@ -14,8 +15,10 @@ use App\Modules\Inventory\Policies\InventoryAccess;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Modules\Inventory\Services\InventoryService;
 use App\Support\Ajax;
+use App\Support\Dates;
 use App\Support\Export\Report;
 use App\Support\Format;
+use App\Support\LineKeys;
 use App\Support\ListSummary;
 use App\Support\Money;
 use App\Support\TableQuery;
@@ -175,13 +178,40 @@ class StockController extends Controller
         ])->render()]);
     }
 
+    public function returnForm(Request $request, StockIssue $issue): JsonResponse
+    {
+        abort_unless(InventoryAccess::issueTo($request->user(), $issue->warehouse, $issue->project), 403);
+        $issue->load(['lines.material.unit']);
+        abort_unless($issue->isReturnable(), 409, 'Nothing from this issue is left on site.');
+
+        return Ajax::success(null, ['title' => 'Return to Store · '.$issue->issue_no, 'html' => view('inventory.stock._issue_return', [
+            'issue' => $issue, 'lines' => LineKeys::ordered($issue->lines), 'key' => (string) Str::uuid(),
+        ])->render()]);
+    }
+
+    public function returnToStore(Request $request, StockIssue $issue): JsonResponse
+    {
+        abort_unless(InventoryAccess::issueTo($request->user(), $issue->warehouse, $issue->project), 403);
+        $data = $request->validate([
+            'returned_at' => ['required', 'date', 'after_or_equal:'.$issue->issued_at->toDateString(), 'before_or_equal:'.Dates::today()->toDateString()],
+            'reason' => ['nullable', 'string', 'max:255'],
+            'quantities' => ['required', 'array'],
+            'idempotency_key' => ['required', 'uuid'],
+        ], ['returned_at.after_or_equal' => 'A return cannot be dated before its issue.']);
+
+        $return = LineKeys::call($issue->lines()->get(), $data['quantities'], 'quantities',
+            fn (array $byId) => $this->service->returnToStore($issue, $byId, $data, $request->user(), $data['idempotency_key']));
+
+        return Ajax::success('Returned to store ('.$return->return_no.').');
+    }
+
     public function issuesTable(Request $request): JsonResponse
     {
         $user = $request->user();
         abort_unless($user->can('materials.view'), 403);
         $project = Project::query()->visibleTo($user)->where('public_id', (string) $request->input('project'))->first() ?? abort(404);
         $query = StockIssue::query()->where('project_id', $project->id)
-            ->with(['warehouse:id,name,code', 'workPackage:id,code,name', 'creator:id,name', 'lines.material:id,name,unit_id', 'lines.material.unit:id,code'])
+            ->with(['warehouse', 'project', 'workPackage:id,code,name', 'creator:id,name', 'lines.material:id,name,unit_id', 'lines.material.unit:id,code'])
             ->withSum('lines as total_value', 'total_value');
         if (in_array($status = (string) $request->input('status'), ['posted', 'reversed'], true)) {
             $query->where('status', $status);
@@ -301,7 +331,9 @@ class StockController extends Controller
             $query->where('movement_type', $type);
         }
         if ($request->filled('issue')) {
-            $query->whereHasMorph('reference', [StockIssue::class], fn ($q) => $q->where('public_id', (string) $request->input('issue')));
+            $issue = (string) $request->input('issue');
+            $query->where(fn ($q) => $q->whereHasMorph('reference', [StockIssue::class], fn ($r) => $r->where('public_id', $issue))
+                ->orWhereHasMorph('reference', [StockIssueReturn::class], fn ($r) => $r->whereHas('issue', fn ($i) => $i->where('public_id', $issue))));
         }
 
         return TableQuery::period($query, $request, 'posted_at');

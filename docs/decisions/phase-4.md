@@ -186,6 +186,16 @@ browser checks for 13–14, and an empty-state check for 17.
   list filter, a billing badge and **Create Bill** on each goods receipt, and a dashboard alert after
   `Unbilled::ALERT_DAYS` (15) days. Phase 5 books this amount as goods received not invoiced.
 
+### Inventory: issuing from a project and site returns (client, 2026-11-10)
+
+- A project issues stock from its Materials tab: the project is fixed, the store list holds the project's stores and
+  company stores, and each stock row has an Issue shortcut. The tab lists the project's issues.
+- **Site return** (`SRN-…`): part of an issue comes back to the store it left, at the issue line's own cost; the last
+  part brings back exactly the value left, so nothing is stranded. The project's material cost falls by the same
+  amount on the issue's work package (a negative cost allocation sourced from the return). An issue with returns can
+  no longer be reversed. Movement type `issue_return`; financial event `material.site_returned` (positive amount,
+  reduces project cost). `keyone:reconcile` includes returns.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests

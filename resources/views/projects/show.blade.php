@@ -240,9 +240,9 @@
             </x-data-table>
             <h2 class="card-title mb-3 mt-8">Issues</h2>
             <x-data-table :url="route('stock.issues.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search issue number or purpose" :columns="array_values(array_filter([
-                ['label' => 'Issue', 'sort' => 'date'], ['label' => 'Date'], ['label' => 'Warehouse'], ['label' => 'Materials'], ['label' => 'Work Package'],
+                ['label' => 'Issue', 'sort' => 'date'], ['label' => 'Warehouse'], ['label' => 'Materials'], ['label' => 'Work Package'],
                 $user->can('materials.valuation.view') ? ['label' => 'Value', 'class' => 'text-right'] : null,
-                ['label' => 'Status'], ['label' => '', 'class' => 'w-24'],
+                ['label' => 'Status'], ['label' => '', 'class' => 'w-44'],
             ]))">
                 <x-slot:filters>
                     <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All</option><option value="posted">Posted</option><option value="reversed">Reversed</option></select>

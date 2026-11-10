@@ -17,6 +17,7 @@ class StockMovement extends Model
         'purchase_receipt' => 'Purchase Receipt',
         'purchase_return' => 'Purchase Return',
         'issue' => 'Issue',
+        'issue_return' => 'Site Return',
         'adjustment_in' => 'Adjustment In',
         'adjustment_out' => 'Adjustment Out',
         'borrow_issue' => 'Borrow Out',
