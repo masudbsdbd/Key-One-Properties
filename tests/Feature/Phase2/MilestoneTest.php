@@ -5,6 +5,7 @@ namespace Tests\Feature\Phase2;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\Dashboard;
 use Carbon\CarbonImmutable;
 use Tests\TestCase;
 
@@ -89,5 +90,18 @@ class MilestoneTest extends TestCase
         $html = $this->actingAs($this->manager)->ajax()->get(route('construction.milestones.index', $this->project))->json('data.html');
         $this->assertStringContainsString('Moved 2× · +62 days', $html);
         $this->assertStringContainsString('Rod supply late', $html);
+    }
+
+    public function test_dashboard_lists_late_milestones_and_those_due_within_a_week(): void
+    {
+        $this->milestone('2026-11-01');
+        $this->milestone('2026-11-13');
+        $this->milestone('2026-11-30');
+        $this->milestone('2026-11-12', 'completed', '2026-11-09');
+
+        $data = (new Dashboard($this->manager))->get('milestones');
+        $this->assertSame([9], array_column($data['rows'], 'days'));
+        $this->assertSame([3], array_column($data['soon'], 'days'));
+        $this->actingAs($this->manager)->ajax()->get(route('dashboard.panel', 'milestones'))->assertOk()->assertSee('Next 7 days')->assertSee('In 3 days')->assertSee('9 days late');
     }
 }

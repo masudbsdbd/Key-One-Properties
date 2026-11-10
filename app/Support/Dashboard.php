@@ -54,6 +54,8 @@ class Dashboard
     ];
 
     /** Days late after which an overdue installment shows red instead of amber. */
+    public const SOON_DAYS = 7;
+
     public const LATE_DAYS = 30;
 
     private CarbonImmutable $today;
@@ -311,12 +313,16 @@ class Dashboard
 
     private function milestones(): array
     {
-        $late = Milestone::query()->whereIn('project_id', $this->projectIds())->where('status', 'pending')->whereDate('planned_at', '<', $this->today)
-            ->with('project:id,public_id,code,name')->orderBy('planned_at')->limit(8)->get();
+        $pending = fn () => Milestone::query()->whereIn('project_id', $this->projectIds())->where('status', 'pending');
+        $row = fn (Milestone $m, int $days) => ['code' => $m->project->code, 'href' => RecordLink::url($m->project, $this->user), 'title' => $m->title, 'days' => $days];
+        $late = $pending()->whereDate('planned_at', '<', $this->today)->with('project:id,public_id,code,name')->orderBy('planned_at')->limit(8)->get();
+        $soon = $pending()->whereBetween('planned_at', [$this->today->toDateString(), $this->today->addDays(self::SOON_DAYS)->toDateString()])
+            ->with('project:id,public_id,code,name')->orderBy('planned_at')->limit(5)->get();
 
-        return ['rows' => $late->map(fn ($m) => ['code' => $m->project->code, 'href' => RecordLink::url($m->project, $this->user), 'title' => $m->title,
-            'days' => (int) $m->planned_at->diffInDays($this->today)])->all(),
-            'total' => Milestone::query()->whereIn('project_id', $this->projectIds())->where('status', 'pending')->whereDate('planned_at', '<', $this->today)->count()];
+        return ['rows' => $late->map(fn ($m) => $row($m, (int) $m->planned_at->diffInDays($this->today)))->all(),
+            'total' => $pending()->whereDate('planned_at', '<', $this->today)->count(),
+            'soon' => $soon->map(fn ($m) => $row($m, (int) $this->today->diffInDays($m->planned_at)))->all(),
+            'soon_days' => self::SOON_DAYS];
     }
 
     private function investors(): array

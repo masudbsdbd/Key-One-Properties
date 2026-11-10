@@ -1,6 +1,6 @@
 @php
     $titles = ['attention' => 'Needs Attention', 'projects' => 'Project Health', 'cashflow' => 'Money In and Out', 'forecast' => 'Collections Ahead',
-        'aging' => 'Overdue by Age', 'units' => 'Unit Inventory', 'milestones' => 'Delayed Milestones', 'investors' => 'Investors'];
+        'aging' => 'Overdue by Age', 'units' => 'Unit Inventory', 'milestones' => 'Milestones', 'investors' => 'Investors'];
     $has = fn ($p) => in_array($p, $panels, true);
     $cols = [1 => '2xl:grid-cols-1', 2 => '2xl:grid-cols-2', 3 => '2xl:grid-cols-3', 4 => '2xl:grid-cols-4'];
 @endphp
