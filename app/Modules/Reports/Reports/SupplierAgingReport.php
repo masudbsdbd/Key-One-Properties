@@ -6,6 +6,7 @@ use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\User;
 use App\Modules\Reports\BaseReport;
+use App\Support\Dates;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -61,7 +62,7 @@ class SupplierAgingReport extends BaseReport
     public function row(mixed $b): array
     {
         $due = $b->due_date ?? $b->invoice_date;
-        $days = max(0, (int) $due->diffInDays(now(config('app.display_timezone'))->startOfDay(), false));
+        $days = max(0, (int) $due->diffInDays(Dates::today(), false));
 
         return [$b->supplier->name, $b->bill_no, $b->invoice_date, $b->due_date, $b->total_amount, $b->outstanding_amount, $days, AgingBuckets::label($days)];
     }

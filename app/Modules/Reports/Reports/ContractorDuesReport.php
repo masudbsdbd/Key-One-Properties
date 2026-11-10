@@ -6,6 +6,7 @@ use App\Models\Contractor;
 use App\Models\ContractorBill;
 use App\Models\User;
 use App\Modules\Reports\BaseReport;
+use App\Support\Dates;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -64,6 +65,6 @@ class ContractorDuesReport extends BaseReport
     public function row(mixed $b): array
     {
         return [$b->contractor->name, $b->bill_no, $b->bill_date, $b->project->code, $b->gross_amount, $b->retention_amount, $b->net_payable, $b->outstanding_amount,
-            max(0, (int) $b->bill_date->diffInDays(now(config('app.display_timezone'))->startOfDay(), false))];
+            max(0, (int) $b->bill_date->diffInDays(Dates::today(), false))];
     }
 }

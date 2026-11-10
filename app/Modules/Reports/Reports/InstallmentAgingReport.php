@@ -6,6 +6,7 @@ use App\Models\InstallmentPlan;
 use App\Models\InstallmentScheduleItem;
 use App\Models\User;
 use App\Modules\Reports\BaseReport;
+use App\Support\Dates;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -56,7 +57,7 @@ class InstallmentAgingReport extends BaseReport
 
     public function row(mixed $i): array
     {
-        $days = max(0, (int) $i->due_date->diffInDays(now(config('app.display_timezone'))->startOfDay(), false));
+        $days = max(0, (int) $i->due_date->diffInDays(Dates::today(), false));
 
         return [$i->plan->customer->full_name, $i->plan->sale->project->code, $i->plan->sale->flat->flat_no, '#'.$i->sequence_no, $i->due_date,
             $i->principalOutstanding(), $i->feeOutstanding(), $i->outstanding(), $days, AgingBuckets::label($days)];

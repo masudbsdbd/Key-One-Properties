@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
 use App\Models\Concerns\LogsProjectActivity;
+use App\Support\Dates;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -93,11 +94,11 @@ class Milestone extends Model
 
     private static function today(): CarbonImmutable
     {
-        return CarbonImmutable::now(config('app.display_timezone'))->startOfDay();
+        return Dates::today();
     }
 
     private static function day(CarbonInterface $date): CarbonImmutable
     {
-        return CarbonImmutable::parse($date->toDateString(), config('app.display_timezone'));
+        return CarbonImmutable::parse($date->toDateString(), config('app.timezone'));
     }
 }

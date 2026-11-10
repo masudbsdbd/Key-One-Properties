@@ -13,6 +13,7 @@ use App\Models\InstallmentScheduleItem;
 use App\Models\PaymentAllocation;
 use App\Models\Project;
 use App\Support\Ajax;
+use App\Support\Dates;
 use App\Support\Export\Report;
 use App\Support\Format;
 use App\Support\ListSummary;
@@ -34,7 +35,7 @@ class CollectionsController extends Controller
     {
         $user = $request->user();
         abort_unless($user->can('collections.payment.view'), 403);
-        $today = now(config('app.display_timezone'))->startOfDay();
+        $today = Dates::today();
         $items = $this->openItems($request);
         $open = (clone $items)->get();
         $outstanding = fn ($c) => Money::add('0', ...$c->map(fn ($i) => $i->outstanding())->all());
@@ -55,7 +56,7 @@ class CollectionsController extends Controller
     {
         abort_unless($request->user()->can('collections.plan.view'), 403);
 
-        return view('collections.dues.index', ['aging' => $this->aging($this->openItems($request)->get(), now(config('app.display_timezone'))->startOfDay())]);
+        return view('collections.dues.index', ['aging' => $this->aging($this->openItems($request)->get(), Dates::today())]);
     }
 
     public function duesTable(Request $request): JsonResponse
@@ -65,7 +66,7 @@ class CollectionsController extends Controller
         $page = max(1, (int) $request->input('page', 1));
         $rows = $all->forPage($page, 25)->values();
 
-        $today = now(config('app.display_timezone'))->startOfDay();
+        $today = Dates::today();
         $open = $this->filteredDues(ListSummary::without($request, ['filter']));
         $sum = fn ($items) => Money::add('0', ...$items->map(fn ($i) => $i->outstanding())->all());
         $overdue = $open->filter(fn ($i) => $i->due_date->lt($today));
@@ -85,7 +86,7 @@ class CollectionsController extends Controller
         return Report::make('Customer Dues')->meta(['Project' => Project::findByPublicId($request->input('project'))?->name, 'Show' => ['overdue' => 'Overdue only', 'month' => 'Due this month'][(string) $request->input('filter')] ?? null])
             ->columns(['Customer' => 'text', 'Mobile' => 'text', 'Sale' => 'text', 'Unit' => 'text', 'Installment' => 'text', 'Due Date' => 'date', 'Days Late' => 'number', 'Principal' => 'money', 'Late Fee' => 'money', 'Outstanding' => 'money'])
             ->rows(fn () => $this->filteredDues($request)->map(fn ($i) => [$i->plan->customer->full_name, Phone::display($i->plan->customer->primary_mobile), $i->plan->sale->sale_no,
-                $i->plan->sale->flat->flat_no, '#'.$i->sequence_no, $i->due_date, max(0, (int) $i->due_date->diffInDays(now(config('app.display_timezone'))->startOfDay(), false)),
+                $i->plan->sale->flat->flat_no, '#'.$i->sequence_no, $i->due_date, max(0, (int) $i->due_date->diffInDays(Dates::today(), false)),
                 $i->principalOutstanding(), $i->feeOutstanding(), $i->outstanding()]))
             ->respond($request);
     }
@@ -161,7 +162,7 @@ class CollectionsController extends Controller
 
     private function filteredDues(Request $request)
     {
-        $today = now(config('app.display_timezone'))->startOfDay();
+        $today = Dates::today();
         $items = $this->openItems($request)->get();
         $term = mb_strtolower(trim((string) $request->input('search')));
 

@@ -12,6 +12,7 @@ use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\Costing\CostAttribution;
+use App\Support\Dates;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -25,7 +26,7 @@ class ProjectOverview
     public static function for(Project $project, User $user): array
     {
         $project->loadMissing('stages');
-        $today = CarbonImmutable::now(config('app.display_timezone'))->startOfDay();
+        $today = Dates::today();
 
         return [
             'progress' => $project->overallProgress(),

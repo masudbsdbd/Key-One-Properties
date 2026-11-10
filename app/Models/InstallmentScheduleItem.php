@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Dates;
 use App\Support\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -56,7 +57,7 @@ class InstallmentScheduleItem extends Model
         if ($this->status === 'rescheduled') {
             return;
         }
-        $today ??= now(config('app.display_timezone'))->startOfDay();
+        $today ??= Dates::today();
         $this->status = match (true) {
             ! Money::isPositive($this->outstanding()) => 'paid',
             $this->due_date->lt($today) => 'overdue',

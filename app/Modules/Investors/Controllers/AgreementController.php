@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
+use App\Support\Dates;
 use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\ListSummary;
@@ -100,7 +101,7 @@ class AgreementController extends Controller
         if (! $flat) {
             return Ajax::success(null, ['html' => '']);
         }
-        $from = $this->date($request->input('from')) ?? now(config('app.display_timezone'))->startOfDay();
+        $from = $this->date($request->input('from')) ?? Dates::today();
         $to = $this->date($request->input('to'));
         $editing = InvestorFlatAgreement::query()->visibleTo($request->user())->where('public_id', (string) $request->input('agreement'))->first();
         $summary = InvestorService::shareSummary($flat, $from, $to, array_filter([$editing?->id, $editing?->supersedes_id]));
@@ -148,7 +149,7 @@ class AgreementController extends Controller
             'versions' => $versions,
             'capital' => $capital,
             'balance' => InvestorService::capitalBalance($agreement->investor_id, $agreement->flat_id),
-            'summary' => InvestorService::shareSummary($agreement->flat, now(config('app.display_timezone'))->startOfDay(), null),
+            'summary' => InvestorService::shareSummary($agreement->flat, Dates::today(), null),
             'openAmendment' => $versions->first(fn ($v) => $v->supersedes_id === $agreement->id && in_array($v->status, ['draft', 'pending', 'rejected'], true)),
             'activity' => Activity::query()->where('subject_type', $agreement->getMorphClass())->where('subject_id', $agreement->id)->with('causer')->latest()->limit(50)->get(),
         ]);

@@ -60,7 +60,7 @@ class Dashboard
 
     public function __construct(private User $user, private ?Project $project = null)
     {
-        $this->today = CarbonImmutable::now(config('app.display_timezone'))->startOfDay();
+        $this->today = Dates::today();
     }
 
     public function allowed(string $panel): bool

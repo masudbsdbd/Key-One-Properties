@@ -13,6 +13,7 @@ use App\Models\InstallmentReschedule;
 use App\Models\InstallmentScheduleItem;
 use App\Models\LateFeeAssessment;
 use App\Modules\Collections\Services\PaymentService;
+use App\Support\Dates;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -80,7 +81,7 @@ class CustomerPortal
             : $paidQuery->where('booking_id', $unit->id)->whereNull('sale_id')->sum('amount');
         $plan = $unit instanceof FlatSale ? InstallmentPlan::query()->where('sale_id', $unit->id)->where('status', 'active')->with('items')->first() : null;
         $open = $plan ? $plan->items->where('status', '!=', 'rescheduled')->filter(fn ($i) => $i->isOpen())->sortBy('due_date') : collect();
-        $today = now(config('app.display_timezone'))->startOfDay();
+        $today = Dates::today();
 
         return [
             'contract' => Money::amount($unit instanceof FlatSale ? (string) $unit->net_contract_value : (string) $unit->agreed_price),
