@@ -44,6 +44,11 @@ async function loadGauge(form) {
 }
 
 export function initInvestorPages() {
+    document.addEventListener('change', (event) => {
+        if (!event.target.matches('[data-capital-form] [name="transaction_type"]')) return;
+        const title = event.target.closest('[data-modal]')?.querySelector('[data-remote-title]');
+        if (title) title.textContent = event.target.value === 'capital_return' ? 'Return Capital' : 'Receive Capital';
+    });
     document.addEventListener('remote:loaded', (event) => {
         const form = event.target.querySelector('[data-agreement-form]');
         if (form) loadGauge(form);

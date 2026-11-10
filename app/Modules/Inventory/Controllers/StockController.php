@@ -56,6 +56,7 @@ class StockController extends Controller
             'balances' => $balances,
             'showValue' => $request->user()->can('materials.valuation.view'),
             'canIssue' => $request->user()->can('materials.issue'),
+            'canBuy' => $request->user()->can('purchases.create'),
             'project' => Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first(),
         ])->render(), $balances);
     }

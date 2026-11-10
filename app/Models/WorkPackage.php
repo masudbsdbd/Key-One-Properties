@@ -6,6 +6,7 @@ use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPublicId;
 use App\Models\Concerns\LogsProjectActivity;
 use App\Modules\Construction\Services\StageProgress;
+use App\Support\Dates;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -36,6 +37,10 @@ class WorkPackage extends Model
     protected static function booted(): void
     {
         static::saved(function (WorkPackage $package) {
+            if ($package->wasChanged('progress_percent') && (float) $package->progress_percent >= 100) {
+                Milestone::query()->where('work_package_id', $package->id)->where('status', 'pending')->get()
+                    ->each(fn (Milestone $m) => $m->update(['status' => 'completed', 'completed_at' => Dates::today()->toDateString()]));
+            }
             if ($package->wasRecentlyCreated || $package->wasChanged(['progress_percent', 'budget_amount', 'stage_id'])) {
                 StageProgress::sync($package->stage_id);
                 if ($package->wasChanged('stage_id')) {

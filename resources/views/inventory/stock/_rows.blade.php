@@ -3,7 +3,13 @@
     <tr>
         <td><p class="font-medium text-ink-900">{{ $balance->material->name }}</p><p class="text-[13px] text-ink-500">{{ $balance->material->sku }} · {{ $balance->material->unit->code }}</p></td>
         <td class="text-ink-600">{{ $balance->warehouse->name }}<x-ref :to="$balance->warehouse->project" class="block text-[13px] text-ink-400">{{ $balance->warehouse->project?->code ?? 'Company' }}</x-ref></td>
-        <td class="text-right font-medium tabular-nums">{{ $q($balance->owned_qty) }}@if ($balance->isLow()) <x-badge tone="danger" class="ml-1">Low</x-badge>@endif</td>
+        <td class="text-right font-medium tabular-nums">{{ $q($balance->owned_qty) }}@if ($balance->isLow())
+            @if ($canBuy ?? false)
+                <button type="button" class="badge badge-danger ml-1 hover:ring-1 hover:ring-danger-500" data-remote-modal="{{ route('purchase-orders.create', array_filter(['project' => $balance->warehouse->project?->public_id, 'warehouse' => $balance->warehouse->public_id, 'material' => $balance->material->public_id])) }}" data-size="max-w-5xl" data-tooltip="Order {{ $balance->material->name }}">Low</button>
+            @else
+                <x-badge tone="danger" class="ml-1">Low</x-badge>
+            @endif
+        @endif</td>
         <td class="text-right tabular-nums {{ (float) $balance->borrowed_in_qty ? 'text-info-600' : 'text-ink-400' }}">{{ $q($balance->borrowed_in_qty) }}</td>
         <td class="text-right tabular-nums {{ (float) $balance->borrowed_out_qty ? 'text-warning-600' : 'text-ink-400' }}">{{ $q($balance->borrowed_out_qty) }}</td>
         <td class="text-right tabular-nums">{{ $q($balance->physicalQty()) }}</td>

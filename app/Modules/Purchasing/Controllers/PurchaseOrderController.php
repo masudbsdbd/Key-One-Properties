@@ -4,6 +4,7 @@ namespace App\Modules\Purchasing\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\GoodsReceipt;
+use App\Models\Material;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
@@ -135,8 +136,14 @@ class PurchaseOrderController extends Controller
             $order->setRelation('warehouse', $stores->count() === 1 ? $stores->first() : null);
             $project->setAttribute('needs_store', $stores->isEmpty() && $request->user()->can('materials.manage'));
         }
+        $chosen = Warehouse::query()->visibleTo($request->user())->where('is_active', true)->where('public_id', (string) $request->input('warehouse'))->first();
+        if ($chosen && (! $project || $chosen->project_id === $project->id)) {
+            $order->setRelation('warehouse', $chosen);
+        }
+        $material = Material::query()->active()->with('unit:id,code')->where('public_id', (string) $request->input('material'))->first();
+        $lines = $material ? [['material' => $material->public_id, 'text' => $material->label().' ('.$material->unit->code.')', 'quantity' => null, 'unit_cost' => null]] : null;
 
-        return $this->form($order, $supplier, 'New Purchase Order', $project);
+        return $this->form($order, $supplier, 'New Purchase Order', $project, $lines);
     }
 
     public function store(Request $request): JsonResponse
@@ -315,13 +322,13 @@ class PurchaseOrderController extends Controller
         return Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first() ?? abort(404);
     }
 
-    private function form(PurchaseOrder $order, ?Supplier $supplier, string $title, ?Project $project = null): JsonResponse
+    private function form(PurchaseOrder $order, ?Supplier $supplier, string $title, ?Project $project = null, ?array $prefill = null): JsonResponse
     {
-        $lines = $order->exists ? $order->lines->map(fn ($l) => [
+        $lines = $prefill ?? ($order->exists ? $order->lines->map(fn ($l) => [
             'material' => $l->material->public_id, 'text' => $l->material->label().' ('.$l->material->unit->code.')',
             'quantity' => rtrim(rtrim($l->quantity, '0'), '.'), 'unit_cost' => rtrim(rtrim($l->unit_price, '0'), '.'),
             'discount' => (float) $l->discount_amount ? $l->discount_amount : null, 'tax' => (float) $l->tax_amount ? $l->tax_amount : null,
-        ])->all() : [];
+        ])->all() : []);
 
         return Ajax::success(null, ['title' => $title, 'html' => view('purchasing.orders._form', ['order' => $order, 'supplier' => $supplier, 'lines' => $lines, 'project' => $project])->render()]);
     }

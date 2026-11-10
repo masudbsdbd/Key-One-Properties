@@ -110,6 +110,19 @@ class PurchasingHttpTest extends TestCase
         return $po->fresh();
     }
 
+    public function test_a_purchase_order_can_start_from_a_material_and_store(): void
+    {
+        $other = new Warehouse(['code' => 'WH-O', 'name' => 'Other Site']);
+        $other->project_id = Project::factory()->create()->id;
+        $other->save();
+        $form = fn (array $q) => $this->actingAs($this->buyer)->ajax()->get(route('purchase-orders.create', $q))->assertOk()->json('data.html');
+
+        $html = $form(['project' => $this->project->public_id, 'warehouse' => $this->warehouse->public_id, 'material' => $this->cement->public_id]);
+        $this->assertStringContainsString('value="'.$this->warehouse->public_id.'" selected', $html);
+        $this->assertStringContainsString($this->cement->public_id, $html);
+        $this->assertStringNotContainsString('value="'.$other->public_id.'" selected', $form(['project' => $this->project->public_id, 'warehouse' => $other->public_id]));
+    }
+
     public function test_a_project_without_an_active_store_can_open_one_from_the_order_form(): void
     {
         $this->warehouse->forceFill(['is_active' => false])->save();

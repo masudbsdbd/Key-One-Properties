@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Phase2;
 
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectStage;
 use App\Models\WorkPackage;
+use App\Support\Dates;
 use Tests\TestCase;
 
 class StageProgressTest extends TestCase
@@ -102,5 +104,18 @@ class StageProgressTest extends TestCase
         $this->assertStringContainsString($manual->public_id, $form);
         $this->assertStringNotContainsString($packaged->public_id, $form);
         $this->assertStringContainsString('Follows its work packages', $this->actingAs($user)->ajax()->get(route('projects.stages.index', $this->project))->json('data.html'));
+    }
+
+    public function test_milestones_of_a_finished_package_complete_themselves(): void
+    {
+        $stage = $this->stage('Structure');
+        $slab = $this->package($stage, 'SLAB', '100');
+        $milestone = new Milestone(['title' => 'Roof cast', 'planned_at' => now()->addWeek()->toDateString(), 'status' => 'pending']);
+        $milestone->forceFill(['project_id' => $this->project->id, 'work_package_id' => $slab->id])->save();
+
+        $this->progress($slab, 60);
+        $this->assertSame('pending', $milestone->fresh()->status);
+        $this->progress($slab, 100);
+        $this->assertSame(['completed', Dates::today()->toDateString()], [$milestone->fresh()->status, $milestone->fresh()->completed_at->toDateString()]);
     }
 }

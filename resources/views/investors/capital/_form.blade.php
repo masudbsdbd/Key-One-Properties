@@ -3,7 +3,7 @@
     $user = auth()->user();
     $types = collect(App\Models\InvestorCapitalTransaction::TYPES)->filter(fn ($l, $t) => $user->can($t === 'contribution' ? 'investor.capital.record' : 'investor.capital.return'))->all();
 @endphp
-<form method="POST" action="{{ route('investor-capital.store') }}" data-ajax-form class="space-y-5">
+<form method="POST" action="{{ route('investor-capital.store') }}" data-ajax-form class="space-y-5" data-capital-form>
     @csrf
     <input type="hidden" name="idempotency_key" value="{{ $key }}">
     @if ($agreement)
