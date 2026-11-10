@@ -70,12 +70,15 @@ class WorkOrderController extends Controller
             'value_n' => "SUM(CASE WHEN contractor_work_orders.status = 'approved' THEN 1 ELSE 0 END)",
             'measured' => "SUM(CASE WHEN contractor_work_orders.status = 'approved' THEN {$measured} ELSE 0 END)",
             'draft' => "SUM(CASE WHEN contractor_work_orders.status = 'draft' THEN 1 ELSE 0 END)",
+            'unpaid' => "SUM((SELECT COALESCE(SUM(b.net_payable - (SELECT COALESCE(SUM(p.amount), 0) FROM contractor_payments p WHERE p.bill_id = b.id AND p.status = 'approved')), 0)
+                FROM contractor_bills b WHERE b.work_order_id = contractor_work_orders.id AND b.status = 'approved'))",
         ]);
 
         return ListSummary::make($request)
             ->money('Active Contracts', $row->value, 'check-square', 'info', ['status' => 'approved'], ListSummary::many($row->value_n, 'work order'))
             ->money('Work Done', $row->measured, 'activity', 'success')
             ->money('Remaining', Money::sub((string) ($row->value ?? 0), (string) ($row->measured ?? 0)), 'clock', 'warning')
+            ->money('Unpaid Bills', $row->unpaid, 'tag', 'danger')
             ->count('Drafts', $row->draft, 'edit', 'accent', ['status' => 'draft']);
     }
 

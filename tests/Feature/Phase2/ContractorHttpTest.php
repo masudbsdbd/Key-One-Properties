@@ -162,5 +162,6 @@ class ContractorHttpTest extends TestCase
         $page = $this->actingAs($this->engineer)->get(route('contractors.show', $wo->contractor))->assertOk();
         $page->assertSee('600 advance not yet adjusted');
         $this->assertStringContainsString('Advance Refund', $this->actingAs($this->engineer)->ajax()->get(route('contractor-payments.table'))->json('data.html'));
+        $this->assertStringContainsString('Unpaid Bills', $this->actingAs($this->engineer)->ajax()->get(route('work-orders.table', ['project' => $this->project->public_id]))->json('data.stats'));
     }
 }
