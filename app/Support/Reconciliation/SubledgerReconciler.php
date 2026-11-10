@@ -66,7 +66,7 @@ class SubledgerReconciler
         $actual = $this->net(ContractorLedgerEntry::query());
         $expected = collect();
         ContractorBill::query()->whereIn('status', ['approved', 'paid'])->each(fn ($b) => $expected->put($this->key($b), $b->chargeAmount()));
-        ContractorPayment::query()->where('status', 'approved')->each(fn ($p) => $expected->put($this->key($p), Money::neg(Money::amount($p->amount))));
+        ContractorPayment::query()->where('status', 'approved')->each(fn ($p) => $expected->put($this->key($p), $p->isRefund() ? Money::amount($p->amount) : Money::neg(Money::amount($p->amount))));
 
         return $this->compare('Contractor ledger', $expected, $actual);
     }

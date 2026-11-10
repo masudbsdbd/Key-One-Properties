@@ -143,9 +143,11 @@ class WorkOrderController extends Controller
 
         return view('contractors.work-orders.show', [
             'order' => $order,
-            'measured' => $order->measuredAmount(),
+            'measured' => Money::amount((string) $order->measurements->whereIn('status', ['approved', 'billed'])->sum('measured_amount')),
+            'pendingMeasured' => Money::amount((string) $order->measurements->where('status', 'draft')->sum('measured_amount')),
             'billed' => Money::add('0', ...$billed->map(fn ($b) => (string) $b->gross_amount)->all()),
-            'paid' => Money::add('0', ...$order->payments->where('status', 'approved')->map(fn ($p) => (string) $p->amount)->all()),
+            'paid' => Money::sub(Money::add('0', ...$order->payments->where('status', 'approved')->where('kind', 'payment')->map(fn ($p) => (string) $p->amount)->all()),
+                Money::add('0', ...$order->payments->where('status', 'approved')->where('kind', 'refund')->map(fn ($p) => (string) $p->amount)->all())),
             'advance' => $order->availableAdvance(),
             'retention' => $order->retentionHeld(),
         ]);

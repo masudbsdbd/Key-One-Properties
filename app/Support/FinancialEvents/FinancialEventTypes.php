@@ -27,6 +27,7 @@ class FinancialEventTypes
         'material.returned' => 'Borrowed material returned',
         'contractor.bill_approved' => 'Contractor bill approved',
         'contractor.payment' => 'Payment made to a contractor',
+        'contractor.advance_refunded' => 'Unused contractor advance paid back to the company',
         'expense.general' => 'General (company) expense',
         'expense.project' => 'Project expense',
         'cost.shared_allocated' => 'Shared construction cost allocated to flats by saleable area',

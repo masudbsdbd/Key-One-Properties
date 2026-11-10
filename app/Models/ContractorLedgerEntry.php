@@ -13,7 +13,7 @@ use LogicException;
  */
 class ContractorLedgerEntry extends Model
 {
-    public const TYPES = ['bill' => 'Bill', 'retention_release' => 'Retention Release', 'payment' => 'Payment', 'advance' => 'Advance', 'reversal' => 'Reversal'];
+    public const TYPES = ['bill' => 'Bill', 'retention_release' => 'Retention Release', 'payment' => 'Payment', 'advance' => 'Advance', 'advance_refund' => 'Advance Refund', 'reversal' => 'Reversal'];
 
     protected $guarded = ['id'];
 

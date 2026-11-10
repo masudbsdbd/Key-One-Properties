@@ -4,7 +4,9 @@ namespace App\Modules\Contractors\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contractor;
+use App\Models\ContractorBill;
 use App\Models\ContractorLedgerEntry;
+use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
@@ -115,13 +117,17 @@ class ContractorController extends Controller
     public function show(Request $request, Contractor $contractor): View
     {
         abort_unless($request->user()->can('contractors.view'), 403);
-        $entries = $contractor->ledgerEntries();
+        // Same figures as each work order page: gross running bills, money paid less advance paid back.
+        $orders = ContractorWorkOrder::query()->whereBelongsTo($contractor)->whereIn('status', ['approved', 'completed'])->get();
+        $payments = ContractorPayment::query()->whereBelongsTo($contractor)->where('status', 'approved');
 
         return view('contractors.directory.show', [
             'contractor' => $contractor,
             'balance' => $contractor->balance(),
-            'billed' => Money::amount((string) (clone $entries)->whereIn('entry_type', ['bill', 'retention_release'])->sum('charge_amount')),
-            'paid' => Money::amount((string) (clone $entries)->whereIn('entry_type', ['payment', 'advance'])->sum('payment_amount')),
+            'billed' => Money::amount((string) ContractorBill::query()->whereBelongsTo($contractor)->where('kind', 'running')->whereIn('status', ['approved', 'paid'])->sum('gross_amount')),
+            'paid' => Money::amount(Money::sub((string) (clone $payments)->where('kind', 'payment')->sum('amount'), (string) (clone $payments)->where('kind', 'refund')->sum('amount'))),
+            'retention' => Money::amount(Money::add('0', ...$orders->map(fn ($o) => $o->retentionHeld())->all())),
+            'advance' => Money::amount(Money::add('0', ...$orders->map(fn ($o) => $o->availableAdvance())->all())),
             'activeOrders' => ContractorWorkOrder::query()->whereBelongsTo($contractor)->visibleTo($request->user())->where('status', 'approved')->count(),
         ]);
     }

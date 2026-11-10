@@ -7,9 +7,17 @@
     </x-page-header>
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-stat-card label="Payable" :value="App\Support\Format::money($balance)" icon="tag" tone="warning" />
+        <x-stat-card label="Payable" :value="App\Support\Format::money($balance)" icon="tag" tone="warning">
+            @if (App\Support\Money::isPositive($retention))
+                <x-slot:meta><span class="text-ink-500">+ {{ App\Support\Format::money($retention) }} retention held</span></x-slot:meta>
+            @endif
+        </x-stat-card>
         <x-stat-card label="Billed" :value="App\Support\Format::money($billed)" icon="file" tone="info" />
-        <x-stat-card label="Paid" :value="App\Support\Format::money($paid)" icon="check" tone="success" />
+        <x-stat-card label="Paid" :value="App\Support\Format::money($paid)" icon="check" tone="success">
+            @if (App\Support\Money::isPositive($advance))
+                <x-slot:meta><span class="text-ink-500">{{ App\Support\Format::money($advance) }} advance not yet adjusted</span></x-slot:meta>
+            @endif
+        </x-stat-card>
         <x-stat-card label="Active Work Orders" :value="$activeOrders" icon="check-square" tone="accent" />
     </div>
 

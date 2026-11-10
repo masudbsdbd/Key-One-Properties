@@ -137,4 +137,30 @@ class ContractorHttpTest extends TestCase
             'contractor' => $wo->contractor->public_id, 'project' => $this->project->public_id, 'title' => 'X', 'contract_amount' => '10',
         ])->assertStatus(422)->assertJsonValidationErrors('project');
     }
+
+    public function test_an_unused_advance_is_refunded_through_the_payment_form(): void
+    {
+        $wo = $this->approvedOrder();
+        $pay = fn (array $extra) => $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), [
+            'work_order' => $wo->public_id, 'payment_date' => now()->toDateString(), 'payment_method' => 'cash', 'idempotency_key' => (string) Str::uuid(), ...$extra,
+        ]);
+        $pay(['amount' => '1,000'])->assertOk();
+        $this->actingAs($this->manager)->ajax()->post(route('contractor-payments.approve', ContractorPayment::query()->firstOrFail()))->assertOk();
+
+        $this->actingAs($this->engineer)->get(route('work-orders.show', $wo))->assertOk()->assertSee(e(route('contractor-payments.create', ['work_order' => $wo->public_id, 'kind' => 'refund'])), false);
+        $form = $this->actingAs($this->engineer)->ajax()->get(route('contractor-payments.create', ['work_order' => $wo->public_id, 'kind' => 'refund']))->assertOk()->json('data');
+        $this->assertStringStartsWith('Advance Refund', $form['title']);
+        $this->assertStringContainsString('name="kind" value="refund"', $form['html']);
+
+        $pay(['amount' => '1,200', 'kind' => 'refund'])->assertStatus(422)->assertJsonPath('errors.amount.0', 'Only 1000.00 of advance is unused.');
+        $pay(['amount' => '400', 'kind' => 'refund'])->assertOk()->assertJsonPath('message', fn ($m) => str_starts_with($m, 'Advance refund CP-'));
+        $refund = ContractorPayment::query()->where('kind', 'refund')->sole();
+        $this->actingAs($this->manager)->ajax()->post(route('contractor-payments.approve', $refund))->assertOk();
+
+        $this->assertSame('600.00', $wo->fresh()->availableAdvance());
+        $this->assertSame('-600.00', $wo->contractor->balance());
+        $page = $this->actingAs($this->engineer)->get(route('contractors.show', $wo->contractor))->assertOk();
+        $page->assertSee('600 advance not yet adjusted');
+        $this->assertStringContainsString('Advance Refund', $this->actingAs($this->engineer)->ajax()->get(route('contractor-payments.table'))->json('data.html'));
+    }
 }

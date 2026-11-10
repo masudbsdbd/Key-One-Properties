@@ -1,6 +1,6 @@
 @php
     $s = $order->status;
-    $remaining = App\Support\Money::sub($order->contract_amount, $measured);
+    $remaining = App\Support\Money::sub(App\Support\Money::sub($order->contract_amount, $measured), $pendingMeasured ?? '0');
     $pct = (float) $order->contract_amount > 0 ? min(100, round((float) $measured / (float) $order->contract_amount * 100, 1)) : 0;
     $canMeasureApprove = Gate::allows('wo:measure-approve', $order);
     $hasApproved = $order->measurements->contains('status', 'approved');
@@ -53,14 +53,18 @@
 
             <x-card>
                 <div class="flex flex-wrap items-end justify-between gap-3">
-                    <div><p class="detail-label">Measured</p><p class="text-2xl font-semibold text-ink-900"><x-money :value="$measured" /></p><p class="text-[13px] text-ink-500">of <x-money :value="$order->contract_amount" /> · {{ $pct }}%</p></div>
+                    <div><p class="detail-label">Measured</p><p class="text-2xl font-semibold text-ink-900"><x-money :value="$measured" /></p><p class="text-[13px] text-ink-500">of <x-money :value="$order->contract_amount" /> · {{ $pct }}%@if (App\Support\Money::isPositive($pendingMeasured ?? '0')) · <span class="text-warning-600">+<x-money :value="$pendingMeasured" /> awaiting approval</span>@endif</p></div>
                     <div class="text-right"><p class="detail-label">Remaining</p><p class="font-semibold text-ink-900"><x-money :value="$remaining" /></p></div>
                 </div>
                 <x-progress :value="$pct" class="mt-4" :label="false" />
                 <dl class="mt-5 grid gap-4 border-t border-line pt-4 sm:grid-cols-4">
                     <div><dt class="detail-label">Billed</dt><dd class="detail-value"><x-money :value="$billed" /></dd></div>
                     <div><dt class="detail-label">Paid</dt><dd class="detail-value"><x-money :value="$paid" /></dd></div>
-                    <div><dt class="detail-label">Advance Available</dt><dd class="detail-value"><x-money :value="$advance" /></dd></div>
+                    <div><dt class="detail-label">Advance Available</dt><dd class="detail-value"><x-money :value="$advance" />
+                        @if (App\Support\Money::isPositive($advance))
+                            @can('wo:pay', $order)<button type="button" class="ml-1 text-[13px] font-medium text-accent-700 hover:underline" data-remote-modal="{{ route('contractor-payments.create', ['work_order' => $order->public_id, 'kind' => 'refund']) }}" data-size="max-w-2xl">Refund</button>@endcan
+                        @endif
+                    </dd></div>
                     <div><dt class="detail-label">Retention Held</dt><dd class="detail-value"><x-money :value="$retention" /> @if ((float) $order->retention_percent)<span class="text-[13px] text-ink-500">({{ rtrim(rtrim($order->retention_percent, '0'), '.') }}%)</span>@endif</dd></div>
                 </dl>
             </x-card>

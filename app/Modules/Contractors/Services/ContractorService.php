@@ -272,9 +272,7 @@ class ContractorService
             Approval::ensureStatus($bill->status, 'draft', 'This bill is no longer a draft.');
             Approval::ensureNotSelf($user, $bill->created_by, 'a contractor bill');
             $wo = ContractorWorkOrder::query()->lockForUpdate()->findOrFail($bill->work_order_id);
-            if ($bill->kind === 'running') {
-                $this->checkDeductions($wo, $bill->gross_amount, $bill->advance_adjustment, $bill->retention_amount, $bill->other_deductions, $bill->id);
-            }
+            $this->checkDeductions($wo, $bill->gross_amount, $bill->advance_adjustment, $bill->retention_amount, $bill->other_deductions, $bill->id);
 
             $date = $bill->bill_date;
             $bill->forceFill(['status' => Money::isPositive($bill->net_payable) ? 'approved' : 'paid', 'approved_by' => $user->id, 'posted_at' => now()])->save();
@@ -341,12 +339,17 @@ class ContractorService
             }
 
             $held = $wo->retentionHeld();
+            $advance = $wo->availableAdvance();
+            if (Money::cmp($advance, $held) > 0) {
+                throw new ConflictHttpException('The contractor still holds '.Money::amount(Money::sub($advance, $held)).' of unused advance. Record its refund before settling.');
+            }
             if (! Money::isPositive($held)) {
                 $wo->forceFill(['status' => 'completed', 'completed_at' => now()])->save();
 
                 return null;
             }
 
+            // Whatever advance is left is recovered from the retention being released.
             return ContractorBill::query()->create([
                 'bill_no' => DocumentNumber::next('CB'),
                 'kind' => 'retention_release',
@@ -355,7 +358,8 @@ class ContractorService
                 'project_id' => $wo->project_id,
                 'bill_date' => $billDate,
                 'gross_amount' => $held,
-                'net_payable' => $held,
+                'advance_adjustment' => $advance,
+                'net_payable' => Money::amount(Money::sub($held, $advance)),
                 'status' => 'draft',
                 'created_by' => $user->id,
             ]);
@@ -365,20 +369,21 @@ class ContractorService
     /**
      * A payment with a bill settles that bill; without one it is an advance on the work order.
      */
-    public function createPayment(ContractorWorkOrder $wo, ?ContractorBill $bill, string $amount, array $data, User $user, string $key): ContractorPayment
+    public function createPayment(ContractorWorkOrder $wo, ?ContractorBill $bill, string $amount, array $data, User $user, string $key, string $kind = 'payment'): ContractorPayment
     {
-        return DB::transaction(function () use ($wo, $bill, $amount, $data, $user, $key) {
+        return DB::transaction(function () use ($wo, $bill, $amount, $data, $user, $key, $kind) {
             if ($existing = ContractorPayment::query()->where('idempotency_key', $key)->first()) {
                 return $existing;
             }
             $wo = ContractorWorkOrder::query()->lockForUpdate()->findOrFail($wo->id);
-            $this->checkPayment($wo, $bill, $amount, null);
+            $kind === 'refund' ? $this->checkRefund($wo, $amount, null) : $this->checkPayment($wo, $bill, $amount, null);
 
             return ContractorPayment::query()->create([
                 'payment_no' => DocumentNumber::next('CP'),
                 'contractor_id' => $wo->contractor_id,
                 'work_order_id' => $wo->id,
-                'bill_id' => $bill?->id,
+                'bill_id' => $kind === 'refund' ? null : $bill?->id,
+                'kind' => $kind,
                 'project_id' => $wo->project_id,
                 'payment_date' => $data['payment_date'],
                 'amount' => Money::amount($amount),
@@ -400,6 +405,16 @@ class ContractorService
             Approval::ensureNotSelf($user, $payment->created_by, 'a payment');
             $wo = ContractorWorkOrder::query()->lockForUpdate()->findOrFail($payment->work_order_id);
             $bill = $payment->bill_id ? ContractorBill::query()->lockForUpdate()->findOrFail($payment->bill_id) : null;
+            if ($payment->isRefund()) {
+                $this->checkRefund($wo, $payment->amount, $payment->id);
+                $payment->forceFill(['status' => 'approved', 'approved_by' => $user->id, 'posted_at' => now()])->save();
+                $this->ledger->post($payment->contractor, 'advance_refund', $payment, $payment->payment_date,
+                    'Advance refund '.$payment->payment_no.' · '.$wo->wo_no.' ('.ContractorPayment::METHODS[$payment->payment_method].')', $payment->amount, '0', $user);
+                $this->events->record('contractors', $payment, 'contractor.advance_refunded', $payment->amount, $payment->payment_date,
+                    ['payment_no' => $payment->payment_no, 'wo_no' => $wo->wo_no, 'method' => $payment->payment_method], project: $payment->project, user: $user);
+
+                return;
+            }
             $this->checkPayment($wo, $bill, $payment->amount, $payment->id);
 
             $payment->forceFill(['status' => 'approved', 'approved_by' => $user->id, 'posted_at' => now()])->save();
@@ -437,7 +452,9 @@ class ContractorService
             }
 
             $payment->forceFill(['status' => 'reversed', 'reversed_by' => $user->id, 'reversed_at' => now(), 'reversal_reason' => $reason])->save();
-            $this->ledger->reverse($payment, $payment->isAdvance() ? 'advance' : 'payment', $reason, $user);
+            $this->ledger->reverse($payment, match (true) {
+                $payment->isRefund() => 'advance_refund', $payment->isAdvance() => 'advance', default => 'payment'
+            }, $reason, $user);
             if ($payment->bill_id) {
                 ContractorBill::query()->whereKey($payment->bill_id)->where('status', 'paid')->update(['status' => 'approved']);
             }
@@ -479,6 +496,18 @@ class ContractorService
         $due = Money::sub($bill->net_payable, $reserved);
         if (Money::cmp($amount, $due) > 0) {
             throw ValidationException::withMessages(['amount' => 'Cannot pay more than the outstanding '.Money::amount($due).'.']);
+        }
+    }
+
+    /** A refund pays back advance that no bill has used yet. */
+    private function checkRefund(ContractorWorkOrder $wo, string $amount, ?int $ignoreRefundId): void
+    {
+        if (! Money::isPositive($amount)) {
+            throw ValidationException::withMessages(['amount' => 'Amount must be greater than zero.']);
+        }
+        $available = $wo->availableAdvance(null, $ignoreRefundId);
+        if (Money::cmp($amount, $available) > 0) {
+            throw ValidationException::withMessages(['amount' => 'Only '.Money::amount($available).' of advance is unused.']);
         }
     }
 

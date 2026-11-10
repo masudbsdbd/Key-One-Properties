@@ -55,6 +55,11 @@ class ContractorPayment extends Model
 
     public function isAdvance(): bool
     {
-        return $this->bill_id === null;
+        return $this->bill_id === null && $this->kind !== 'refund';
+    }
+
+    public function isRefund(): bool
+    {
+        return $this->kind === 'refund';
     }
 }

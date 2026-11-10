@@ -29,7 +29,7 @@
                     <div><p class="detail-label">Amount</p><p class="detail-value text-lg font-semibold"><x-money :value="$payment->amount" /></p></div>
                     <div><p class="detail-label">Status</p><x-status-badge :status="$payment->status" /></div>
                     <div class="sm:col-span-2"><p class="detail-label">Against</p>
-                        @if ($payment->bill)<a href="{{ route('contractor-bills.show', $payment->bill) }}" class="detail-value text-accent-700 hover:underline">{{ $payment->bill->bill_no }}</a>@else<x-badge tone="info">Advance</x-badge>@endif
+                        @if ($payment->bill)<a href="{{ route('contractor-bills.show', $payment->bill) }}" class="detail-value text-accent-700 hover:underline">{{ $payment->bill->bill_no }}</a>@elseif ($payment->isRefund())<x-badge tone="violet">Advance Refund</x-badge>@else<x-badge tone="info">Advance</x-badge>@endif
                         <p class="text-[13px] text-ink-500"><a href="{{ route('work-orders.show', $payment->workOrder) }}" class="hover:text-accent-700">{{ $payment->workOrder->wo_no }}</a> · <x-ref :to="$payment->project">{{ $payment->project->code }}</x-ref></p>
                     </div>
                     <div><p class="detail-label">Date</p><p class="detail-value">{{ App\Support\Format::date($payment->payment_date) }}</p></div>

@@ -102,9 +102,10 @@ class ContractorPaymentController extends Controller
         abort_unless($request->user()->can('contractors.payment.create'), 403);
         $order = ContractorWorkOrder::query()->visibleTo($request->user())->where('public_id', (string) $request->input('work_order'))->with('contractor')->first();
         $bill = $order ? $order->bills()->where('public_id', (string) $request->input('bill'))->first() : null;
+        $refund = $order && $request->input('kind') === 'refund';
 
-        return Ajax::success(null, ['title' => 'New Contractor Payment', 'html' => view('contractors.payments._form', [
-            'order' => $order, 'bill' => $bill, 'key' => (string) Str::uuid(),
+        return Ajax::success(null, ['title' => $refund ? 'Advance Refund · '.$order->wo_no : 'New Contractor Payment', 'html' => view('contractors.payments._form', [
+            'order' => $order, 'bill' => $refund ? null : $bill, 'key' => (string) Str::uuid(), 'refund' => $refund ? $order->availableAdvance() : null,
         ])->render()]);
     }
 
@@ -115,6 +116,7 @@ class ContractorPaymentController extends Controller
         $data = $request->validate([
             'work_order' => ['required', 'string', 'size:16'],
             'bill' => ['nullable', 'string', 'size:16'],
+            'kind' => ['nullable', Rule::in(['payment', 'refund'])],
             'payment_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
             'payment_method' => ['required', Rule::in(array_keys(ContractorPayment::METHODS))],
@@ -126,15 +128,16 @@ class ContractorPaymentController extends Controller
         $order = ContractorWorkOrder::query()->visibleTo($request->user())->where('public_id', $data['work_order'])->first()
             ?? throw ValidationException::withMessages(['work_order' => 'Select a work order you can access.']);
         Gate::authorize('wo:pay', $order);
+        $refund = ($data['kind'] ?? 'payment') === 'refund';
         $bill = null;
-        if (! empty($data['bill'])) {
+        if (! $refund && ! empty($data['bill'])) {
             $bill = ContractorBill::query()->where('work_order_id', $order->id)->where('public_id', $data['bill'])->first()
                 ?? throw ValidationException::withMessages(['bill' => 'Select a bill of this work order.']);
         }
 
-        $payment = $this->service->createPayment($order, $bill, (string) $data['amount'], $data, $request->user(), $data['idempotency_key']);
+        $payment = $this->service->createPayment($order, $bill, (string) $data['amount'], $data, $request->user(), $data['idempotency_key'], $refund ? 'refund' : 'payment');
 
-        return Ajax::success(($bill ? 'Payment ' : 'Advance ').$payment->payment_no.' recorded.', ['redirect' => route('contractor-payments.show', $payment)]);
+        return Ajax::success(($refund ? 'Advance refund ' : ($bill ? 'Payment ' : 'Advance ')).$payment->payment_no.' recorded.', ['redirect' => route('contractor-payments.show', $payment)]);
     }
 
     public function show(Request $request, ContractorPayment $payment): View

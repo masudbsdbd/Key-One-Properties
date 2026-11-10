@@ -99,13 +99,15 @@ class ContractorWorkOrder extends Model
     }
 
     /** Approved advance payments not yet adjusted against a live bill. */
-    public function availableAdvance(?int $ignoreBillId = null): string
+    public function availableAdvance(?int $ignoreBillId = null, ?int $ignoreRefundId = null): string
     {
-        $paid = (string) $this->payments()->whereNull('bill_id')->where('status', 'approved')->sum('amount');
+        $paid = (string) $this->payments()->whereNull('bill_id')->where('kind', 'payment')->where('status', 'approved')->sum('amount');
         $used = (string) $this->bills()->whereIn('status', ['draft', 'approved', 'paid'])
             ->when($ignoreBillId, fn ($q) => $q->where('id', '!=', $ignoreBillId))->sum('advance_adjustment');
+        $refunded = (string) $this->payments()->where('kind', 'refund')->whereIn('status', ['pending', 'approved'])
+            ->when($ignoreRefundId, fn ($q) => $q->where('id', '!=', $ignoreRefundId))->sum('amount');
 
-        return Money::amount(Money::sub($paid, $used));
+        return Money::amount(Money::sub(Money::sub($paid, $used), $refunded));
     }
 
     /** Retention held on approved bills and not yet released. */

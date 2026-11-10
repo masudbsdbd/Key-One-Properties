@@ -203,6 +203,17 @@ browser checks for 13–14, and an empty-state check for 17.
 - **Move All Leftover** opens a transfer from a site store with every material it owns at its full owned quantity;
   borrowed stock goes back through its borrow, not this transfer.
 
+### Contractors: settlement and advance refunds (2026-11-10)
+
+- Settling a work order recovers any unused advance from the retention being released (the release bill carries an
+  advance adjustment). If the unused advance is larger than the retention, settling is refused until the rest is
+  refunded.
+- **Advance refund:** a contractor payment of kind `refund` records unused advance paid back. It needs approval,
+  cannot exceed the unused advance (pending refunds count), posts an `advance_refund` ledger charge, and records
+  `contractor.advance_refunded` (positive amount; money received). Payment figures show money paid less refunds.
+- Contractor and work order pages use the same figures: billed = gross of approved running bills; measured = approved
+  measurements, with drafts shown as awaiting approval; reversed documents never count.
+
 ### Future scope (client, 2026-11-10): do not build until the client asks
 
 - **Material requisition:** the site raises a request for materials; the store fulfils it with a transfer or a PO.

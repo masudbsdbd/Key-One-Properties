@@ -9,12 +9,13 @@ use Tests\TestCase;
 
 class BladeTemplatesTest extends TestCase
 {
+    // A closing </x-slot> compiles to @endslot, so a directive right after it is glued to a word too.
     public function test_no_directive_is_glued_to_a_word_so_it_never_prints_as_text(): void
     {
         $glued = collect(File::allFiles(resource_path('views')))
             ->filter(fn ($f) => str_ends_with($f->getFilename(), '.blade.php'))
             ->flatMap(fn ($f) => collect(explode("\n", $f->getContents()))
-                ->filter(fn ($line) => preg_match('/(?<!@)\w@(if|elseif|else|endif|foreach|endforeach|can|endcan|isset|endisset|unless|endunless|forelse|empty|endforelse)\b/', $line))
+                ->filter(fn ($line) => preg_match('/(?<!@)(\w|<\/x-slot(:[\w-]+)?>)@(if|elseif|else|endif|foreach|endforeach|can|endcan|isset|endisset|unless|endunless|forelse|empty|endforelse)\b/', $line))
                 ->keys()->map(fn ($i) => $f->getRelativePathname().':'.($i + 1)))
             ->values()->all();
 

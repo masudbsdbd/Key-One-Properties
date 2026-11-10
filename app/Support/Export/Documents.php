@@ -142,12 +142,14 @@ class Documents
     {
         $payment->loadMissing(['contractor', 'workOrder', 'bill', 'project', 'creator']);
 
-        return Document::make($payment->bill_id ? 'Payment Voucher' : 'Advance Voucher', $payment->payment_no)->stamp(ContractorPayment::STATUSES[$payment->status])
-            ->parties(['Paid To' => self::contractorBox($payment->contractor), 'Against' => [$payment->bill?->bill_no ?? 'Advance', $payment->workOrder->wo_no.' · '.$payment->workOrder->title, $payment->project->name]])
+        $refund = $payment->isRefund();
+
+        return Document::make($refund ? 'Advance Refund Receipt' : ($payment->bill_id ? 'Payment Voucher' : 'Advance Voucher'), $payment->payment_no)->stamp(ContractorPayment::STATUSES[$payment->status])
+            ->parties([($refund ? 'Received From' : 'Paid To') => self::contractorBox($payment->contractor), 'Against' => [$payment->bill?->bill_no ?? ($refund ? 'Advance refund' : 'Advance'), $payment->workOrder->wo_no.' · '.$payment->workOrder->title, $payment->project->name]])
             ->meta(['Date' => $payment->payment_date, 'Method' => ContractorPayment::METHODS[$payment->payment_method], 'Reference' => $payment->reference, 'Prepared By' => $payment->creator->name])
-            ->summary(['Amount Paid' => $payment->amount])
+            ->summary([($refund ? 'Amount Received' : 'Amount Paid') => $payment->amount])
             ->notes($payment->notes)
-            ->signatures(['Prepared by', 'Approved by', 'Received by']);
+            ->signatures(['Prepared by', 'Approved by', $refund ? 'Paid by' : 'Received by']);
     }
 
     public static function expense(Expense $expense): Document
