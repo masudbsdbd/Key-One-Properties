@@ -33,7 +33,7 @@ class Navigation
             [
                 'title' => 'Construction',
                 'items' => [
-                    ['label' => 'Construction', 'icon' => 'stairs', 'route' => 'construction.index', 'active' => 'construction.*', 'can' => 'construction.view'],
+                    ['label' => 'Site Progress', 'icon' => 'stairs', 'route' => 'construction.index', 'active' => 'construction.*', 'can' => 'construction.view'],
                     ['label' => 'Labour', 'icon' => 'users', 'route' => 'labour.index', 'active' => 'labour.*', 'can' => 'construction.view'],
                 ],
             ],
