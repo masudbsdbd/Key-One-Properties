@@ -5,11 +5,11 @@
         <p class="form-label">Approved Measurements</p>
         <div class="max-h-64 overflow-y-auto rounded-card border border-line">
             <table class="data-table">
-                <thead><tr><th class="w-10"><input type="checkbox" class="form-check" data-cbill-all checked aria-label="Select all"></th><th>Work Done</th><th class="text-right">Qty</th><th class="text-right">Amount</th></tr></thead>
+                <thead><tr><th class="w-10"><input type="checkbox" class="form-check" data-cbill-all @checked(! $selected || $measurements->count() === 1) aria-label="Select all"></th><th>Work Done</th><th class="text-right">Qty</th><th class="text-right">Amount</th></tr></thead>
                 <tbody>
                     @foreach ($measurements as $m)
                         <tr>
-                            <td><input type="checkbox" name="measurements[]" value="{{ $m->public_id }}" class="form-check" data-cbill-line data-amount="{{ $m->measured_amount }}" checked aria-label="Bill {{ $m->description }}"></td>
+                            <td><input type="checkbox" name="measurements[]" value="{{ $m->public_id }}" class="form-check" data-cbill-line data-amount="{{ $m->measured_amount }}" @checked(! $selected || $selected === $m->public_id) aria-label="Bill {{ $m->description }}"></td>
                             <td><p class="text-ink-900">{{ $m->description }}</p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($m->measurement_date) }}</p></td>
                             <td class="whitespace-nowrap text-right tabular-nums">{{ App\Support\Format::qty($m->quantity) }} {{ $m->unit }}</td>
                             <td class="text-right"><x-money :value="$m->measured_amount" /></td>

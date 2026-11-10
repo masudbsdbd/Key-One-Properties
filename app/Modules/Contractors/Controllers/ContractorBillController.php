@@ -110,6 +110,7 @@ class ContractorBillController extends Controller
 
         return Ajax::success(null, ['title' => 'Running Bill · '.$order->wo_no, 'html' => view('contractors.bills._form', [
             'order' => $order, 'measurements' => $measurements, 'advance' => $order->availableAdvance(),
+            'selected' => $measurements->firstWhere('public_id', $request->query('measurement'))?->public_id,
         ])->render()]);
     }
 

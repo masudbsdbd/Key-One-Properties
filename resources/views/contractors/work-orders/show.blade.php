@@ -3,6 +3,9 @@
     $remaining = App\Support\Money::sub(App\Support\Money::sub($order->contract_amount, $measured), $pendingMeasured ?? '0');
     $pct = (float) $order->contract_amount > 0 ? min(100, round((float) $measured / (float) $order->contract_amount * 100, 1)) : 0;
     $canMeasureApprove = Gate::allows('wo:measure-approve', $order);
+    $canBill = $s === 'approved' && Gate::allows('wo:bill', $order);
+    $canPay = Gate::allows('wo:pay', $order);
+    $payOffered = [];
     $hasApproved = $order->measurements->contains('status', 'approved');
     $hasDraft = $order->measurements->contains('status', 'draft');
     $money = fn ($v) => App\Support\Format::money($v);
@@ -130,19 +133,24 @@
                 @else
                     <div class="overflow-x-auto">
                         <table class="data-table">
-                            <thead><tr><th>Work Done</th><th class="text-right">Qty</th><th class="text-right">Rate</th><th class="text-right">Amount</th><th>Status</th><th class="w-24"></th></tr></thead>
+                            <thead><tr><th>Work Done</th><th class="text-right">Qty</th><th class="text-right">Amount</th><th>Status</th><th></th></tr></thead>
                             <tbody>
                                 @foreach ($order->measurements->sortByDesc('measurement_date') as $m)
+                                    @php $mBill = $m->billLink ? $order->bills->firstWhere('id', $m->billLink->contractor_bill_id) : null; @endphp
                                     <tr>
                                         <td class="min-w-56"><p class="font-medium text-ink-900">{{ $m->description }}</p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($m->measurement_date) }} · {{ $m->submitter->name }}</p>@if ($m->rejection_reason)<p class="text-[13px] text-danger-600">{{ $m->rejection_reason }}</p>@endif</td>
-                                        <td class="whitespace-nowrap text-right tabular-nums">{{ App\Support\Format::qty($m->quantity) }} {{ $m->unit }}</td>
-                                        <td class="text-right"><x-money :value="$m->rate" /></td>
+                                        <td class="whitespace-nowrap text-right tabular-nums"><p>{{ App\Support\Format::qty($m->quantity) }} {{ $m->unit }}</p><p class="text-[13px] text-ink-500">@ {{ App\Support\Format::money($m->rate) }}</p></td>
                                         <td class="text-right font-medium"><x-money :value="$m->measured_amount" /></td>
-                                        <td><x-status-badge :status="$m->status" /></td>
+                                        <td class="whitespace-nowrap"><x-status-badge :status="$m->status" />@if ($mBill)<p class="mt-1 text-[13px]"><x-ref :to="$mBill">{{ $mBill->bill_no }}</x-ref></p>@endif</td>
                                         <td class="whitespace-nowrap text-right">
                                             @if ($m->status === 'draft' && $canMeasureApprove)
                                                 <button type="button" class="btn btn-ghost btn-icon text-success-600" data-action="post" data-url="{{ route('work-orders.measurements.approve', [$order, $m]) }}" data-reload aria-label="Approve measurement"><x-icon name="check" size="h-4 w-4" /></button>
                                                 <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-remote-modal="{{ route('work-orders.measurements.reject.form', [$order, $m]) }}" data-size="max-w-md" aria-label="Reject measurement"><x-icon name="x" size="h-4 w-4" /></button>
+                                            @elseif ($m->status === 'approved' && $canBill)
+                                                <x-button size="sm" variant="secondary" icon="file" data-remote-modal="{{ route('work-orders.bills.create', [$order, 'measurement' => $m->public_id]) }}" data-size="max-w-3xl">Bill</x-button>
+                                            @elseif ($mBill && $canPay && App\Support\Money::isPositive($mBill->due ?? '0') && ! in_array($mBill->id, $payOffered, true))
+                                                @php $payOffered[] = $mBill->id; @endphp
+                                                <x-button size="sm" variant="secondary" icon="tag" data-remote-modal="{{ route('contractor-payments.create', ['work_order' => $order->public_id, 'bill' => $mBill->public_id]) }}" data-size="max-w-2xl">Pay</x-button>
                                             @endif
                                         </td>
                                     </tr>

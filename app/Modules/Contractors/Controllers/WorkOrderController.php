@@ -146,7 +146,7 @@ class WorkOrderController extends Controller
     public function show(Request $request, ContractorWorkOrder $order): View
     {
         Gate::authorize('wo:view', $order);
-        $order->load(['contractor', 'project', 'workPackage', 'creator', 'approver', 'measurements.submitter', 'bills.payments', 'payments.bill', 'variations.requester', 'variations.approver'])
+        $order->load(['contractor', 'project', 'workPackage', 'creator', 'approver', 'measurements.submitter', 'measurements.billLink', 'bills.payments', 'payments.bill', 'variations.requester', 'variations.approver'])
             ->loadCount('attachments');
         $dueBills = $order->bills->where('status', 'approved')->map(fn ($b) => $b->setAttribute('due', Money::sub($b->net_payable, Money::add('0', ...$b->payments->whereIn('status', ['pending', 'approved'])->map(fn ($p) => (string) $p->amount)->all()))))
             ->filter(fn ($b) => Money::isPositive($b->due))->sortBy('bill_date');

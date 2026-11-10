@@ -125,6 +125,46 @@ class ContractorHttpTest extends TestCase
         $this->actingAs($this->engineer)->ajax()->get(route('contractors.ledger', $contractor))->assertOk();
     }
 
+    public function test_measurement_rows_offer_bill_then_pay(): void
+    {
+        $wo = $this->approvedOrder();
+        foreach (['Ground floor', 'First floor'] as $work) {
+            $this->actingAs($this->engineer)->ajax()->post(route('work-orders.measurements.store', $wo), [
+                'measurement_date' => now()->toDateString(), 'description' => $work, 'quantity' => '100', 'unit' => 'sft', 'rate' => '10',
+            ])->assertOk();
+        }
+        [$first, $second] = ContractorMeasurement::query()->orderBy('id')->get()->all();
+        $page = fn () => $this->actingAs($this->engineer)->get(route('work-orders.show', $wo))->assertOk()->getContent();
+        $billLink = fn (ContractorMeasurement $m) => e(route('work-orders.bills.create', [$wo, 'measurement' => $m->public_id]));
+
+        $this->assertStringNotContainsString($billLink($first), $page());
+        foreach ([$first, $second] as $m) {
+            $this->actingAs($this->manager)->ajax()->post(route('work-orders.measurements.approve', [$wo, $m]))->assertOk();
+        }
+        $this->assertStringContainsString($billLink($first), $page());
+
+        // Opened from a row, the bill form ticks only that measurement.
+        $form = $this->actingAs($this->engineer)->ajax()->get(route('work-orders.bills.create', [$wo, 'measurement' => $first->public_id]))->assertOk()->json('data.html');
+        $this->assertSame(1, preg_match_all('/data-cbill-line[^>]*\schecked/', $form));
+        $this->assertMatchesRegularExpression('/value="'.$first->public_id.'"[^>]*\schecked/', $form);
+
+        $this->actingAs($this->engineer)->ajax()->post(route('work-orders.bills.store', $wo), ['bill_date' => now()->toDateString(), 'measurements' => [$first->public_id]])->assertOk();
+        $bill = ContractorBill::query()->firstOrFail();
+        $payLink = e(route('contractor-payments.create', ['work_order' => $wo->public_id, 'bill' => $bill->public_id]));
+        $html = $page();
+        $this->assertStringContainsString(route('contractor-bills.show', $bill), $html);
+        $this->assertStringNotContainsString($billLink($first), $html);
+        $this->assertStringContainsString($billLink($second), $html);
+
+        $this->actingAs($this->manager)->ajax()->post(route('contractor-bills.approve', $bill))->assertOk();
+        $this->assertStringContainsString($payLink, $page());
+
+        $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), [
+            'work_order' => $wo->public_id, 'bill' => $bill->public_id, 'payment_date' => now()->toDateString(), 'amount' => '1000', 'payment_method' => 'cash', 'idempotency_key' => (string) Str::uuid(),
+        ])->assertOk();
+        $this->assertStringNotContainsString($payLink, $page());
+    }
+
     public function test_work_orders_follow_project_visibility(): void
     {
         $wo = $this->approvedOrder();
