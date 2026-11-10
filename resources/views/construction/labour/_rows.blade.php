@@ -10,13 +10,13 @@
         <td class="whitespace-nowrap">{{ $types[$entry->labour_type] ?? $entry->labour_type }}<span class="block text-[13px] text-ink-500">{{ $entry->headcount }} × {{ rtrim(rtrim($entry->units, '0'), '.') }} @ {{ App\Support\Format::money($entry->rate, false) }}</span></td>
         <td class="text-ink-600">{{ $entry->workPackage?->code ?? '—' }}</td>
         <td class="text-right"><x-money :value="$entry->total_amount" /></td>
-        <td><x-status-badge :status="$entry->status" />@if ($entry->rejection_reason || $entry->reversal_reason)<span class="block max-w-48 truncate text-[13px] text-ink-500" title="{{ $entry->rejection_reason ?? $entry->reversal_reason }}">{{ $entry->rejection_reason ?? $entry->reversal_reason }}</span>@endif</td>
+        <td><x-status-badge :status="$entry->status" />@if ($entry->rejection_reason || $entry->reversal_reason)<span class="block max-w-32 truncate text-[13px] text-ink-500" data-tooltip="{{ $entry->rejection_reason ?? $entry->reversal_reason }}">{{ $entry->rejection_reason ?? $entry->reversal_reason }}</span>@endif</td>
         <td class="whitespace-nowrap text-right">
             @if ($canApprove && $entry->status === 'submitted')
-                <x-button size="sm" data-row-action="post" data-url="{{ route('labour.approve', $entry) }}" data-confirm="Approve {{ $entry->entry_no }}?" data-confirm-message="Adds {{ App\Support\Format::money($entry->total_amount) }} labour cost to {{ $entry->project->name }}." data-tone="primary" data-confirm-text="Approve">Approve</x-button>
-                <x-button size="sm" variant="ghost" data-remote-modal="{{ route('labour.reason', [$entry, 'reject']) }}" data-size="max-w-md">Reject</x-button>
+                <button type="button" class="btn btn-ghost btn-icon text-success-600" data-row-action="post" data-url="{{ route('labour.approve', $entry) }}" data-confirm="Approve {{ $entry->entry_no }}?" data-confirm-message="Adds {{ App\Support\Format::money($entry->total_amount) }} labour cost to {{ $entry->project->name }}." data-tone="primary" data-confirm-text="Approve" aria-label="Approve {{ $entry->entry_no }}"><x-icon name="check" size="h-4 w-4" /></button>
+                <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-remote-modal="{{ route('labour.reason', [$entry, 'reject']) }}" data-size="max-w-md" aria-label="Reject {{ $entry->entry_no }}"><x-icon name="x" size="h-4 w-4" /></button>
             @elseif ($canApprove && $entry->status === 'approved')
-                <x-button size="sm" variant="ghost" data-remote-modal="{{ route('labour.reason', [$entry, 'reverse']) }}" data-size="max-w-md">Reverse</x-button>
+                <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('labour.reason', [$entry, 'reverse']) }}" data-size="max-w-md" aria-label="Reverse {{ $entry->entry_no }}"><x-icon name="restore" size="h-4 w-4" /></button>
             @endif
         </td>
     </tr>

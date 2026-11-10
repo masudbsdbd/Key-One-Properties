@@ -6,7 +6,7 @@
     ['label' => 'Work Package'],
     ['label' => 'Amount', 'sort' => 'amount', 'class' => 'text-right'],
     ['label' => 'Status'],
-    ['label' => '', 'class' => 'w-40'],
+    ['label' => '', 'class' => 'w-24'],
 ]))">
     <x-slot:filters>
         @unless ($project)

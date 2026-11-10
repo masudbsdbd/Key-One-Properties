@@ -1,5 +1,5 @@
 @php($total = App\Support\Money::add('0', ...array_values($aging)))
-<div class="space-y-3">
+<div @class(['space-y-3' => ! ($across ?? false), 'grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-5' => $across ?? false])>
     @foreach (['current' => 'Not yet due', '1-30' => '1–30 days late', '31-60' => '31–60 days late', '61-90' => '61–90 days late', '90+' => 'Over 90 days late'] as $key => $label)
         @php($pct = App\Support\Money::isPositive($total) ? round((float) $aging[$key] / (float) $total * 100) : 0)
         <div>

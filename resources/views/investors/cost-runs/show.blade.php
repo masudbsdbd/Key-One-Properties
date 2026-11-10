@@ -1,7 +1,6 @@
 @php
     $s = $run->status;
     $cats = App\Models\ProjectCostAllocation::CATEGORIES;
-    $pools = $run->snapshot_json['pools'] ?? [];
     $sum = fn ($values) => App\Support\Money::amount(App\Support\Money::add('0', ...array_values($values)));
 @endphp
 <x-layouts.app :title="$run->run_no">
@@ -39,23 +38,17 @@
         <button type="button" role="tab" class="tab" id="tab-sources" data-tab="sources" aria-controls="panel-sources">Sources</button>
     </div>
 
-    <section id="panel-worksheet" role="tabpanel" aria-labelledby="tab-worksheet" class="grid gap-6 xl:grid-cols-4">
-        <x-card title="Run" class="min-w-0">
-            <dl class="space-y-3 text-sm">
+    <section id="panel-worksheet" role="tabpanel" aria-labelledby="tab-worksheet" class="space-y-6">
+        <x-card>
+            <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-3 lg:grid-cols-5">
                 <div><dt class="detail-label">Project</dt><dd class="detail-value"><x-ref :to="$run->project">{{ $run->project->name }}</x-ref></dd></div>
                 <div><dt class="detail-label">Cost Up To</dt><dd class="detail-value">{{ App\Support\Format::date($run->cost_cutoff) }}</dd></div>
                 <div><dt class="detail-label">Version</dt><dd class="detail-value">v{{ $run->calculation_version }} · {{ $run->snapshot_json['source_rows'] ?? 0 }} cost rows</dd></div>
                 <div><dt class="detail-label">Status</dt><dd><x-status-badge :status="$s" :labels="App\Models\FlatCostAllocationRun::STATUSES" /></dd></div>
                 <div><dt class="detail-label">Prepared / Approved</dt><dd class="detail-value">{{ $run->creator->name }}@if ($run->approver && $s !== 'rejected') · {{ $run->approver->name }}@endif</dd></div>
             </dl>
-            <dl class="mt-4 space-y-2 border-t border-line pt-4 text-sm">
-                @foreach ($cats as $c => $label)
-                    <div class="flex justify-between gap-3"><dt class="text-ink-500">{{ $label }}</dt><dd><x-money :value="$pools[$c] ?? 0" /></dd></div>
-                @endforeach
-                <div class="flex justify-between gap-3 border-t border-line pt-2 font-medium"><dt>Shared Pool</dt><dd><x-money :value="$run->eligible_shared_cost" /></dd></div>
-            </dl>
         </x-card>
-        <x-card :padded="false" class="min-w-0 xl:col-span-3">
+        <x-card :padded="false">
             <div class="overflow-x-auto">
                 <table class="data-table">
                     <thead>

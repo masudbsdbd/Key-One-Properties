@@ -1,7 +1,7 @@
 <x-layouts.app title="Dues & Overdue">
     <x-page-header title="Dues & Overdue" :breadcrumbs="['Dashboard' => route('dashboard'), 'Collections' => route('collections.overview'), 'Dues' => null]" />
-    <div class="grid gap-6 xl:grid-cols-[320px_1fr]">
-        <x-card title="Aging">@include('collections.dues._aging', ['aging' => $aging])</x-card>
+    <div class="space-y-6">
+        <x-card title="Aging">@include('collections.dues._aging', ['aging' => $aging, 'across' => true])</x-card>
         <x-data-table summary data-table-history class="min-w-0" :url="route('dues.table')" search="Search customer, sale or unit" :columns="[
             ['label' => 'Customer'], ['label' => 'Sale / Unit'], ['label' => 'Due'], ['label' => 'Principal', 'class' => 'text-right'], ['label' => 'Late Fee', 'class' => 'text-right'], ['label' => 'Outstanding', 'class' => 'text-right'],
         ]">
