@@ -127,6 +127,12 @@
     .tone-warning { @apply bg-warning-50 text-warning-600; }
     .tone-danger { @apply bg-danger-50 text-danger-600; }
 
+    /* Filters on their own row share the width evenly. */
+    .filter-row { @apply flex flex-wrap items-center gap-2; }
+    .filter-row > * { flex: 1 1 10rem; width: auto; min-width: 9rem; max-width: 16rem; }
+    .filter-row > [data-period] { flex: 0 1 auto; max-width: none; }
+    .filter-row > input[type='hidden'] { display: none; }
+
     /* Table / Cards switch */
     .view-switch { @apply inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-ink-600 transition-colors hover:text-ink-900; }
     .view-switch.is-active { @apply bg-sidebar text-white hover:text-white; }

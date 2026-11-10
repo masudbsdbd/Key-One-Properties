@@ -13,18 +13,23 @@
     columns: [['label' => 'Name', 'sort' => 'name', 'class' => '']] ; a column without 'sort' is static.
     viewKey: preference key that enables the Table / Cards switch; the endpoint receives view=table|cards.
 --}}
-@php $cards = $viewKey && $view === 'cards'; @endphp
+@php
+    $cards = $viewKey && $view === 'cards';
+    // Three or more filters get a row of their own so the bar never wraps into a ragged block.
+    $stacked = isset($filters) && substr_count($filters->toHtml(), '<select') >= 3;
+@endphp
 <div {{ $attributes->merge(['class' => 'card overflow-hidden']) }} data-ajax-table data-url="{{ $url }}" @if ($viewKey) data-view-key="{{ $viewKey }}" data-view-url="{{ route('profile.preferences') }}" @endif @if ($sort) data-default-sort="{{ $sort }}" data-default-dir="{{ $dir }}" @endif>
     @if ($search !== false || isset($filters) || isset($toolbar) || $viewKey)
-    <div class="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-center">
+    <div @class(['border-b border-line p-4', 'space-y-3' => $stacked, 'flex flex-col gap-3 md:flex-row md:items-center' => ! $stacked])>
+        @if ($stacked)<div class="flex flex-col gap-3 md:flex-row md:items-center">@endif
         @if ($search !== false)
-            <label class="relative block md:w-72">
+            <label @class(['relative block', 'md:w-96' => $stacked, 'md:w-72' => ! $stacked])>
                 <span class="sr-only">{{ $search }}</span>
                 <x-icon name="search" size="h-4 w-4" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
                 <input type="search" name="search" data-table-search class="form-control pl-9" placeholder="{{ $search }}" autocomplete="off">
             </label>
         @endif
-        @isset($filters)<div class="flex flex-1 flex-wrap items-center gap-2">{{ $filters }}</div>@endisset
+        @if (isset($filters) && ! $stacked)<div class="flex flex-1 flex-wrap items-center gap-2">{{ $filters }}</div>@endif
         @if ($viewKey || isset($toolbar))
             <div class="flex items-center gap-2 md:ml-auto">
                 {{ $toolbar ?? '' }}
@@ -38,6 +43,7 @@
                 @endif
             </div>
         @endif
+        @if ($stacked)</div><div class="filter-row">{{ $filters }}</div>@endif
     </div>
     @endif
     @if ($selectable && isset($bulk))
