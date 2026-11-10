@@ -87,7 +87,9 @@ class WorkOrderController extends Controller
         abort_unless($request->user()->can('contractors.view'), 403);
 
         $query = ContractorWorkOrder::query()->visibleTo($request->user())->with(['contractor:id,public_id,name', 'project:id,public_id,code,name'])
-            ->withSum(['measurements as measured' => fn ($q) => $q->whereIn('status', ['approved', 'billed'])], 'measured_amount');
+            ->withSum(['measurements as measured' => fn ($q) => $q->whereIn('status', ['approved', 'billed'])], 'measured_amount')
+            ->addSelect(['due' => ContractorBill::query()->whereColumn('contractor_bills.work_order_id', 'contractor_work_orders.id')->where('contractor_bills.status', 'approved')
+                ->selectRaw('COALESCE(SUM(contractor_bills.net_payable - (SELECT COALESCE(SUM(p.amount), 0) FROM contractor_payments p WHERE p.bill_id = contractor_bills.id AND p.status = ?)), 0)', ['approved'])]);
         if (array_key_exists($status = (string) $request->input('status'), ContractorWorkOrder::STATUSES)) {
             $query->where('status', $status);
         }

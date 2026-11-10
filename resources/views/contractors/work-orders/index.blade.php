@@ -5,7 +5,7 @@
         @endcan
     </x-page-header>
     <x-data-table summary data-table-history :url="route('work-orders.table')" sort="date" dir="desc" search="Search work order or title" :columns="[
-        ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Progress'], ['label' => 'Status'],
+        ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Due', 'class' => 'text-right'], ['label' => 'Progress'], ['label' => 'Status'],
     ]">
         <x-slot:filters>
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\ContractorWorkOrder::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>

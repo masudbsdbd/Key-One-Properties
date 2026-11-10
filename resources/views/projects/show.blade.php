@@ -339,7 +339,7 @@
     @isset($tabs['contractors'])
         <section id="panel-contractors" role="tabpanel" aria-labelledby="tab-contractors" hidden>
             <x-data-table summary :url="route('work-orders.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search work order" :columns="[
-                ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Progress'], ['label' => 'Status'],
+                ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Due', 'class' => 'text-right'], ['label' => 'Progress'], ['label' => 'Status'],
             ]">
                 <x-slot:toolbar>@can('contractors.workorder.create')<x-button icon="plus" data-remote-modal="{{ route('work-orders.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Work Order</x-button>@endcan</x-slot:toolbar>
             </x-data-table>

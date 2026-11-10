@@ -100,6 +100,7 @@ class ContractorHttpTest extends TestCase
         $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), $pay)->assertOk();
         $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), $pay)->assertOk();
         $this->assertSame(2, ContractorPayment::query()->count());
+        $this->assertStringContainsString('750', $this->actingAs($this->engineer)->ajax()->get(route('work-orders.table', ['contractor' => $contractor->public_id]))->json('data.html'));
         // The pending payment covers the bill, so the row stops offering Pay.
         $this->assertStringNotContainsString($payLink, $billRows());
         $this->actingAs($this->manager)->ajax()->post(route('contractor-payments.approve', ContractorPayment::query()->latest('id')->first()))->assertOk();

@@ -33,7 +33,7 @@
 
     <section id="panel-orders" role="tabpanel" aria-labelledby="tab-orders">
         <x-data-table :url="route('work-orders.table', ['contractor' => $contractor->public_id])" sort="date" dir="desc" search="Search work order" :columns="[
-            ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Progress'], ['label' => 'Status'],
+            ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Due', 'class' => 'text-right'], ['label' => 'Progress'], ['label' => 'Status'],
         ]" />
     </section>
     <section id="panel-bills" role="tabpanel" aria-labelledby="tab-bills" hidden>
