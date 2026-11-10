@@ -1,6 +1,10 @@
-@php($canManage = auth()->user()->can('manageStages', $project))
-@php($canProgress = auth()->user()->can('updateProgress', $project))
-@php($packaged = App\Models\WorkPackage::query()->where('project_id', $project->id)->whereNotNull('stage_id')->distinct()->pluck('stage_id')->flip())
+@php
+    $canManage = auth()->user()->can('manageStages', $project);
+    $canProgress = auth()->user()->can('updateProgress', $project);
+    $packages = App\Models\WorkPackage::query()->where('project_id', $project->id)->whereNotNull('stage_id')->orderBy('code')->get(['stage_id', 'parent_id', 'code', 'progress_percent']);
+    $packaged = $packages->pluck('stage_id')->flip();
+    $topLevel = $packages->whereNull('parent_id')->groupBy('stage_id');
+@endphp
 @if ($project->stages->isEmpty())
     <x-empty-state icon="layers" title="No stages yet" />
 @else
@@ -18,13 +22,19 @@
                         <p class="font-medium text-ink-900">{{ $stage->name }}</p>
                         <x-badge :tone="App\Models\ProjectStage::STATUS_TONES[$stage->status] ?? 'neutral'">{{ App\Models\ProjectStage::STATUSES[$stage->status] ?? $stage->status }}</x-badge>
                     </div>
-                    @php($dates = array_filter([
-                        $stage->planned_start_at || $stage->planned_end_at ? 'Plan '.App\Support\Format::date($stage->planned_start_at).' – '.App\Support\Format::date($stage->planned_end_at) : null,
-                        $stage->actual_start_at ? 'Started '.App\Support\Format::date($stage->actual_start_at) : null,
-                        $stage->actual_end_at ? 'Done '.App\Support\Format::date($stage->actual_end_at) : null,
-                    ]))
+                    @php
+                        $dates = array_filter([
+                            $stage->planned_start_at || $stage->planned_end_at ? 'Plan '.App\Support\Format::date($stage->planned_start_at).' – '.App\Support\Format::date($stage->planned_end_at) : null,
+                            $stage->actual_start_at ? 'Started '.App\Support\Format::date($stage->actual_start_at) : null,
+                            $stage->actual_end_at ? 'Done '.App\Support\Format::date($stage->actual_end_at) : null,
+                        ]);
+                        $own = $topLevel[$stage->id] ?? collect();
+                    @endphp
                     @if ($dates)<p class="mt-0.5 text-[13px] text-ink-500">{{ implode(' · ', $dates) }}</p>@endif
                     <x-progress :value="$stage->progress_percent" class="mt-2 max-w-md" />
+                    @if ($own->isNotEmpty())
+                        <a href="#packages" class="mt-1.5 block text-[13px] text-ink-500 hover:text-accent-700">From {{ \Illuminate\Support\Str::plural('work package', $own->count(), true) }}: {{ $own->take(4)->map(fn ($p) => $p->code.' '.App\Support\Format::percent($p->progress_percent))->implode(' · ') }}@if ($own->count() > 4) · +{{ $own->count() - 4 }} more @endif</a>
+                    @endif
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
                     @if ($canProgress)

@@ -4,7 +4,6 @@ namespace App\Modules\Construction\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContractorBill;
-use App\Models\ContractorPayment;
 use App\Models\Expense;
 use App\Models\LabourEntry;
 use App\Models\LabourType;
@@ -14,6 +13,7 @@ use App\Models\StockIssue;
 use App\Models\StockIssueReturn;
 use App\Models\WorkPackage;
 use App\Support\Ajax;
+use App\Support\Costing\CostAttribution;
 use App\Support\Export\Report;
 use App\Support\Format;
 use App\Support\ListSummary;
@@ -66,7 +66,7 @@ class CostController extends Controller
         $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['category']), $project), $sums);
         $icons = ['material' => 'layers', 'labour' => 'users', 'contractor' => 'user', 'expense' => 'note'];
 
-        $due = $this->unpaid(ListSummary::without($request, ['category']), $project);
+        $due = CostAttribution::unpaid($project, $this->listing(ListSummary::without($request, ['category']), $project));
         $note = fn (string $amount) => Money::isPositive($amount) ? Format::money($amount).' unpaid' : null;
 
         $summary = ListSummary::make($request)->money('Total Cost', $row->total, 'bar-chart', 'accent', ['category' => ''], $note(Money::add(...array_values($due))));
@@ -75,24 +75,6 @@ class CostController extends Controller
         }
 
         return $summary;
-    }
-
-    /**
-     * Money still owed on the listed costs: what is left on approved contractor bills, and approved expenses not yet paid.
-     *
-     * @return array{contractor: string, expense: string}
-     */
-    private function unpaid(Request $request, Project $project): array
-    {
-        $open = fn (string $model) => $model::query()->where('status', 'approved')->whereIn('id', $this->listing($request, $project)->reorder()
-            ->where('source_type', (new $model)->getMorphClass())->whereNull('reversal_of_id')->select('source_id'));
-        $bills = $open(ContractorBill::class);
-        $paid = ContractorPayment::query()->where('status', 'approved')->whereIn('bill_id', (clone $bills)->select('id'))->sum('amount');
-
-        return [
-            'contractor' => Money::amount(Money::sub((string) (clone $bills)->sum('net_payable'), (string) $paid)),
-            'expense' => Money::amount((string) $open(Expense::class)->sum('amount')),
-        ];
     }
 
     private function listing(Request $request, Project $project): Builder

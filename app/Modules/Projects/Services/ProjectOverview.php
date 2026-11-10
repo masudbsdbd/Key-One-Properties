@@ -11,6 +11,7 @@ use App\Models\InstallmentScheduleItem;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\WorkPackage;
 use App\Support\Costing\CostAttribution;
 use App\Support\Dates;
 use App\Support\Money;
@@ -37,7 +38,8 @@ class ProjectOverview
             'sales' => $user->can('sales.sale.view') ? self::sales($project, $user, $today) : null,
             'cost' => Gate::forUser($user)->allows('construction:cost-view', $project) ? self::cost($project) : null,
             'milestone' => $user->can('construction.view')
-                ? Milestone::query()->where('project_id', $project->id)->where('status', 'pending')->orderBy('planned_at')->first(['title', 'planned_at']) : null,
+                ? Milestone::query()->where('project_id', $project->id)->where('status', 'pending')->orderBy('planned_at')->first(['title', 'planned_at', 'status', 'completed_at']) : null,
+            'packages' => WorkPackage::query()->where('project_id', $project->id)->whereNull('parent_id')->whereNotNull('stage_id')->selectRaw('stage_id, COUNT(*) AS n')->groupBy('stage_id')->pluck('n', 'stage_id'),
             'updates' => $project->progressUpdates()->with(['stage:id,name', 'recorder:id,name'])->latest('report_date')->latest('id')->limit(3)->get(),
         ];
     }
@@ -100,7 +102,7 @@ class ProjectOverview
         $spent = Money::amount(Money::add('0', ...array_values($byCategory)));
         $budget = $project->estimated_budget !== null ? (string) $project->estimated_budget : null;
 
-        return ['by_category' => $byCategory, 'spent' => $spent, 'budget' => $budget,
+        return ['by_category' => $byCategory, 'spent' => $spent, 'budget' => $budget, 'unpaid' => Money::amount(Money::add(...array_values(CostAttribution::unpaid($project)))),
             'remaining' => $budget !== null ? Money::amount(Money::sub($budget, $spent)) : null,
             'used_pct' => $budget !== null && (float) $budget > 0 ? round((float) $spent / (float) $budget * 100, 1) : null,
             'over' => $budget !== null && Money::isPositive(Money::sub($spent, $budget))];

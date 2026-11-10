@@ -2,10 +2,14 @@
 
 namespace App\Support\Costing;
 
+use App\Models\ContractorBill;
+use App\Models\ContractorPayment;
+use App\Models\Expense;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Support\Money;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use InvalidArgumentException;
@@ -61,6 +65,26 @@ class CostAttribution
                 'reversal_of_id' => $original->id,
             ],
         ))->all();
+    }
+
+    /**
+     * Money still owed on posted cost: what is left on approved contractor bills, and approved expenses not yet paid.
+     * Pass the cost rows to look at (a filtered list); by default every cost row of the project counts.
+     *
+     * @return array{contractor: string, expense: string}
+     */
+    public static function unpaid(Project $project, ?Builder $rows = null): array
+    {
+        $rows ??= ProjectCostAllocation::query()->where('project_id', $project->id);
+        $open = fn (string $model) => $model::query()->where('status', 'approved')->whereIn('id', (clone $rows)->reorder()
+            ->where('source_type', (new $model)->getMorphClass())->whereNull('reversal_of_id')->select('source_id'));
+        $bills = $open(ContractorBill::class);
+        $paid = ContractorPayment::query()->where('status', 'approved')->whereIn('bill_id', (clone $bills)->select('id'))->sum('amount');
+
+        return [
+            'contractor' => Money::amount(Money::sub((string) (clone $bills)->sum('net_payable'), (string) $paid)),
+            'expense' => Money::amount((string) $open(Expense::class)->sum('amount')),
+        ];
     }
 
     /**

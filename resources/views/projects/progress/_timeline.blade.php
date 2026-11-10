@@ -10,7 +10,7 @@
                         <p class="text-[13px] text-ink-500">{{ App\Support\Format::date($update->report_date) }} · {{ $update->recorder?->name }}</p>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
-                        @if ($update->visibility === 'investor')<x-badge tone="violet">Investor</x-badge>@endif
+                        @if ($update->visibility === 'investor')<x-badge tone="violet">Shown to Investors</x-badge>@endif
                         <x-badge tone="accent">{{ App\Support\Format::percent($update->previous_percent) }} → {{ App\Support\Format::percent($update->progress_percent) }}</x-badge>
                     </div>
                 </div>

@@ -69,14 +69,15 @@
                         @foreach ($project->stages->sortBy('sequence') as $stage)
                             <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-5 py-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_auto]">
                                 <span class="min-w-0"><span class="block truncate text-sm font-medium text-ink-900">{{ $stage->name }}</span>
-                                    <span class="block text-[12px] text-ink-500">{{ $stage->planned_end_at ? 'Due '.App\Support\Format::date($stage->planned_end_at) : 'No due date' }}</span></span>
+                                    @php $note = array_filter([$stage->planned_end_at ? 'Due '.App\Support\Format::date($stage->planned_end_at) : null, ($n = $o['packages'][$stage->id] ?? 0) ? \Illuminate\Support\Str::plural('work package', $n, true) : null]); @endphp
+                                    @if ($note)<span class="block text-[12px] text-ink-500">{{ implode(' · ', $note) }}</span>@endif</span>
                                 <x-progress :value="$stage->progress_percent" class="order-last col-span-2 sm:order-none sm:col-span-1" />
                                 <x-badge :tone="App\Models\ProjectStage::STATUS_TONES[$stage->status] ?? 'neutral'">{{ App\Models\ProjectStage::STATUSES[$stage->status] ?? $stage->status }}</x-badge>
                             </li>
                         @endforeach
                     </ul>
                     @if ($o['milestone'])
-                        <p class="flex items-center gap-2 border-t border-line px-5 py-3 text-sm text-ink-700"><x-icon name="calendar-check" size="h-4 w-4 text-accent-700" />Next milestone: <span class="font-medium text-ink-900">{{ $o['milestone']->title }}</span> · {{ App\Support\Format::date($o['milestone']->planned_at) }}</p>
+                        <p class="flex items-center gap-2 border-t border-line px-5 py-3 text-sm text-ink-700"><x-icon name="calendar-check" size="h-4 w-4 text-accent-700" />Next milestone: <span class="font-medium text-ink-900">{{ $o['milestone']->title }}</span> · {{ App\Support\Format::date($o['milestone']->planned_at) }} <x-badge :tone="$o['milestone']->timing()['tone']">{{ $o['milestone']->timing()['label'] }}</x-badge></p>
                     @endif
                 @endif
             </x-card>
@@ -108,7 +109,7 @@
                         @if ($s['overdue'] !== null)
                             <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Overdue</dt><dd @class(['font-semibold tabular-nums', 'text-danger-600' => App\Support\Money::isPositive($s['overdue']), 'text-ink-900' => ! App\Support\Money::isPositive($s['overdue'])])>{{ $fmt($s['overdue']) }}</dd></div>
                         @endif
-                        @if ($o['units'])<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Unsold Stock</dt><dd class="font-medium tabular-nums text-ink-900">{{ $fmt($o['units']['available_value']) }}</dd></div>@endif
+                        @if ($o['units'])<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Unsold Stock</dt><dd class="font-medium tabular-nums text-ink-900">{{ $fmt($o['units']['available_value']) }} <span class="text-[12px] font-normal text-ink-500">· {{ \Illuminate\Support\Str::plural('unit', $o['units']['available'], true) }}</span></dd></div>@endif
                     </dl>
                     <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
                         <a href="{{ route('sales.index', ['project' => $project->public_id]) }}" class="text-accent-700 hover:underline">Sales</a>
@@ -120,9 +121,11 @@
             @if ($o['cost'])
                 @php $c = $o['cost']; @endphp
                 <x-card title="Cost" class="min-w-0">
-                    <x-bars :items="collect(App\Models\ProjectCostAllocation::CATEGORIES)->mapWithKeys(fn ($label, $key) => [$label => $c['by_category'][$key] ?? '0'])->all()" tone="bg-warning-600" />
+                    <x-bars :items="collect(App\Models\ProjectCostAllocation::CATEGORIES)->mapWithKeys(fn ($label, $key) => [$label => $c['by_category'][$key] ?? '0'])->all()" tone="bg-warning-600" :decimals="false" />
                     <dl class="mt-4 space-y-2 border-t border-line pt-3">
                         <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Spent</dt><dd class="font-semibold tabular-nums text-ink-900">{{ $fmt($c['spent']) }}</dd></div>
+                        @if (App\Support\Money::isPositive($c['unpaid']))<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Not Yet Paid</dt><dd class="font-medium tabular-nums text-warning-600">{{ $fmt($c['unpaid']) }}</dd></div>@endif
+                        @if ($c['budget'] !== null)<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Budget</dt><dd class="font-medium tabular-nums text-ink-900">{{ $fmt($c['budget']) }}</dd></div>@endif
                         @if ($c['remaining'] !== null)<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">{{ $c['over'] ? 'Over Budget' : 'Remaining Budget' }}</dt><dd @class(['font-semibold tabular-nums', 'text-danger-600' => $c['over'], 'text-ink-900' => ! $c['over']])>{{ $fmt(ltrim($c['remaining'], '-')) }}</dd></div>@endif
                     </dl>
                     @isset($tabs['cost'])<a href="#cost" class="mt-3 inline-block text-[13px] font-medium text-accent-700 hover:underline">Cost details</a>@endisset

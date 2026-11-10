@@ -8,11 +8,11 @@
             <li class="px-5 py-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="font-medium text-ink-900">{{ $update->workPackage?->label() ?? 'Project' }}@if ($update->milestone) <span class="text-ink-500">· {{ $update->milestone->title }}</span>@endif</p>
+                        <p class="font-medium text-ink-900">{{ $update->workPackage?->label() ?? 'Project' }}@if ($update->milestone) <span class="font-normal text-ink-500">· Milestone: {{ $update->milestone->title }}</span>@endif</p>
                         <p class="text-[13px] text-ink-500">{{ App\Support\Format::date($update->report_date) }} · {{ $update->submitter?->name }}@if ($update->approver && $update->status !== 'submitted') · {{ $update->status === 'approved' ? 'Approved' : 'Rejected' }} by {{ $update->approver->name }}@endif</p>
                     </div>
                     <div class="flex shrink-0 flex-wrap items-center gap-2">
-                        @if ($update->visibility === 'investor')<x-badge tone="violet">{{ $update->published_at ? 'Published' : 'Portal' }}</x-badge>@endif
+                        @if ($update->visibility === 'investor')<x-badge tone="violet">{{ $update->published_at ? 'Shown to Investors' : 'For Investors · Pending' }}</x-badge>@endif
                         <x-badge tone="accent">{{ App\Support\Format::percent($update->previous_percent) }} → {{ App\Support\Format::percent($update->progress_percent) }}</x-badge>
                         <x-status-badge :status="$update->status" />
                     </div>
