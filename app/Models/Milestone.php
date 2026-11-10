@@ -4,8 +4,11 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicId;
 use App\Models\Concerns\LogsProjectActivity;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -41,6 +44,43 @@ class Milestone extends Model
 
     public function isOverdue(): bool
     {
-        return $this->status !== 'completed' && $this->planned_at->isPast();
+        return $this->status !== 'completed' && self::day($this->planned_at)->lt(self::today());
+    }
+
+    /**
+     * How the milestone stands against its plan: days left or late while pending, early or late once done.
+     *
+     * @return array{label: string, tone: string}
+     */
+    public function timing(): array
+    {
+        $plan = self::day($this->planned_at);
+        $days = fn (int $n) => abs($n).' '.Str::plural('day', abs($n));
+        if ($this->status === 'completed' && $this->completed_at) {
+            $diff = (int) $plan->diffInDays(self::day($this->completed_at), false);
+
+            return match (true) {
+                $diff > 0 => ['label' => 'Done '.$days($diff).' late', 'tone' => 'warning'],
+                $diff < 0 => ['label' => 'Done '.$days($diff).' early', 'tone' => 'success'],
+                default => ['label' => 'Done on time', 'tone' => 'success'],
+            };
+        }
+        $left = (int) self::today()->diffInDays($plan, false);
+
+        return match (true) {
+            $left < 0 => ['label' => $days($left).' late', 'tone' => 'danger'],
+            $left === 0 => ['label' => 'Due today', 'tone' => 'warning'],
+            default => ['label' => $days($left).' left', 'tone' => $left <= 7 ? 'warning' : 'neutral'],
+        };
+    }
+
+    private static function today(): CarbonImmutable
+    {
+        return CarbonImmutable::now(config('app.display_timezone'))->startOfDay();
+    }
+
+    private static function day(CarbonInterface $date): CarbonImmutable
+    {
+        return CarbonImmutable::parse($date->toDateString(), config('app.display_timezone'));
     }
 }
