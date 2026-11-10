@@ -174,4 +174,21 @@ class StageProgressTest extends TestCase
         $this->assertLessThan(strpos($list, '>C<'), strpos($list, '>P<'));
         $this->assertStringContainsString('padding-left: 20px', $list);
     }
+
+    public function test_the_record_menu_offers_only_what_the_user_may_do(): void
+    {
+        $stage = $this->stage('Structure');
+        $page = fn ($user) => $this->actingAs($user)->get(route('projects.show', $this->project))->assertOk()->getContent();
+
+        $admin = $page($this->superAdmin());
+        foreach (['Work Package Progress', 'Material Issue', 'Purchase Order', 'Stage Progress', 'id="record-menu"'] as $item) {
+            $this->assertStringContainsString($item, $admin);
+        }
+        $this->package($stage, 'A', '100');
+        $this->assertStringNotContainsString('Stage Progress', $page($this->superAdmin()));
+
+        $viewer = $this->userWith(['projects.view']);
+        $this->project->members()->attach($viewer->id);
+        $this->assertStringNotContainsString('id="record-menu"', $page($viewer));
+    }
 }

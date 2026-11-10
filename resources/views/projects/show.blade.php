@@ -17,9 +17,27 @@
 <x-layouts.app :title="$project->name">
     <x-page-header :title="$project->name" :breadcrumbs="['Dashboard' => route('dashboard'), 'Projects' => route('projects.index'), $project->name => null]">
         <x-slot:actions>
-            @can('updateProgress', $project)
-                <x-button icon="plus" data-remote-modal="{{ route('projects.progress.create', $project) }}">Record Progress</x-button>
-            @endcan
+            @php
+                $manualStages = $user->can('updateProgress', $project) && $project->stages()->whereDoesntHave('workPackages')->exists();
+                $record = array_filter([
+                    Gate::allows('construction:progress-submit', $project) ? ['Work Package Progress', 'bar-chart', route('construction.progress.create', $project), null] : null,
+                    Gate::allows('construction:labour-manage', $project) ? ['Labour', 'users', route('labour.create', ['project' => $project->public_id]), 'max-w-3xl'] : null,
+                    $user->can('materials.issue') ? ['Material Issue', 'upload', route('stock.issue.form', ['project' => $project->public_id]), 'max-w-4xl'] : null,
+                    $user->can('purchases.create') ? ['Purchase Order', 'note', route('purchase-orders.create', ['project' => $project->public_id]), 'max-w-5xl'] : null,
+                    $user->can('expenses.create.project') ? ['Expense', 'tag', route('expenses.create', ['project' => $project->public_id]), 'max-w-3xl'] : null,
+                    $manualStages ? ['Stage Progress', 'stairs', route('projects.progress.create', $project), null] : null,
+                ]);
+            @endphp
+            @if ($record)
+                <div class="relative">
+                    <x-button icon="plus" data-menu-button aria-controls="record-menu" aria-expanded="false">Record<x-icon name="chevron-down" size="h-4 w-4" /></x-button>
+                    <div id="record-menu" data-menu hidden class="absolute right-0 z-30 mt-2 w-60 rounded-card border border-line bg-surface p-1.5 shadow-raised">
+                        @foreach ($record as [$label, $icon, $url, $size])
+                            <button type="button" class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-700 hover:bg-surface-muted" data-remote-modal="{{ $url }}" @if ($size) data-size="{{ $size }}" @endif><x-icon :name="$icon" size="h-4 w-4 text-ink-400" />{{ $label }}</button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             @can('update', $project)
                 <x-button variant="secondary" icon="edit" data-remote-modal="{{ route('projects.edit', $project) }}" data-size="max-w-3xl">Edit</x-button>
             @endcan
