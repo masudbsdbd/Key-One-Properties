@@ -19,18 +19,19 @@
             <div data-widget="kpis" aria-live="polite"><div data-widget-body><div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">@for ($i = 0; $i < 4; $i++)<div class="skeleton h-[104px]"></div>@endfor</div></div></div>
         @endif
 
-        <div @class(['grid items-start gap-6', 'xl:grid-cols-3' => $approvals])>
-            <x-card :title="$titles['attention']" data-widget="attention" aria-live="polite" @class(['min-w-0', 'xl:col-span-2' => $approvals])>
+        @php $wide = count($approvals) > 5; @endphp
+        <div @class(['grid items-start gap-6', 'xl:grid-cols-3' => $approvals && ! $wide])>
+            <x-card :title="$titles['attention']" data-widget="attention" aria-live="polite" @class(['min-w-0', 'xl:col-span-2' => $approvals && ! $wide])>
                 <div data-widget-body><div class="skeleton h-40 w-full"></div></div>
             </x-card>
             @if ($approvals)
-                <x-card title="Awaiting You" :padded="false" class="min-w-0">
-                    <ul class="divide-y divide-line">
+                <x-card title="Awaiting You" :padded="$wide" class="min-w-0">
+                    <ul @class(['divide-y divide-line' => ! $wide, 'grid gap-2 sm:grid-cols-2 xl:grid-cols-3' => $wide])>
                         @foreach ($approvals as $item)
                             <li>
-                                <a href="{{ $item['href'] }}" class="flex items-center gap-3 px-5 py-3 hover:bg-surface-muted">
+                                <a href="{{ $item['href'] }}" @class(['flex items-center gap-3 hover:bg-surface-muted', 'px-5 py-3' => ! $wide, 'rounded-control border border-line px-3 py-2' => $wide])>
                                     <span class="icon-tile icon-tile-sm tone-accent"><x-icon :name="$item['icon']" size="h-4 w-4" /></span>
-                                    <span class="flex-1 text-sm font-medium text-ink-900">{{ $item['label'] }}</span>
+                                    <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink-900">{{ $item['label'] }}</span>
                                     <x-badge tone="warning">{{ $item['count'] }}</x-badge>
                                     <x-icon name="chevron-right" size="h-4 w-4 text-ink-400" />
                                 </a>
