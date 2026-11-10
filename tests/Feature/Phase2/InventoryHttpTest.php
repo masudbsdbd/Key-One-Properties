@@ -290,4 +290,28 @@ class InventoryHttpTest extends TestCase
         $movements = $this->actingAs($this->keeper)->ajax()->get(route('stock.movements.table', ['issue' => $issue->public_id]))->json('data.html');
         $this->assertSame(3, substr_count($movements, '<tr'));
     }
+
+    public function test_a_project_moves_stock_in_and_out_from_its_page(): void
+    {
+        $central = $this->warehouse('WH-CEN', null);
+        $this->receive($central, '500', '90');
+
+        $page = $this->actingAs($this->keeper)->get(route('projects.show', $this->a))->assertOk()->getContent();
+        foreach (['id="mtab-transfers"', 'id="mtab-borrows"', e(route('transfers.create', ['destination' => $this->whA->public_id])), e(route('transfers.create', ['source' => $this->whA->public_id])), e(route('borrows.create', ['destination' => $this->whA->public_id]))] as $needle) {
+            $this->assertStringContainsString($needle, $page);
+        }
+
+        $form = $this->actingAs($this->keeper)->ajax()->get(route('transfers.create', ['source' => $central->public_id, 'destination' => $this->whA->public_id]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('value="'.$central->public_id.'" selected', $form);
+        $this->assertStringContainsString('value="'.$this->whA->public_id.'" selected', $form);
+        $borrow = $this->actingAs($this->keeper)->ajax()->get(route('borrows.create', ['destination' => $this->whA->public_id]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('value="'.$this->whA->public_id.'" selected', $borrow);
+        $this->assertStringNotContainsString('value="'.$central->public_id.'" selected', $this->actingAs($this->keeper)->ajax()->get(route('borrows.create', ['destination' => $central->public_id]))->json('data.html'));
+
+        $payload = ['source_warehouse' => $central->public_id, 'destination_warehouse' => $this->whA->public_id, 'lines' => [['material' => $this->rod->public_id, 'quantity' => '50']]];
+        $this->actingAs($this->keeper)->ajax()->post(route('transfers.store'), $payload + ['idempotency_key' => (string) Str::uuid()])->assertOk();
+        $listed = fn (Project $p) => $this->actingAs($this->keeper)->ajax()->get(route('transfers.table', ['project' => $p->public_id]))->json('data.html');
+        $this->assertStringContainsString('TRF-', $listed($this->a));
+        $this->assertStringNotContainsString('TRF-', $listed($this->b));
+    }
 }

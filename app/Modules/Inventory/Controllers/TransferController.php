@@ -4,6 +4,7 @@ namespace App\Modules\Inventory\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaterialTransfer;
+use App\Models\Project;
 use App\Models\StockBalance;
 use App\Models\Warehouse;
 use App\Modules\Inventory\Policies\InventoryAccess;
@@ -78,15 +79,23 @@ class TransferController extends Controller
         if (array_key_exists($kind = (string) $request->input('kind'), MaterialTransfer::KINDS)) {
             $query->where('kind', $kind);
         }
+        if ($project = Project::query()->visibleTo($request->user())->where('public_id', (string) $request->input('project'))->first()) {
+            $query->where(fn ($q) => $q->where('source_project_id', $project->id)->orWhere('destination_project_id', $project->id));
+        }
 
         return TableQuery::period($query, $request, 'created_at');
     }
 
+    /** Either end can come pre-filled from a project page. */
     public function create(Request $request): JsonResponse
     {
-        abort_unless($request->user()->can('materials.transfer.request'), 403);
+        $user = $request->user();
+        abort_unless($user->can('materials.transfer.request'), 403);
+        $find = fn (string $field) => Warehouse::query()->visibleTo($user)->where('is_active', true)->where('public_id', (string) $request->input($field))->first();
 
-        return Ajax::success(null, ['title' => 'New Transfer', 'html' => view('inventory.transfers._form', ['key' => (string) Str::uuid()])->render()]);
+        return Ajax::success(null, ['title' => 'New Transfer', 'html' => view('inventory.transfers._form', [
+            'key' => (string) Str::uuid(), 'source' => $find('source'), 'destination' => $find('destination'),
+        ])->render()]);
     }
 
     /**

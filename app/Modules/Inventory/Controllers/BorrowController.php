@@ -86,9 +86,11 @@ class BorrowController extends Controller
 
     public function create(Request $request): JsonResponse
     {
-        abort_unless($request->user()->can('materials.borrow.request'), 403);
+        $user = $request->user();
+        abort_unless($user->can('materials.borrow.request'), 403);
+        $destination = Warehouse::query()->visibleTo($user)->where('is_active', true)->whereNotNull('project_id')->where('public_id', (string) $request->input('destination'))->first();
 
-        return Ajax::success(null, ['title' => 'Request Borrow', 'html' => view('inventory.borrows._form')->render()]);
+        return Ajax::success(null, ['title' => 'Request Borrow', 'html' => view('inventory.borrows._form', ['destination' => $destination])->render()]);
     }
 
     public function store(Request $request): JsonResponse

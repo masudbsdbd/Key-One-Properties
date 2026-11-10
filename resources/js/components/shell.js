@@ -89,7 +89,7 @@ export function initShell() {
             if (owns) {
                 menu.hidden = !menu.hidden;
                 menuButton.setAttribute('aria-expanded', String(!menu.hidden));
-            } else if (!menu.contains(event.target)) {
+            } else if (!menu.contains(event.target) || event.target.closest('[data-remote-modal], [data-action], a[href]')) {
                 menu.hidden = true;
                 document.querySelector(`[aria-controls="${menu.id}"]`)?.setAttribute('aria-expanded', 'false');
             }

@@ -226,29 +226,81 @@
         </section>
     @endisset
     @isset($tabs['materials'])
-        <section id="panel-materials" role="tabpanel" aria-labelledby="tab-materials" hidden>
-            <x-data-table :url="route('stock.table', ['project' => $project->public_id])" sort="owned" dir="desc" search="Search material" :columns="array_values(array_filter([
-                ['label' => 'Material'], ['label' => 'Warehouse'], ['label' => 'Owned', 'sort' => 'owned', 'class' => 'text-right'],
-                ['label' => 'Borrowed In', 'class' => 'text-right'], ['label' => 'Lent Out', 'class' => 'text-right'], ['label' => 'Physical', 'class' => 'text-right'],
-                $user->can('materials.valuation.view') ? ['label' => 'Avg Cost', 'class' => 'text-right'] : null,
-                $user->can('materials.valuation.view') ? ['label' => 'Value', 'sort' => 'value', 'class' => 'text-right'] : null,
-                $user->can('materials.issue') ? ['label' => '', 'class' => 'w-12'] : null,
-            ]))">
-                @can('materials.issue')
-                    <x-slot:toolbar><x-button size="sm" icon="upload" data-remote-modal="{{ route('stock.issue.form', ['project' => $project->public_id]) }}" data-size="max-w-4xl">Issue</x-button></x-slot:toolbar>
-                @endcan
-            </x-data-table>
-            <h2 class="card-title mb-3 mt-8">Issues</h2>
-            <x-data-table :url="route('stock.issues.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search issue number or purpose" :columns="array_values(array_filter([
-                ['label' => 'Issue', 'sort' => 'date'], ['label' => 'Warehouse'], ['label' => 'Materials'], ['label' => 'Work Package'],
-                $user->can('materials.valuation.view') ? ['label' => 'Value', 'class' => 'text-right'] : null,
-                ['label' => 'Status'], ['label' => '', 'class' => 'w-44'],
-            ]))">
-                <x-slot:filters>
-                    <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All</option><option value="posted">Posted</option><option value="reversed">Reversed</option></select>
-                    <x-period />
-                </x-slot:filters>
-            </x-data-table>
+        @php
+            $stores = $project->warehouses()->where('is_active', true)->orderBy('name')->get();
+            $store = $stores->count() === 1 ? $stores->first() : null;
+            $canTransfer = $user->can('materials.transfer.request');
+            $canBorrow = $user->can('materials.borrow.request');
+            $valued = $user->can('materials.valuation.view');
+        @endphp
+        <section id="panel-materials" role="tabpanel" aria-labelledby="tab-materials" hidden class="space-y-4">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div class="flex gap-5 overflow-x-auto border-b border-line" role="tablist" data-hash="false" aria-label="Materials">
+                    @foreach (['stock' => 'Stock', 'issues' => 'Issues', 'transfers' => 'Transfers', 'borrows' => 'Borrows'] as $key => $label)
+                        <button type="button" role="tab" class="tab h-10" id="mtab-{{ $key }}" aria-controls="mpanel-{{ $key }}">{{ $label }}</button>
+                    @endforeach
+                </div>
+                <div class="flex items-center gap-2 pb-1">
+                    @can('materials.issue')<x-button size="sm" icon="upload" data-remote-modal="{{ route('stock.issue.form', ['project' => $project->public_id]) }}" data-size="max-w-4xl">Issue</x-button>@endcan
+                    @if ($canTransfer || $canBorrow)
+                        <div class="relative">
+                            <x-button size="sm" variant="secondary" icon="refresh" data-menu-button aria-controls="move-stock-menu" aria-expanded="false">Move Stock<x-icon name="chevron-down" size="h-4 w-4" /></x-button>
+                            <div id="move-stock-menu" data-menu hidden class="absolute right-0 z-20 mt-2 w-60 rounded-card border border-line bg-surface p-1.5 shadow-raised">
+                                @php $item = 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-ink-700 hover:bg-surface-muted'; @endphp
+                                @if ($canTransfer)
+                                    <button type="button" class="{{ $item }}" data-remote-modal="{{ route('transfers.create', array_filter(['destination' => $store?->public_id])) }}" data-size="max-w-4xl"><x-icon name="download" size="h-4 w-4" />Transfer In</button>
+                                    <button type="button" class="{{ $item }}" data-remote-modal="{{ route('transfers.create', array_filter(['source' => $store?->public_id])) }}" data-size="max-w-4xl"><x-icon name="upload" size="h-4 w-4" />Transfer Out</button>
+                                @endif
+                                @if ($canBorrow)
+                                    <button type="button" class="{{ $item }}" data-remote-modal="{{ route('borrows.create', array_filter(['destination' => $store?->public_id])) }}" data-size="max-w-4xl"><x-icon name="refresh" size="h-4 w-4" />Borrow From Site</button>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div id="mpanel-stock" role="tabpanel" aria-labelledby="mtab-stock">
+                <x-data-table :url="route('stock.table', ['project' => $project->public_id])" sort="owned" dir="desc" search="Search material" :columns="array_values(array_filter([
+                    ['label' => 'Material'], ['label' => 'Warehouse'], ['label' => 'Owned', 'sort' => 'owned', 'class' => 'text-right'],
+                    ['label' => 'Borrowed In', 'class' => 'text-right'], ['label' => 'Lent Out', 'class' => 'text-right'], ['label' => 'Physical', 'class' => 'text-right'],
+                    $valued ? ['label' => 'Avg Cost', 'class' => 'text-right'] : null,
+                    $valued ? ['label' => 'Value', 'sort' => 'value', 'class' => 'text-right'] : null,
+                    $user->can('materials.issue') ? ['label' => '', 'class' => 'w-12'] : null,
+                ]))" />
+            </div>
+            <div id="mpanel-issues" role="tabpanel" aria-labelledby="mtab-issues" hidden>
+                <x-data-table :url="route('stock.issues.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search issue number or purpose" :columns="array_values(array_filter([
+                    ['label' => 'Issue', 'sort' => 'date'], ['label' => 'Warehouse'], ['label' => 'Materials'], ['label' => 'Work Package'],
+                    $valued ? ['label' => 'Value', 'class' => 'text-right'] : null,
+                    ['label' => 'Status'], ['label' => '', 'class' => 'w-44'],
+                ]))">
+                    <x-slot:filters>
+                        <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All</option><option value="posted">Posted</option><option value="reversed">Reversed</option></select>
+                        <x-period />
+                    </x-slot:filters>
+                </x-data-table>
+            </div>
+            <div id="mpanel-transfers" role="tabpanel" aria-labelledby="mtab-transfers" hidden>
+                <x-data-table summary :url="route('transfers.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search transfer number" :columns="[
+                    ['label' => 'Transfer', 'sort' => 'date'], ['label' => 'From'], ['label' => 'To'], ['label' => 'Type'], ['label' => 'Value', 'class' => 'text-right'], ['label' => 'Status'],
+                ]">
+                    <x-slot:filters>
+                        <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\MaterialTransfer::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
+                        <x-period />
+                    </x-slot:filters>
+                </x-data-table>
+            </div>
+            <div id="mpanel-borrows" role="tabpanel" aria-labelledby="mtab-borrows" hidden>
+                <x-data-table summary :url="route('borrows.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search borrow number" :columns="[
+                    ['label' => 'Borrow', 'sort' => 'date'], ['label' => 'From'], ['label' => 'To'], ['label' => 'Outstanding'], ['label' => 'Status'],
+                ]">
+                    <x-slot:filters>
+                        <select name="status" class="form-control w-44" data-table-filter aria-label="Status"><option value="">All statuses</option><option value="open">Open (outstanding)</option>@foreach (App\Models\MaterialBorrow::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
+                        <x-period />
+                    </x-slot:filters>
+                </x-data-table>
+            </div>
         </section>
     @endisset
     @isset($tabs['purchases'])

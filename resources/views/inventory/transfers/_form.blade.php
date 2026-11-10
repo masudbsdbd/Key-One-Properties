@@ -5,10 +5,10 @@
         <li class="badge badge-accent">1 · Warehouses</li><li class="badge badge-neutral">2 · Materials</li><li class="badge badge-neutral">3 · Preview</li><li class="badge badge-neutral">4 · Request</li>
     </ol>
     <div class="grid gap-5 sm:grid-cols-2">
-        <x-form.select name="source_warehouse" id="transfer-source" label="From" :url="route('options.warehouses')" required placeholder="Search warehouses" />
-        <x-form.select name="destination_warehouse" id="transfer-destination" label="To" :url="route('options.warehouses')" required placeholder="Search warehouses" />
+        <x-form.select name="source_warehouse" id="transfer-source" label="From" :url="route('options.warehouses')" :options="$source ? [$source->public_id => $source->name.' ('.$source->code.')'] : []" :selected="$source?->public_id" required placeholder="Search warehouses" />
+        <x-form.select name="destination_warehouse" id="transfer-destination" label="To" :url="route('options.warehouses')" :options="$destination ? [$destination->public_id => $destination->name.' ('.$destination->code.')'] : []" :selected="$destination?->public_id" required placeholder="Search warehouses" />
     </div>
-    <x-line-items available-url="{{ route('stock.available') }}" warehouse-selector="#transfer-source" />
+    <x-line-items available-url="{{ route('stock.available') }}" warehouse-selector="#transfer-source" :lines="$lines ?? []" />
     <x-form.input name="reason" label="Reason" />
     <div data-transfer-preview></div>
     <x-form.actions class="mt-0">
