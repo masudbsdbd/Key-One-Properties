@@ -46,7 +46,7 @@
                     <span class="bg-success-600" style="width: {{ $u['total'] ? $u['sold'] / $u['total'] * 100 : 0 }}%"></span>
                     <span class="bg-warning-600" style="width: {{ $u['total'] ? $u['booked'] / $u['total'] * 100 : 0 }}%"></span>
                 </div>
-                <p class="mt-1.5 truncate text-[12px] text-ink-500">{{ $u['booked'] }} booked · {{ $u['available'] }} available@if ($u['not_released']) · {{ $u['not_released'] }} not released@endif</p>
+                <p class="mt-1.5 truncate text-[12px] text-ink-500">{{ $u['booked'] }} booked · {{ $u['available'] }} available @if ($u['not_released'])· {{ $u['not_released'] }} not released @endif</p>
             </div>
         </div>
     @else

@@ -19,7 +19,7 @@
                     <tr>
                         <td><p class="font-medium text-ink-900">{{ $package->name }}</p><p class="text-[13px] text-ink-500">{{ $package->code }}@if ($package->parent) · under {{ $package->parent->code }}@endif</p></td>
                         <td><p class="text-ink-700">{{ $package->stage?->name ?? '—' }}</p>@if ($package->responsible)<p class="text-[13px] text-ink-500">{{ $package->responsible->name }}</p>@endif</td>
-                        <td class="whitespace-nowrap text-ink-600">{{ App\Support\Format::date($package->planned_start_at) }} – {{ App\Support\Format::date($package->planned_end_at) }}</td>
+                        <td class="whitespace-nowrap text-ink-600">@if ($package->planned_start_at || $package->planned_end_at){{ App\Support\Format::date($package->planned_start_at) }} – {{ App\Support\Format::date($package->planned_end_at) }}@else — @endif</td>
                         <td class="text-right"><x-money :value="$package->budget_amount" :decimals="false" /></td>
                         @if ($money)
                             <td class="whitespace-nowrap text-right">
