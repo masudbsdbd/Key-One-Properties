@@ -45,7 +45,7 @@ Route::prefix('construction')->name('construction.')->group(function () {
         Route::post('{update}/reject', 'reject')->name('reject');
     });
 
-    Route::get('{project}/cost', [CostController::class, 'show'])->name('cost');
+    Route::get('{project}/cost', [CostController::class, 'table'])->name('cost');
     Route::get('{project}/cost/export', [CostController::class, 'export'])->name('cost.export');
 });
 

@@ -6,48 +6,91 @@ use App\Http\Controllers\Controller;
 use App\Models\ContractorBill;
 use App\Models\Expense;
 use App\Models\LabourEntry;
+use App\Models\LabourType;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\StockIssue;
+use App\Models\WorkPackage;
 use App\Support\Ajax;
-use App\Support\Costing\CostAttribution;
 use App\Support\Export\Report;
-use App\Support\Format;
-use App\Support\Money;
+use App\Support\ListSummary;
+use App\Support\TableQuery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class CostController extends Controller
 {
-    public function show(Project $project): JsonResponse
+    /** Document number column of each cost source, used by the search box. */
+    private const NUMBERS = [Expense::class => 'expense_no', StockIssue::class => 'issue_no', LabourEntry::class => 'entry_no', ContractorBill::class => 'bill_no'];
+
+    public function table(Request $request, Project $project): JsonResponse
     {
         Gate::authorize('construction:cost-view', $project);
+        $rows = TableQuery::paginate($this->listing($request, $project), $request);
 
-        return Ajax::success(null, ['html' => view('construction.cost._breakdown', [
-            'project' => $project,
-            'totals' => CostAttribution::totals($project),
-            'rows' => $project->costAllocations()->latest('effective_at')->latest('id')->limit(100)
-                ->with(['source' => fn (MorphTo $source) => $source->morphWith([StockIssue::class => ['warehouse.project'], LabourEntry::class => ['project'], Expense::class => [], ContractorBill::class => []])])->get(),
-        ])->render()]);
+        return Ajax::table(view('construction.cost._rows', ['rows' => $rows, 'types' => LabourType::names()])->render(), $rows,
+            ['stats' => $this->summary($request, $project)->render()]);
     }
 
     public function export(Request $request, Project $project): Response
     {
         Gate::authorize('construction:cost-export', $project);
-        $totals = CostAttribution::totals($project);
+        $types = LabourType::names();
 
-        return Report::make('Project Cost')
-            ->meta(['Project' => $project->name.' ('.$project->code.')'] + collect($totals)->mapWithKeys(fn ($v, $k) => [ProjectCostAllocation::CATEGORIES[$k] => Format::money($v)])->all())
-            ->columns(['Date' => 'date', 'Category' => 'text', 'Source' => 'text', 'Reversal' => 'text', 'Amount' => 'money'])
-            ->rows(fn () => $project->costAllocations()->orderBy('effective_at')->orderBy('id')->lazy()->map(fn ($row) => [
+        return Report::make('Project Cost')->sumMoney()
+            ->meta(['Project' => $project->name.' ('.$project->code.')', 'Category' => ProjectCostAllocation::CATEGORIES[(string) $request->input('category')] ?? null,
+                'Work Package' => WorkPackage::query()->whereBelongsTo($project)->where('public_id', (string) $request->input('work_package'))->value('name'),
+                'Period' => TableQuery::periodLabel($request)])
+            ->columns(['Date' => 'date', 'Category' => 'text', 'Source' => 'text', 'Details' => 'text', 'Work Package' => 'text', 'Reversal' => 'text', 'Amount' => 'money'])
+            ->rows(fn () => $this->listing($request, $project)->lazy()->map(fn (ProjectCostAllocation $row) => [
                 $row->effective_at, ProjectCostAllocation::CATEGORIES[$row->cost_category] ?? $row->cost_category,
-                Str::headline(class_basename($row->source_type)), $row->reversal_of_id ? 'Yes' : '', $row->amount,
+                $row->sourceLabel(), $row->sourceDetail($types), $row->workPackage?->code, $row->reversal_of_id ? 'Yes' : '', $row->amount,
             ]))
-            ->totals([null, null, null, null, Money::add('0', ...array_values($totals))])
             ->respond($request);
+    }
+
+    private function summary(Request $request, Project $project): ListSummary
+    {
+        $sums = ['total' => 'SUM(project_cost_allocations.amount)'];
+        foreach (array_keys(ProjectCostAllocation::CATEGORIES) as $key) {
+            $sums[$key] = ['SUM(CASE WHEN project_cost_allocations.cost_category = ? THEN project_cost_allocations.amount ELSE 0 END)', [$key]];
+        }
+        $row = ListSummary::aggregate($this->listing(ListSummary::without($request, ['category']), $project), $sums);
+        $icons = ['material' => 'layers', 'labour' => 'users', 'contractor' => 'user', 'expense' => 'note'];
+
+        $summary = ListSummary::make($request)->money('Total Cost', $row->total, 'bar-chart', 'accent', ['category' => '']);
+        foreach (ProjectCostAllocation::CATEGORIES as $key => $label) {
+            $summary->money($label, $row->{$key}, $icons[$key] ?? 'tag', 'info', ['category' => $key]);
+        }
+
+        return $summary;
+    }
+
+    private function listing(Request $request, Project $project): Builder
+    {
+        $query = ProjectCostAllocation::query()->where('project_cost_allocations.project_id', $project->id)->with([
+            'workPackage:id,code,name',
+            'source' => fn (MorphTo $source) => $source->morphWith([
+                StockIssue::class => ['warehouse.project', 'lines.material:id,name'], LabourEntry::class => ['project'], ContractorBill::class => ['contractor:id,name'],
+            ]),
+        ]);
+        if (array_key_exists($category = (string) $request->input('category'), ProjectCostAllocation::CATEGORIES)) {
+            $query->where('cost_category', $category);
+        }
+        if ($package = WorkPackage::query()->whereBelongsTo($project)->where('public_id', (string) $request->input('work_package'))->first()) {
+            $query->where('work_package_id', $package->id);
+        }
+        $term = trim((string) $request->input('search', ''));
+        if ($term !== '') {
+            $like = '%'.addcslashes(mb_substr($term, 0, 100), '%_\\').'%';
+            $query->whereHasMorph('source', array_keys(self::NUMBERS), fn (Builder $q, string $type) => $q->where(self::NUMBERS[$type], 'like', $like));
+        }
+        TableQuery::period($query, $request, 'effective_at');
+
+        return TableQuery::prepare($query, $request, [], ['date' => 'effective_at', 'amount' => 'amount'], 'date', 'desc');
     }
 }

@@ -183,6 +183,29 @@ class ConstructionTest extends TestCase
         $this->assertSame(0, LabourEntry::query()->where('status', 'submitted')->count());
     }
 
+    public function test_cost_entries_filter_by_category_work_package_period_and_number(): void
+    {
+        $package = $this->package();
+        $record = fn (array $row, ?string $wp = null) => $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), array_filter([
+            'project' => $this->project->public_id, 'work_package' => $wp, 'work_date' => now()->toDateString(), 'rows' => [$row],
+        ]))->assertOk();
+        $record(['type' => 'mason', 'headcount' => 2, 'units' => 1, 'rate' => '1000'], $package->public_id);
+        $record(['type' => 'helper', 'headcount' => 1, 'units' => 1, 'rate' => '500']);
+        $this->actingAs($this->manager)->ajax()->post(route('labour.bulk-approve'), ['all' => 1])->assertOk();
+        [$first, $second] = LabourEntry::query()->orderBy('id')->get()->all();
+
+        $table = fn (array $q = []) => $this->actingAs($this->manager)->ajax()->get(route('construction.cost', [$this->project, ...$q]))->assertOk()->json('data');
+        $this->assertSame(2, substr_count($table()['html'], '<tr>'));
+        $this->assertSame(1, substr_count($table(['work_package' => $package->public_id])['html'], '<tr>'));
+        $this->assertStringContainsString($first->entry_no, $table(['search' => $first->entry_no])['html']);
+        $this->assertStringNotContainsString($second->entry_no, $table(['search' => $first->entry_no])['html']);
+        $this->assertStringContainsString('No cost posted yet', $table(['category' => 'material'])['html']);
+        $this->assertStringContainsString('No cost posted yet', $table(['period' => 'custom', 'from' => '2020-01-01', 'to' => '2020-01-31'])['html']);
+        // Category tiles keep their totals while a category is picked.
+        $this->assertStringContainsString('2,500', $table(['category' => 'material'])['stats']);
+        $this->assertStringContainsString('WP-01', $table()['html']);
+    }
+
     public function test_labour_total_is_computed_on_server_and_cost_posted_once(): void
     {
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
@@ -198,9 +221,10 @@ class ConstructionTest extends TestCase
 
         $this->assertSame('15300.00', CostAttribution::totals($this->project)['labour']);
         $this->assertDatabaseHas('financial_events', ['event_type' => 'labour.approved', 'amount' => '15300.00']);
-        $cost = $this->actingAs($this->manager)->ajax()->get(route('construction.cost', $this->project))->json('data.html');
-        $this->assertStringContainsString(e(route('labour.index', ['search' => $entry->entry_no])), $cost);
-        $this->assertStringContainsString('href="#labour"', $cost);
+        $cost = $this->actingAs($this->manager)->ajax()->get(route('construction.cost', $this->project))->json('data');
+        $this->assertStringContainsString(e(route('labour.index', ['search' => $entry->entry_no])), $cost['html']);
+        $this->assertStringContainsString('Mason × 12', $cost['html']);
+        $this->assertStringContainsString('15,300', $cost['stats']);
 
         $this->actingAs($this->manager)->ajax()->post(route('labour.reverse', $entry), ['reason' => 'Wrong project'])->assertOk();
         $this->assertSame('0.00', CostAttribution::totals($this->project)['labour']);

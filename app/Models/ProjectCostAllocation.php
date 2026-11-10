@@ -38,6 +38,26 @@ class ProjectCostAllocation extends Model
         return $this->belongsTo(Project::class);
     }
 
+    public function workPackage(): BelongsTo
+    {
+        return $this->belongsTo(WorkPackage::class);
+    }
+
+    /** A short line about what the cost was for, from its source document. */
+    public function sourceDetail(array $labourTypes = []): ?string
+    {
+        $source = $this->source;
+
+        return match (true) {
+            $source instanceof Expense => $source->description,
+            $source instanceof LabourEntry => ($labourTypes[$source->labour_type] ?? Str::headline($source->labour_type)).' × '.$source->headcount,
+            $source instanceof StockIssue => $source->purpose ?: $source->lines->map(fn ($l) => $l->material?->name)->filter()->unique()
+                ->pipe(fn ($names) => $names->take(2)->implode(', ').($names->count() > 2 ? ' +'.($names->count() - 2).' more' : '')),
+            $source instanceof ContractorBill => $source->contractor?->name,
+            default => null,
+        };
+    }
+
     public function reversalOf(): BelongsTo
     {
         return $this->belongsTo(self::class, 'reversal_of_id');

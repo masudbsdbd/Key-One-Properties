@@ -201,7 +201,7 @@
 
     @isset($tabs['cost'])
         <section id="panel-cost" role="tabpanel" aria-labelledby="tab-cost" hidden>
-            <div data-partial-url="{{ route('construction.cost', $project) }}" data-lazy><div class="card p-5"><div class="skeleton h-24 w-full"></div></div></div>
+            @include('construction.cost._breakdown', ['project' => $project])
         </section>
     @endisset
     @isset($tabs['packages'])
