@@ -15,6 +15,7 @@
 --}}
 @php
     $cards = $viewKey && $view === 'cards';
+    $pageSize = App\Support\PageSize::default();
     // Three or more filters get a row of their own so the bar never wraps into a ragged block.
     $stacked = isset($filters) && substr_count($filters->toHtml(), '<select') >= 3;
 @endphp
@@ -83,7 +84,12 @@
         </table>
     </div>
     <div class="flex flex-col items-center justify-between gap-3 border-t border-line px-4 py-3 sm:flex-row">
-        <p class="text-[13px] text-ink-500" data-table-summary></p>
+        <div class="flex items-center gap-3">
+            <select name="per_page" class="form-control h-8 w-auto py-0 pl-2.5 pr-8 text-[13px]" data-table-filter data-table-size data-default="{{ $pageSize }}" aria-label="Rows per page">
+                @foreach (App\Support\PageSize::options() as $size)<option value="{{ $size }}" @selected($size === $pageSize)>{{ number_format($size) }}</option>@endforeach
+            </select>
+            <p class="text-[13px] text-ink-500" data-table-summary></p>
+        </div>
         <nav class="flex flex-wrap items-center gap-1" data-table-pagination aria-label="Pagination"></nav>
     </div>
 </div>

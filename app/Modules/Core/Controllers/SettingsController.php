@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Modules\Investors\Services\ProfitPolicy;
 use App\Support\Ajax;
 use App\Support\Branding;
+use App\Support\PageSize;
 use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -115,6 +117,37 @@ class SettingsController extends Controller
         }
 
         return Ajax::success('Profit policy saved.');
+    }
+
+    public function updateTables(Request $request, Settings $settings): JsonResponse
+    {
+        Gate::authorize('settings.manage');
+        $raw = array_values(array_filter(array_map('trim', explode(',', (string) $request->input('page_sizes'))), fn ($v) => $v !== ''));
+        $error = match (true) {
+            $raw === [] => 'Enter at least one size.',
+            count($raw) > PageSize::MAX_OPTIONS => 'Use at most '.PageSize::MAX_OPTIONS.' sizes.',
+            collect($raw)->contains(fn ($v) => ! ctype_digit($v) || (int) $v < 1) => 'Sizes must be whole numbers.',
+            collect($raw)->contains(fn ($v) => (int) $v > PageSize::MAX) => 'A size cannot exceed '.number_format(PageSize::MAX).'.',
+            count(array_unique(array_map('intval', $raw))) !== count($raw) => 'Each size must be different.',
+            default => null,
+        };
+        if ($error) {
+            throw ValidationException::withMessages(['page_sizes' => $error]);
+        }
+        $data = ['page_sizes' => array_map('intval', $raw)] + $request->validate(
+            ['default_page_size' => ['required', 'integer', Rule::in(array_map('intval', $raw))]],
+            ['default_page_size.*' => 'The default must be one of the sizes.'],
+        );
+
+        $before = ['page_sizes' => PageSize::options(), 'default_page_size' => PageSize::default()];
+        $after = ['page_sizes' => PageSize::clean($data['page_sizes']), 'default_page_size' => (int) $data['default_page_size']];
+        $settings->put(['tables.page_sizes' => json_encode($after['page_sizes']), 'tables.default_page_size' => (string) $after['default_page_size']]);
+        if ($before !== $after) {
+            activity('settings')->event('tables_updated')->causedBy($request->user())
+                ->withProperties(['name' => 'Rows per page', 'old' => $before, 'attributes' => $after])->log('tables_updated');
+        }
+
+        return Ajax::success('Rows per page saved.', ['redirect' => route('settings.edit')]);
     }
 
     private function store(UploadedFile $file, ?string $previous): string

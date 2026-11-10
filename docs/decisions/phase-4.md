@@ -221,6 +221,12 @@ browser checks for 13–14, and an empty-state check for 17.
 - **Reorder level per store:** today the low-stock level is per material for every store.
 - **Mandatory work package on issues and labour:** declined for now; the work package stays optional.
 
+### Rows per page (client, 2026-11-10)
+
+Every list has a rows-per-page select. The choices default to 10, 25, 50, 100, 500, 1000 and 3000 with 10 selected;
+an administrator changes both the list and the default under Settings › Rows per Page (at most 12 sizes, none above 5,000).
+A size that is not on the list falls back to the default, so a request cannot ask for an unbounded page.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests

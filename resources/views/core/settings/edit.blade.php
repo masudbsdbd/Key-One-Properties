@@ -103,6 +103,20 @@
         </x-card>
     </form>
 
+    <form method="POST" action="{{ route('settings.tables') }}" data-ajax-form class="mt-6 scroll-mt-24" id="tables">
+        @csrf
+        @method('PUT')
+        <x-card title="Rows per Page">
+            <div class="grid gap-5 sm:grid-cols-3">
+                <x-form.input name="page_sizes" label="Sizes" :value="implode(', ', App\Support\PageSize::options())" hint="Numbers separated by commas, max {{ number_format(App\Support\PageSize::MAX) }}" wrapper-class="sm:col-span-2" required />
+                <x-form.input name="default_page_size" label="Default" :value="App\Support\PageSize::default()" inputmode="numeric" required />
+            </div>
+            <x-form.actions>
+                <x-button type="submit" icon="check">Save</x-button>
+            </x-form.actions>
+        </x-card>
+    </form>
+
     @php $policy = app(App\Modules\Investors\Services\ProfitPolicy::class); @endphp
     <form method="POST" action="{{ route('settings.profit-policy') }}" data-ajax-form data-reload-on-success class="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
         @csrf

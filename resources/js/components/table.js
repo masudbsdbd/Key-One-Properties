@@ -13,6 +13,7 @@ import { toast } from './toast';
  *   [data-table-body]        receives html
  *   [data-table-pagination]  receives pager
  *   [data-table-summary]     receives "x–y of z"
+ *   [data-table-size]        rows-per-page select; sent as per_page
  *   [data-table-export=url]  link that downloads url with the current filters
  *   [data-table-view]        Table / Cards switch; html goes to [data-table-cards] in card view and the
  *                            choice is saved to the user's preferences (data-view-key, data-view-url)
@@ -40,6 +41,7 @@ function setup(table) {
     const grid = table.querySelector('[data-table-grid]');
     const viewInput = table.querySelector('[data-table-view-input]');
     const stats = table.querySelector('[data-table-stats]');
+    const size = table.querySelector('[data-table-size]');
     const target = () => (cards && viewInput?.value === 'cards' ? cards : body);
 
     // A page's only table keeps its filters, search and sort in the address bar, so reloads, back/forward
@@ -94,7 +96,7 @@ function setup(table) {
             target().innerHTML = res.data.html;
             if (history) {
                 const url = new URL(window.location.href);
-                url.search = new URLSearchParams(Object.entries(params()).filter(([k, v]) => k !== 'page' && v !== '')).toString();
+                url.search = new URLSearchParams(Object.entries(params()).filter(([k, v]) => k !== 'page' && v !== '' && !(k === 'per_page' && v === size?.dataset.default))).toString();
                 window.history.replaceState(null, '', url);
             }
             if (stats && res.data.stats !== undefined) stats.innerHTML = res.data.stats;

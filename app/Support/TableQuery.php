@@ -12,8 +12,6 @@ use Illuminate\Http\Request;
  */
 class TableQuery
 {
-    public const PER_PAGE = 15;
-
     /**
      * @param  array<int, string>  $searchColumns  columns searched with LIKE (relation.column allowed)
      * @param  array<string, string|\Closure>  $sorts  public sort key => column or closure(Builder, dir)
@@ -71,9 +69,7 @@ class TableQuery
 
     public static function paginate(Builder $query, Request $request): LengthAwarePaginator
     {
-        $perPage = min(max((int) $request->input('per_page', self::PER_PAGE), 5), 100);
-
-        return $query->paginate($perPage)->withQueryString();
+        return $query->paginate(PageSize::resolve($request->input('per_page')))->withQueryString();
     }
 
     /**
