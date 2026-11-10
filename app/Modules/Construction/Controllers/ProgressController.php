@@ -37,7 +37,7 @@ class ProgressController extends Controller
 
         return Ajax::success(null, ['title' => 'Submit Progress', 'html' => view('construction.progress._form', [
             'project' => $project,
-            'packages' => $project->workPackages()->get()->mapWithKeys(fn ($p) => [$p->public_id => $p->label().' ('.rtrim(rtrim($p->progress_percent, '0'), '.').'%)']),
+            'packages' => $project->workPackages()->whereDoesntHave('children')->get()->mapWithKeys(fn ($p) => [$p->public_id => $p->label().' ('.rtrim(rtrim($p->progress_percent, '0'), '.').'%)']),
             'milestones' => $project->milestones()->where('status', 'pending')->pluck('title', 'public_id'),
         ])->render()]);
     }
@@ -56,6 +56,9 @@ class ProgressController extends Controller
             ...AttachmentStore::rules('evidence'),
         ], ['evidence.*.mimes' => 'Allowed: images or PDF.', 'evidence.*.max' => 'Each file must be 10 MB or smaller.']);
         $data['work_package'] = WorkPackage::query()->whereBelongsTo($project)->where('public_id', $data['work_package'])->first();
+        if ($data['work_package']->children()->exists()) {
+            return Ajax::error('Validation failed', 422, ['work_package' => ['This package follows its sub-packages.']]);
+        }
         $data['milestone'] = Milestone::query()->whereBelongsTo($project)->where('public_id', $data['milestone'] ?? null)->first();
 
         $update = DB::transaction(function () use ($project, $data, $request) {

@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class WorkPackageController extends Controller
 {
@@ -23,16 +24,34 @@ class WorkPackageController extends Controller
     {
         Gate::authorize('construction:view', $project);
 
-        $spent = Gate::allows('construction:cost-view', $project)
+        $own = Gate::allows('construction:cost-view', $project)
             ? ProjectCostAllocation::query()->where('project_id', $project->id)->whereNotNull('work_package_id')
-                ->groupBy('work_package_id')->selectRaw('work_package_id, SUM(amount) AS spent')->pluck('spent', 'work_package_id')
+                ->groupBy('work_package_id')->selectRaw('work_package_id, SUM(amount) AS spent')->pluck('spent', 'work_package_id')->map(fn ($v) => (float) $v)
             : null;
+        $all = $project->workPackages()->with(['stage:id,name', 'responsible:id,name', 'parent:id,code'])
+            ->reorder()->orderByRaw('planned_start_at IS NULL')->orderBy('planned_start_at')->orderBy('code')->get();
+        $children = $all->groupBy(fn (WorkPackage $p) => $all->contains('id', $p->parent_id) ? $p->parent_id : 0);
+
+        // Parents first, each followed by its sub-packages; a parent's budget and spend include what sits below it.
+        $packages = collect();
+        $walk = function (int $parent, int $depth) use (&$walk, $children, $packages, $own): array {
+            $sum = ['budget' => 0.0, 'spent' => 0.0];
+            foreach ($children->get($parent, []) as $p) {
+                $packages->push($p->setAttribute('depth', $depth));
+                $below = $walk($p->id, $depth + 1);
+                $p->setAttribute('effective_budget', (float) $p->budget_amount > 0 ? (float) $p->budget_amount : $below['budget']);
+                $p->setAttribute('spent', $own === null ? null : ($own[$p->id] ?? 0) + $below['spent']);
+                $sum['budget'] += $p->effective_budget;
+                $sum['spent'] += (float) $p->spent;
+            }
+
+            return $sum;
+        };
+        $totals = $walk(0, 0);
 
         return Ajax::success(null, ['html' => view('construction.work-packages._list', [
-            'project' => $project,
-            'packages' => $project->workPackages()->with(['stage:id,name', 'responsible:id,name', 'parent:id,code'])
-                ->reorder()->orderByRaw('planned_start_at IS NULL')->orderBy('planned_start_at')->orderBy('code')->get(),
-            'spent' => $spent,
+            'project' => $project, 'packages' => $packages, 'money' => $own !== null,
+            'totals' => $totals,
         ])->render()]);
     }
 
@@ -127,7 +146,10 @@ class WorkPackageController extends Controller
     {
         $package->stage_id = ProjectStage::query()->whereBelongsTo($project)->where('public_id', $request->input('stage'))->value('id');
         $parentId = WorkPackage::query()->whereBelongsTo($project)->where('public_id', $request->input('parent'))->value('id');
-        $package->parent_id = $parentId && $parentId !== $package->id ? $parentId : null;
+        if ($parentId && $package->exists && in_array($parentId, $package->lineage(), true)) {
+            throw ValidationException::withMessages(['parent' => 'A package cannot sit under itself or one of its sub-packages.']);
+        }
+        $package->parent_id = $parentId ?: null;
         $package->responsible_user_id = User::query()->where('public_id', $request->input('responsible'))->value('id');
     }
 
@@ -137,7 +159,7 @@ class WorkPackageController extends Controller
             'project' => $project,
             'package' => $package->loadMissing(['stage', 'parent', 'responsible']),
             'stages' => $project->stages()->pluck('name', 'public_id'),
-            'parents' => $project->workPackages()->when($package->exists, fn ($q) => $q->whereKeyNot($package->id))->get()->mapWithKeys(fn ($p) => [$p->public_id => $p->label()]),
+            'parents' => $project->workPackages()->when($package->exists, fn ($q) => $q->whereNotIn('id', $package->lineage()))->get()->mapWithKeys(fn ($p) => [$p->public_id => $p->label()]),
         ])->render()]);
     }
 }

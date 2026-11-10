@@ -41,15 +41,26 @@ class WorkPackage extends Model
                 Milestone::query()->where('work_package_id', $package->id)->where('status', 'pending')->get()
                     ->each(fn (Milestone $m) => $m->update(['status' => 'completed', 'completed_at' => Dates::today()->toDateString()]));
             }
-            if ($package->wasRecentlyCreated || $package->wasChanged(['progress_percent', 'budget_amount', 'stage_id'])) {
+            if ($package->wasRecentlyCreated || $package->wasChanged(['progress_percent', 'budget_amount', 'parent_id'])) {
+                StageProgress::syncPackage($package->parent_id);
+                if ($package->wasChanged('parent_id')) {
+                    StageProgress::syncPackage($package->getPrevious()['parent_id'] ?? null);
+                }
+            }
+            if ($package->wasRecentlyCreated || $package->wasChanged(['progress_percent', 'budget_amount', 'stage_id', 'parent_id'])) {
                 StageProgress::sync($package->stage_id);
                 if ($package->wasChanged('stage_id')) {
                     StageProgress::sync($package->getPrevious()['stage_id'] ?? null);
                 }
             }
         });
-        static::deleted(fn (WorkPackage $package) => StageProgress::sync($package->stage_id));
-        static::restored(fn (WorkPackage $package) => StageProgress::sync($package->stage_id));
+        $after = function (WorkPackage $package) {
+            StageProgress::syncPackage($package->parent_id);
+            StageProgress::sync($package->stage_id);
+            WorkPackage::query()->where('parent_id', $package->id)->pluck('stage_id')->unique()->each(fn ($id) => StageProgress::sync($id));
+        };
+        static::deleted($after);
+        static::restored($after);
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -72,6 +83,23 @@ class WorkPackage extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id');
+    }
+
+    /** Ids of this package and everything below it. */
+    public function lineage(): array
+    {
+        $ids = [$this->id];
+        for ($level = [$this->id], $depth = 0; $level && $depth < 20; $depth++) {
+            $level = self::query()->whereIn('parent_id', $level)->whereNotIn('id', $ids)->pluck('id')->all();
+            $ids = [...$ids, ...$level];
+        }
+
+        return $ids;
     }
 
     public function responsible(): BelongsTo

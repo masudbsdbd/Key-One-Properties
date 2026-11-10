@@ -19,6 +19,7 @@
         'minus' => '<path d="M5 12h14"/>',
         'chevron-down' => '<path d="m6 9 6 6 6-6"/>',
         'chevron-right' => '<path d="m9 6 6 6-6 6"/>',
+        'corner-down-right' => '<path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/>',
         'chevron-left' => '<path d="m15 6-6 6 6 6"/>',
         'chevrons-up-down' => '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>',
         'chevrons-up' => '<path d="m17 11-5-5-5 5M17 18l-5-5-5 5"/>',

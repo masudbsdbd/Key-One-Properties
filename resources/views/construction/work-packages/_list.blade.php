@@ -1,7 +1,6 @@
 @php
     $canManage = auth()->user()->can('construction:manage', $project);
-    $money = $spent !== null;
-    $spentOf = fn ($p) => App\Support\Money::amount((string) ($spent[$p->id] ?? 0));
+    $amount = fn ($v) => App\Support\Money::amount((string) $v);
 @endphp
 @if ($packages->isEmpty())
     <x-empty-state icon="layers" title="No work packages yet" />
@@ -12,20 +11,24 @@
             <tbody>
                 @foreach ($packages as $package)
                     @php
-                        $used = $money ? $spentOf($package) : null;
-                        $left = $money ? App\Support\Money::sub($package->budget_amount, $used) : null;
-                        $over = $money && App\Support\Money::isPositive($package->budget_amount) && App\Support\Money::cmp($left, 0) < 0;
+                        $budget = $amount($package->effective_budget);
+                        $used = $money ? $amount($package->spent) : null;
+                        $left = $money ? App\Support\Money::sub($budget, $used) : null;
+                        $over = $money && App\Support\Money::isPositive($budget) && App\Support\Money::cmp($left, 0) < 0;
                     @endphp
                     <tr>
-                        <td><p class="font-medium text-ink-900">{{ $package->name }}</p><p class="text-[13px] text-ink-500">{{ $package->code }}@if ($package->parent) · under {{ $package->parent->code }}@endif</p></td>
+                        <td><div class="flex gap-2" @if ($package->depth) style="padding-left: {{ min($package->depth, 4) * 20 }}px" @endif>
+                            @if ($package->depth)<x-icon name="corner-down-right" size="h-4 w-4 mt-0.5 shrink-0 text-ink-400" />@endif
+                            <div><p class="font-medium text-ink-900">{{ $package->name }}</p><p class="text-[13px] text-ink-500">{{ $package->code }}</p></div>
+                        </div></td>
                         <td><p class="text-ink-700">{{ $package->stage?->name ?? '—' }}</p>@if ($package->responsible)<p class="text-[13px] text-ink-500">{{ $package->responsible->name }}</p>@endif</td>
                         <td class="whitespace-nowrap text-ink-600">@if ($package->planned_start_at || $package->planned_end_at){{ App\Support\Format::date($package->planned_start_at) }} – {{ App\Support\Format::date($package->planned_end_at) }}@else — @endif</td>
-                        <td class="text-right"><x-money :value="$package->budget_amount" :decimals="false" /></td>
+                        <td class="text-right"><x-money :value="$budget" :decimals="false" /></td>
                         @if ($money)
                             <td class="whitespace-nowrap text-right">
                                 <p @class(['font-medium', 'text-danger-600' => $over, 'text-ink-900' => ! $over])><x-money :value="$used" /></p>
-                                @if (App\Support\Money::isPositive($package->budget_amount))
-                                    <p @class(['text-[13px]', 'text-danger-600' => $over, 'text-ink-500' => ! $over])>{{ App\Support\Format::money($over ? App\Support\Money::sub($used, $package->budget_amount) : $left) }} {{ $over ? 'over' : 'left' }}</p>
+                                @if (App\Support\Money::isPositive($budget))
+                                    <p @class(['text-[13px]', 'text-danger-600' => $over, 'text-ink-500' => ! $over])>{{ App\Support\Format::money($over ? App\Support\Money::sub($used, $budget) : $left) }} {{ $over ? 'over' : 'left' }}</p>
                                 @endif
                             </td>
                         @endif
@@ -41,11 +44,10 @@
                 @endforeach
             </tbody>
             <tfoot>
-                @php $totalSpent = $money ? App\Support\Money::add('0', ...$packages->map($spentOf)->all()) : null; @endphp
                 <tr class="font-semibold text-ink-900">
                     <td colspan="3">Total</td>
-                    <td class="text-right"><x-money :value="App\Support\Money::add('0', ...$packages->pluck('budget_amount')->map(fn ($v) => (string) $v)->all())" :decimals="false" /></td>
-                    @if ($money)<td class="text-right"><x-money :value="$totalSpent" /></td>@endif
+                    <td class="text-right"><x-money :value="$amount($totals['budget'])" :decimals="false" /></td>
+                    @if ($money)<td class="text-right"><x-money :value="$amount($totals['spent'])" /></td>@endif
                     <td colspan="3"></td>
                 </tr>
             </tfoot>

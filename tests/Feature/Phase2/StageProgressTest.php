@@ -6,6 +6,7 @@ use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectStage;
 use App\Models\WorkPackage;
+use App\Modules\Construction\Services\StageProgress;
 use App\Support\Dates;
 use Tests\TestCase;
 
@@ -117,5 +118,60 @@ class StageProgressTest extends TestCase
         $this->assertSame('pending', $milestone->fresh()->status);
         $this->progress($slab, 100);
         $this->assertSame(['completed', Dates::today()->toDateString()], [$milestone->fresh()->status, $milestone->fresh()->completed_at->toDateString()]);
+    }
+
+    private function child(WorkPackage $parent, string $code, string $budget, float $progress = 0): WorkPackage
+    {
+        $p = $this->package($parent->stage, $code, $budget, $progress);
+        $p->forceFill(['parent_id' => $parent->id])->save();
+
+        return $p;
+    }
+
+    public function test_a_parent_package_follows_its_sub_packages_and_counts_once_in_its_stage(): void
+    {
+        $stage = $this->stage('Piling & Foundation');
+        $piling = $this->package($stage, 'PIL', '0');
+        $bore = $this->child($piling, 'BORE', '300');
+        $cage = $this->child($piling, 'CAGE', '100');
+        $cap = $this->package($stage, 'CAP', '400');
+
+        $this->progress($bore, 100);
+        $piling->refresh();
+        $this->assertSame(['75.00', 'in_progress'], [$piling->progress_percent, $piling->status]);
+        // Stage: PIL (budget 400 from its children) at 75% and CAP (400) at 0%; children are not counted again.
+        $this->assertSame('37.50', $stage->fresh()->progress_percent);
+
+        $this->progress($cage, 100);
+        $this->assertSame(['100.00', 'completed'], [$piling->fresh()->progress_percent, $piling->fresh()->status]);
+        $this->assertSame('50.00', $stage->fresh()->progress_percent);
+
+        $cage->delete();
+        $this->assertSame('100.00', $piling->fresh()->progress_percent);
+        $this->assertSame(300.0, StageProgress::budget($piling->fresh()));
+    }
+
+    public function test_packages_cannot_loop_and_parents_take_no_manual_progress(): void
+    {
+        $stage = $this->stage('Structure');
+        $parent = $this->package($stage, 'P', '100');
+        $child = $this->child($parent, 'C', '100');
+        $user = $this->superAdmin();
+        $this->project->members()->attach($user->id);
+
+        $this->actingAs($user)->ajax()->put(route('construction.work-packages.update', [$this->project, $parent]), [
+            'code' => 'P', 'name' => 'P', 'budget_amount' => '100', 'status' => 'not_started', 'parent' => $child->public_id,
+        ])->assertStatus(422)->assertJsonPath('errors.parent.0', 'A package cannot sit under itself or one of its sub-packages.');
+
+        $form = $this->actingAs($user)->ajax()->get(route('construction.progress.create', $this->project))->json('data.html');
+        $this->assertStringContainsString($child->public_id, $form);
+        $this->assertStringNotContainsString($parent->public_id, $form);
+        $this->actingAs($user)->ajax()->post(route('construction.progress.store', $this->project), [
+            'work_package' => $parent->public_id, 'progress_percent' => 50, 'report_date' => now()->toDateString(), 'notes' => 'x', 'visibility' => 'internal',
+        ])->assertStatus(422)->assertJsonPath('errors.work_package.0', 'This package follows its sub-packages.');
+
+        $list = $this->actingAs($user)->ajax()->get(route('construction.work-packages.index', $this->project))->json('data.html');
+        $this->assertLessThan(strpos($list, '>C<'), strpos($list, '>P<'));
+        $this->assertStringContainsString('padding-left: 20px', $list);
     }
 }
