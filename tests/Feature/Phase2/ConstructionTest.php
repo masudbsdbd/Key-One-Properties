@@ -113,6 +113,25 @@ class ConstructionTest extends TestCase
         $this->assertStringNotContainsString('budget', json_encode($payload));
     }
 
+    public function test_work_package_list_shows_spent_against_budget(): void
+    {
+        $package = $this->package();
+        $package->forceFill(['budget_amount' => '10000'])->save();
+        $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [
+            'project' => $this->project->public_id, 'work_package' => $package->public_id, 'work_date' => now()->toDateString(), 'labour_type' => 'mason', 'headcount' => 15, 'units' => 1, 'rate' => '800',
+        ])->assertOk();
+        $this->actingAs($this->manager)->ajax()->post(route('labour.approve', LabourEntry::query()->firstOrFail()))->assertOk();
+
+        $html = $this->actingAs($this->manager)->ajax()->get(route('construction.work-packages.index', $this->project))->assertOk()->json('data.html');
+        $this->assertStringContainsString('12,000', $html);
+        $this->assertStringContainsString('2,000 over', $html);
+        $viewer = $this->userWith(['projects.view', 'construction.view']);
+        $this->project->members()->attach($viewer->id);
+        $html = $this->actingAs($viewer)->ajax()->get(route('construction.work-packages.index', $this->project))->assertOk()->json('data.html');
+        $this->assertStringContainsString('Piling', $html);
+        $this->assertStringNotContainsString('Spent', $html);
+    }
+
     public function test_labour_total_is_computed_on_server_and_cost_posted_once(): void
     {
         $this->actingAs($this->engineer)->ajax()->post(route('labour.store'), [

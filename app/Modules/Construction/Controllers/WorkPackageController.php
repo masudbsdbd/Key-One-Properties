@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConstructionProgressUpdate;
 use App\Models\LabourEntry;
 use App\Models\Project;
+use App\Models\ProjectCostAllocation;
 use App\Models\ProjectStage;
 use App\Models\User;
 use App\Models\WorkPackage;
@@ -22,9 +23,16 @@ class WorkPackageController extends Controller
     {
         Gate::authorize('construction:view', $project);
 
+        $spent = Gate::allows('construction:cost-view', $project)
+            ? ProjectCostAllocation::query()->where('project_id', $project->id)->whereNotNull('work_package_id')
+                ->groupBy('work_package_id')->selectRaw('work_package_id, SUM(amount) AS spent')->pluck('spent', 'work_package_id')
+            : null;
+
         return Ajax::success(null, ['html' => view('construction.work-packages._list', [
             'project' => $project,
-            'packages' => $project->workPackages()->with(['stage:id,name', 'responsible:id,name', 'parent:id,code'])->get(),
+            'packages' => $project->workPackages()->with(['stage:id,name', 'responsible:id,name', 'parent:id,code'])
+                ->reorder()->orderByRaw('planned_start_at IS NULL')->orderBy('planned_start_at')->orderBy('code')->get(),
+            'spent' => $spent,
         ])->render()]);
     }
 

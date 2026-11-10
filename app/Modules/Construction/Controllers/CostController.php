@@ -25,7 +25,6 @@ class CostController extends Controller
         return Ajax::success(null, ['html' => view('construction.cost._breakdown', [
             'project' => $project,
             'totals' => CostAttribution::totals($project),
-            'packages' => $project->workPackages()->get()->map(fn ($p) => $p->setAttribute('actual', ProjectCostAllocation::query()->where('work_package_id', $p->id)->sum('amount'))),
             'rows' => $project->costAllocations()->latest('effective_at')->latest('id')->limit(100)->get(),
         ])->render()]);
     }
