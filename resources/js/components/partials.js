@@ -58,6 +58,18 @@ export function initPartials() {
 
     document.querySelectorAll('[data-partial-url][data-lazy]').forEach(reload);
 
+    // [data-partial-more="60"] inside a block reloads it with that many entries.
+    document.addEventListener('click', (event) => {
+        const more = event.target.closest('[data-partial-more]');
+        const block = more?.closest('[data-partial-url]');
+        if (!block) return;
+        const url = new URL(block.dataset.partialUrl, window.location.origin);
+        url.searchParams.set('limit', more.dataset.partialMore);
+        block.dataset.partialUrl = url.toString();
+        more.disabled = true;
+        reload(block);
+    });
+
     ['data:changed', 'action:success', 'table:action'].forEach((name) => document.addEventListener(name, reloadPartials));
     document.addEventListener('ajax:success', (event) => {
         if (event.target.closest('[data-partial-url]') || event.target.hasAttribute('data-refresh-partials')) {

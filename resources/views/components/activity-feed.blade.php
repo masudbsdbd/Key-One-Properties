@@ -38,7 +38,7 @@
                                     <span class="font-semibold text-ink-900">{{ $entry->causer?->name ?? 'System' }}</span>
                                     {{ Str::lower(App\Support\ActivityPresenter::event($entry)) }}
                                     @if ($group['count'] > 1)
-                                        <span class="font-medium text-ink-900">{{ $group['count'] }} {{ Str::plural(Str::lower(Str::headline(class_basename($entry->subject_type ?? 'record')))) }}</span>
+                                        <span class="font-medium text-ink-900">{{ $group['count'] }} {{ Str::plural(Str::lower(App\Support\ActivityPresenter::type($entry->subject_type))) }}</span>
                                     @else
                                         <span class="font-medium text-ink-900">{{ App\Support\ActivityPresenter::subject($entry) }}</span>
                                     @endif

@@ -10,14 +10,40 @@ class ActivityPresenter
 {
     private const REDACTED = ['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'nid_or_passport', 'token'];
 
+    /** Document number columns; a record that has one is named by it, e.g. "Booking BK-2026-00004". */
+    private const NUMBERS = ['booking_no', 'sale_no', 'po_no', 'wo_no', 'bill_no', 'payment_no', 'expense_no', 'issue_no', 'transfer_no', 'borrow_no', 'plan_no',
+        'agreement_no', 'entry_no', 'receipt_no', 'return_no', 'refund_no', 'run_no', 'calculation_no', 'adjustment_no', 'reschedule_no', 'variation_no', 'transaction_no',
+        'distribution_no', 'revision_no', 'grn_no'];
+
+    /** Class names that read better under the word the screens use. */
+    private const TYPES = ['Flat' => 'Unit', 'FlatBooking' => 'Booking', 'FlatSale' => 'Sale', 'LabourEntry' => 'Labour', 'ContractorWorkOrder' => 'Work Order',
+        'MaterialTransfer' => 'Transfer', 'MaterialBorrow' => 'Borrow', 'CustomerPayment' => 'Customer Payment', 'InstallmentPlan' => 'Installment Plan'];
+
+    public static function type(?string $class): string
+    {
+        $base = class_basename((string) $class);
+
+        return self::TYPES[$base] ?? Str::headline($base ?: 'record');
+    }
+
     public static function subject(Activity $activity): string
     {
         $subject = $activity->subject;
         if ($subject) {
-            return $subject->name ?? $subject->full_name ?? $subject->title ?? $subject->flat_no ?? $subject->original_name ?? $subject->label ?? $subject->entry_no ?? Str::headline(class_basename($subject));
+            $type = self::type($subject::class);
+            foreach (self::NUMBERS as $field) {
+                if (! empty($subject->{$field})) {
+                    return $type.' '.$subject->{$field};
+                }
+            }
+            if (! empty($subject->flat_no)) {
+                return $type.' '.$subject->flat_no;
+            }
+
+            return $subject->name ?? $subject->full_name ?? $subject->title ?? $subject->original_name ?? $subject->label ?? $type;
         }
 
-        return $activity->properties['name'] ?? ($activity->subject_type ? Str::headline(class_basename($activity->subject_type)) : '—');
+        return $activity->properties['name'] ?? ($activity->subject_type ? self::type($activity->subject_type) : '—');
     }
 
     public static function event(Activity $activity): string
@@ -155,6 +181,14 @@ class ActivityPresenter
         // Machine values such as not_started (or a single-word status) read as "Not Started".
         if (preg_match('/^[a-z]+(_[a-z]+)+$/', $string) || (preg_match('/(status|visibility|type|scope|kind)$/', Str::snake($field)) && preg_match('/^[a-z]+$/', $string))) {
             return Str::headline($string);
+        }
+
+        // Money and percentage fields read the way the rest of the app shows them.
+        if (is_numeric($string) && preg_match('/(^|_)(price|amount|value|cost|budget|total|paid|due|balance|rate)(_|$)/', Str::snake($field))) {
+            return Format::money($string);
+        }
+        if (is_numeric($string) && str_ends_with(Str::snake($field), 'percent')) {
+            return rtrim(rtrim(number_format((float) $string, 2, '.', ''), '0'), '.').'%';
         }
 
         // 30.00 reads as 30, 1450.50 stays as is.
