@@ -1,9 +1,10 @@
-<form method="POST" action="{{ route('labour.store') }}" data-ajax-form class="grid gap-5 sm:grid-cols-3" data-labour-form>
+@php($types = App\Models\LabourType::query()->active()->orderBy('name')->get())
+<form method="POST" action="{{ route('labour.store') }}" data-ajax-form class="grid gap-5 sm:grid-cols-3" data-labour-form data-labour-rates='@json($types->mapWithKeys(fn ($t) => [$t->code => $t->default_rate !== null ? rtrim(rtrim($t->default_rate, '0'), '.') : null]))'>
     @csrf
     <x-form.select name="project" id="labour-project" label="Project" :url="route('options.projects')" :options="$project ? [$project->public_id => $project->name.' ('.$project->code.')'] : []" :selected="$project?->public_id" required placeholder="Search projects" wrapper-class="sm:col-span-2" />
     <x-form.input name="work_date" type="date" label="Work Date" :value="now(config('app.display_timezone'))->toDateString()" :max="now(config('app.display_timezone'))->toDateString()" required />
     <x-form.select name="work_package" label="Work Package" :url="route('options.work-packages')" depends-on="#labour-project" depends-param="project" placeholder="None" wrapper-class="sm:col-span-2" />
-    <x-form.select name="labour_type" label="Labour Type" :options="App\Models\LabourEntry::TYPES" required />
+    <x-form.select name="labour_type" label="Labour Type" :options="$types->pluck('name', 'code')->all()" required />
     <x-form.input name="headcount" type="number" label="Headcount" min="1" value="1" required data-calc />
     <x-form.input name="units" label="Days" value="1" inputmode="decimal" required data-calc />
     <x-form.input name="rate" label="Rate per Day (BDT)" inputmode="decimal" required data-calc />

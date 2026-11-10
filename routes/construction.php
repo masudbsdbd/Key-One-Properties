@@ -3,6 +3,7 @@
 use App\Modules\Construction\Controllers\ConstructionController;
 use App\Modules\Construction\Controllers\CostController;
 use App\Modules\Construction\Controllers\LabourController;
+use App\Modules\Construction\Controllers\LabourTypeController;
 use App\Modules\Construction\Controllers\MilestoneController;
 use App\Modules\Construction\Controllers\ProgressController;
 use App\Modules\Construction\Controllers\WorkPackageController;
@@ -45,6 +46,14 @@ Route::prefix('construction')->name('construction.')->group(function () {
 
     Route::get('{project}/cost', [CostController::class, 'show'])->name('cost');
     Route::get('{project}/cost/export', [CostController::class, 'export'])->name('cost.export');
+});
+
+Route::prefix('labour/types')->name('labour.types.')->controller(LabourTypeController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->name('store');
+    Route::get('{type}/edit', 'edit')->name('edit');
+    Route::put('{type}', 'update')->name('update');
+    Route::delete('{type}', 'destroy')->name('destroy');
 });
 
 Route::prefix('labour')->name('labour.')->controller(LabourController::class)->group(function () {

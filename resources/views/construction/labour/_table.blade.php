@@ -19,7 +19,7 @@
         <div class="w-40">
             <select name="labour_type" class="form-control" data-table-filter data-select data-placeholder="All types" aria-label="Labour type">
                 <option value=""></option>
-                @foreach (App\Models\LabourEntry::TYPES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                @foreach (App\Models\LabourType::names() as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
             </select>
         </div>
         <x-period />

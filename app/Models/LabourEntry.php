@@ -13,12 +13,6 @@ class LabourEntry extends Model
 {
     use HasPublicId, LogsActivity, LogsProjectActivity;
 
-    public const TYPES = [
-        'mason' => 'Mason', 'helper' => 'Helper', 'carpenter' => 'Carpenter', 'rod_binder' => 'Rod Binder',
-        'electrician' => 'Electrician', 'plumber' => 'Plumber', 'painter' => 'Painter', 'tiles' => 'Tiles Fitter',
-        'welder' => 'Welder', 'other' => 'Other',
-    ];
-
     public const STATUSES = ['submitted' => 'Submitted', 'approved' => 'Approved', 'rejected' => 'Rejected', 'reversed' => 'Reversed'];
 
     protected $fillable = ['work_package_id', 'work_date', 'labour_type', 'headcount', 'units', 'rate', 'notes'];
@@ -39,6 +33,11 @@ class LabourEntry extends Model
     {
         return LogOptions::defaults()->useLogName('construction')
             ->logOnly(['work_date', 'labour_type', 'headcount', 'units', 'rate', 'total_amount', 'status'])->logOnlyDirty()->dontSubmitEmptyLogs();
+    }
+
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(LabourType::class, 'labour_type', 'code');
     }
 
     public function project(): BelongsTo

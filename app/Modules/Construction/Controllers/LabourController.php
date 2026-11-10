@@ -4,6 +4,7 @@ namespace App\Modules\Construction\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\LabourEntry;
+use App\Models\LabourType;
 use App\Models\Project;
 use App\Models\WorkPackage;
 use App\Modules\Construction\Services\ConstructionService;
@@ -46,7 +47,7 @@ class LabourController extends Controller
 
         return Report::make('Labour')->sumMoney()->meta(['Period' => TableQuery::periodLabel($request), 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Status' => LabourEntry::STATUSES[(string) $request->input('status')] ?? null])
             ->columns(['Entry No' => 'text', 'Date' => 'date', 'Project' => 'text', 'Type' => 'text', 'Headcount' => 'number', 'Units' => 'qty', 'Rate' => 'money', 'Amount' => 'money', 'Status' => 'text'])
-            ->rows(fn () => $this->listing($request)->lazy()->map(fn (LabourEntry $e) => [$e->entry_no, $e->work_date, $e->project->code, LabourEntry::TYPES[$e->labour_type] ?? $e->labour_type, $e->headcount, $e->units, $e->rate, $e->total_amount, LabourEntry::STATUSES[$e->status]]))
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (LabourEntry $e) => [$e->entry_no, $e->work_date, $e->project->code, ($types ??= LabourType::names())[$e->labour_type] ?? $e->labour_type, $e->headcount, $e->units, $e->rate, $e->total_amount, LabourEntry::STATUSES[$e->status]]))
             ->respond($request);
     }
 
@@ -78,8 +79,8 @@ class LabourController extends Controller
         if (array_key_exists($status = (string) $request->input('status'), LabourEntry::STATUSES)) {
             $query->where('status', $status);
         }
-        if (array_key_exists($type = (string) $request->input('labour_type'), LabourEntry::TYPES)) {
-            $query->where('labour_type', $type);
+        if ($request->filled('labour_type')) {
+            $query->where('labour_type', (string) $request->input('labour_type'));
         }
 
         TableQuery::period($query, $request, 'work_date');
@@ -107,7 +108,7 @@ class LabourController extends Controller
             'project' => ['required', 'string', 'size:16'],
             'work_package' => ['nullable', 'string', 'size:16'],
             'work_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
-            'labour_type' => ['required', Rule::in(array_keys(LabourEntry::TYPES))],
+            'labour_type' => ['required', 'string', Rule::exists('labour_types', 'code')->where('is_active', true)],
             'headcount' => ['required', 'integer', 'between:1,10000'],
             'units' => ['required', 'numeric', 'gt:0', 'max:1000'],
             'rate' => ['required', 'numeric', 'gt:0', 'max:99999999'],
