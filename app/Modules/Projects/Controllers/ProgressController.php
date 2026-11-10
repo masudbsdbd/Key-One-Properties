@@ -33,7 +33,7 @@ class ProgressController extends Controller
             'title' => 'Record Progress',
             'html' => view('projects.progress._form', [
                 'project' => $project,
-                'stages' => $project->stages()->get(),
+                'stages' => $project->stages()->whereDoesntHave('workPackages')->get(),
                 'selected' => $request->input('stage'),
             ])->render(),
         ]);
@@ -52,6 +52,9 @@ class ProgressController extends Controller
         ]);
 
         $data['stage'] = ProjectStage::query()->whereBelongsTo($project)->where('public_id', $data['stage'])->firstOrFail();
+        if ($data['stage']->workPackages()->exists()) {
+            return Ajax::error('Validation failed', 422, ['stage' => ['This stage follows its work packages.']]);
+        }
         $service->recordProgress($project, $data, $request->user());
 
         return Ajax::success('Progress recorded.');

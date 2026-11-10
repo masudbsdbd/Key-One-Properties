@@ -48,6 +48,11 @@ class ProjectStage extends Model
         return $this->belongsTo(Project::class);
     }
 
+    public function workPackages(): HasMany
+    {
+        return $this->hasMany(WorkPackage::class, 'stage_id');
+    }
+
     public function progressUpdates(): HasMany
     {
         return $this->hasMany(ProjectProgressUpdate::class, 'stage_id');

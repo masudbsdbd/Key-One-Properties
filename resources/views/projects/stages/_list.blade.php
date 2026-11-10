@@ -1,5 +1,6 @@
 @php($canManage = auth()->user()->can('manageStages', $project))
 @php($canProgress = auth()->user()->can('updateProgress', $project))
+@php($packaged = App\Models\WorkPackage::query()->where('project_id', $project->id)->whereNotNull('stage_id')->distinct()->pluck('stage_id')->flip())
 @if ($project->stages->isEmpty())
     <x-empty-state icon="layers" title="No stages yet" />
 @else
@@ -27,7 +28,7 @@
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
                     @if ($canProgress)
-                        <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('projects.progress.create', [$project, 'stage' => $stage->public_id]) }}" aria-label="Record progress for {{ $stage->name }}"><x-icon name="plus" size="h-4 w-4" /></button>
+                        <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('projects.progress.create', [$project, 'stage' => $stage->public_id]) }}" aria-label="Record progress for {{ $stage->name }}" @disabled($packaged->has($stage->id)) data-disabled-reason="Follows its work packages"><x-icon name="plus" size="h-4 w-4" /></button>
                     @endif
                     @if ($canManage)
                         <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('projects.stages.edit', [$project, $stage]) }}" aria-label="Edit {{ $stage->name }}"><x-icon name="edit" size="h-4 w-4" /></button>

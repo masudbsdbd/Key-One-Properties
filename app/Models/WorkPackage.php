@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPublicId;
 use App\Models\Concerns\LogsProjectActivity;
+use App\Modules\Construction\Services\StageProgress;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +31,20 @@ class WorkPackage extends Model
             'planned_start_at' => 'date',
             'planned_end_at' => 'date',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (WorkPackage $package) {
+            if ($package->wasRecentlyCreated || $package->wasChanged(['progress_percent', 'budget_amount', 'stage_id'])) {
+                StageProgress::sync($package->stage_id);
+                if ($package->wasChanged('stage_id')) {
+                    StageProgress::sync($package->getPrevious()['stage_id'] ?? null);
+                }
+            }
+        });
+        static::deleted(fn (WorkPackage $package) => StageProgress::sync($package->stage_id));
+        static::restored(fn (WorkPackage $package) => StageProgress::sync($package->stage_id));
     }
 
     public function getActivitylogOptions(): LogOptions
