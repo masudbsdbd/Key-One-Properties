@@ -92,9 +92,18 @@ class TransferController extends Controller
         $user = $request->user();
         abort_unless($user->can('materials.transfer.request'), 403);
         $find = fn (string $field) => Warehouse::query()->visibleTo($user)->where('is_active', true)->where('public_id', (string) $request->input($field))->first();
+        $source = $find('source');
+        $leftover = $source && $request->boolean('leftover');
+        // Everything the store owns; borrowed stock goes back through its borrow instead.
+        $lines = $leftover ? StockBalance::query()->where('warehouse_id', $source->id)->where('owned_qty', '>', 0)
+            ->whereHas('material', fn ($q) => $q->where('is_active', true))->with('material.unit:id,code')->get()
+            ->sortBy('material.name')->map(fn (StockBalance $b) => [
+                'material' => $b->material->public_id, 'text' => $b->material->label().' ('.$b->material->unit->code.')',
+                'quantity' => rtrim(rtrim((string) $b->owned_qty, '0'), '.'),
+            ])->values()->all() : [];
 
-        return Ajax::success(null, ['title' => 'New Transfer', 'html' => view('inventory.transfers._form', [
-            'key' => (string) Str::uuid(), 'source' => $find('source'), 'destination' => $find('destination'),
+        return Ajax::success(null, ['title' => $leftover ? 'Move Leftover Stock' : 'New Transfer', 'html' => view('inventory.transfers._form', [
+            'key' => (string) Str::uuid(), 'source' => $source, 'destination' => $find('destination'), 'lines' => $lines,
         ])->render()]);
     }
 

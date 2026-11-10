@@ -232,6 +232,8 @@
             $canTransfer = $user->can('materials.transfer.request');
             $canBorrow = $user->can('materials.borrow.request');
             $valued = $user->can('materials.valuation.view');
+            $leftovers = App\Models\StockBalance::query()->whereIn('warehouse_id', $stores->pluck('id'))->where('owned_qty', '>', 0)
+                ->selectRaw('warehouse_id, COUNT(*) AS n')->groupBy('warehouse_id')->pluck('n', 'warehouse_id');
         @endphp
         <section id="panel-materials" role="tabpanel" aria-labelledby="tab-materials" hidden class="space-y-4">
             <div class="flex flex-wrap items-end justify-between gap-3">
@@ -250,6 +252,10 @@
                                 @if ($canTransfer)
                                     <button type="button" class="{{ $item }}" data-remote-modal="{{ route('transfers.create', array_filter(['destination' => $store?->public_id])) }}" data-size="max-w-4xl"><x-icon name="download" size="h-4 w-4" />Transfer In</button>
                                     <button type="button" class="{{ $item }}" data-remote-modal="{{ route('transfers.create', array_filter(['source' => $store?->public_id])) }}" data-size="max-w-4xl"><x-icon name="upload" size="h-4 w-4" />Transfer Out</button>
+                                    @foreach ($stores as $site)
+                                        <button type="button" class="{{ $item }}" data-remote-modal="{{ route('transfers.create', ['source' => $site->public_id, 'leftover' => 1]) }}" data-size="max-w-4xl"
+                                            @disabled(! ($leftovers[$site->id] ?? 0)) data-disabled-reason="Nothing left in {{ $site->name }}"><x-icon name="layers" size="h-4 w-4" />{{ $stores->count() > 1 ? 'Move Leftover · '.$site->name : 'Move All Leftover' }}</button>
+                                    @endforeach
                                 @endif
                                 @if ($canBorrow)
                                     <button type="button" class="{{ $item }}" data-remote-modal="{{ route('borrows.create', array_filter(['destination' => $store?->public_id])) }}" data-size="max-w-4xl"><x-icon name="refresh" size="h-4 w-4" />Borrow From Site</button>

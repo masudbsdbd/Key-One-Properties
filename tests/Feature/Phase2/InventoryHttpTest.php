@@ -314,4 +314,19 @@ class InventoryHttpTest extends TestCase
         $this->assertStringContainsString('TRF-', $listed($this->a));
         $this->assertStringNotContainsString('TRF-', $listed($this->b));
     }
+
+    public function test_leftover_stock_moves_out_in_one_form(): void
+    {
+        $central = $this->warehouse('WH-CEN', null);
+        $this->receive($this->whA, '240.5', '95');
+        $page = $this->actingAs($this->keeper)->get(route('projects.show', $this->a))->assertOk()->getContent();
+        $this->assertStringContainsString(e(route('transfers.create', ['source' => $this->whA->public_id, 'leftover' => 1])), $page);
+        $this->assertStringContainsString('Move All Leftover', $page);
+
+        $form = $this->actingAs($this->keeper)->ajax()->get(route('transfers.create', ['source' => $this->whA->public_id, 'leftover' => 1]))->assertOk()->json('data');
+        $this->assertSame('Move Leftover Stock', $form['title']);
+        $this->assertStringContainsString('"quantity":"240.5"', $form['html']);
+        $this->assertStringContainsString($this->rod->public_id, $form['html']);
+        $this->assertStringNotContainsString($this->rod->public_id, $this->actingAs($this->keeper)->ajax()->get(route('transfers.create', ['source' => $central->public_id, 'leftover' => 1]))->json('data.html'));
+    }
 }
