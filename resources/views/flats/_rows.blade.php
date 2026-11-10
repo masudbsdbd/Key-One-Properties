@@ -11,7 +11,7 @@
         <td class="text-ink-600">{{ $flat->flat_type ?: '—' }}@if ($flat->bedrooms !== null)<span class="text-ink-400"> · {{ $flat->bedrooms }}B/{{ $flat->bathrooms ?? 0 }}T</span>@endif</td>
         <td class="whitespace-nowrap text-right tabular-nums">{{ number_format((float) $flat->saleable_area, 0) }} {{ $flat->area_unit }}</td>
         <td class="whitespace-nowrap text-right tabular-nums">{{ App\Support\Format::money($flat->list_price, false) }}</td>
-        <td><x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge></td>
+        <td><x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge>@if ($flat->deal)<x-ref :to="$flat->deal" class="mt-0.5 block max-w-44 truncate text-[12px] text-ink-600">{{ $flat->deal->customer?->full_name }}</x-ref>@endif</td>
         <td class="whitespace-nowrap text-right">
             @php
                 $canPrice = $actor->can('changePrice', $flat);

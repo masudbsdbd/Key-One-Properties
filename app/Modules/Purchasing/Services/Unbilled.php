@@ -43,6 +43,21 @@ class Unbilled
         return ['amount' => Money::amount((string) $row->amount), 'receipts' => (int) $row->receipts];
     }
 
+    /**
+     * Received value not yet on a bill, per purchase order.
+     *
+     * @param  array<int, int>  $orderIds
+     * @return array<int, string> purchase order id => amount
+     */
+    public static function byOrder(array $orderIds): array
+    {
+        return GoodsReceiptLine::query()->join('goods_receipts', 'goods_receipts.id', '=', 'goods_receipt_lines.goods_receipt_id')
+            ->whereNull('goods_receipt_lines.billed_bill_id')->whereColumn('goods_receipt_lines.accepted_qty', '>', 'goods_receipt_lines.returned_qty')
+            ->whereIn('goods_receipts.purchase_order_id', $orderIds)->groupBy('goods_receipts.purchase_order_id')
+            ->selectRaw('goods_receipts.purchase_order_id AS po, SUM('.self::VALUE.') AS amount')->toBase()->pluck('amount', 'po')
+            ->map(fn ($v) => Money::amount((string) $v))->all();
+    }
+
     /** Purchase orders with unbilled goods ('any') or goods unbilled for more than ALERT_DAYS ('late'). */
     public static function filter(Builder $orders, ?string $mode, User $user): Builder
     {

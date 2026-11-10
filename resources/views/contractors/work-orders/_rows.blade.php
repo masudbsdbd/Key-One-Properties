@@ -3,12 +3,12 @@
     <tr>
         <td class="min-w-56"><a href="{{ route('work-orders.show', $order) }}" class="font-medium text-ink-900 hover:text-accent-700">{{ $order->wo_no }}</a><p class="truncate text-[13px] text-ink-500">{{ $order->title }}</p></td>
         @if ($showContractor)<td class="text-ink-700"><x-ref :to="$order->contractor">{{ $order->contractor->name }}</x-ref></td>@endif
-        <td class="text-ink-700"><x-ref :to="$order->project">{{ $order->project->code }}</x-ref><span class="block text-[13px] text-ink-400">{{ $order->project->name }}</span></td>
+        @unless ($inProject ?? false)<td class="text-ink-700"><x-ref :to="$order->project">{{ $order->project->code }}</x-ref><span class="block text-[13px] text-ink-400">{{ $order->project->name }}</span></td>@endunless
         <td class="text-right"><x-money :value="$order->contract_amount" /></td>
         <td class="text-right">@if ((float) $order->due > 0)<x-money :value="$order->due" class="font-semibold text-danger-600" />@else<span class="text-ink-400">—</span>@endif</td>
         <td class="min-w-32"><x-progress :value="$pct" size="h-1.5" /></td>
         <td><x-status-badge :status="$order->status" /></td>
     </tr>
 @empty
-    <tr><td colspan="{{ $showContractor ? 7 : 6 }}"><x-empty-state icon="check-square" title="No work orders" /></td></tr>
+    <tr><td colspan="{{ ($showContractor ? 7 : 6) - (($inProject ?? false) ? 1 : 0) }}"><x-empty-state icon="check-square" title="No work orders" /></td></tr>
 @endforelse

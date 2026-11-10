@@ -10,6 +10,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
+use App\Models\SupplierPaymentAllocation;
 use App\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryLines;
 use App\Modules\Purchasing\Services\PurchasingService;
@@ -19,8 +20,10 @@ use App\Support\Export\Documents;
 use App\Support\Export\Report;
 use App\Support\LineKeys;
 use App\Support\ListSummary;
+use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -45,8 +48,10 @@ class PurchaseOrderController extends Controller
         $query = $this->listing($request);
         $supplier = Supplier::findByPublicId($request->input('supplier'));
         $orders = TableQuery::paginate($query, $request);
+        $this->attachBilling($orders->getCollection());
 
-        return Ajax::table(view('purchasing.orders._rows', ['orders' => $orders, 'showSupplier' => ! $supplier])->render(), $orders, ['stats' => $this->summary($request)->render()]);
+        return Ajax::table(view('purchasing.orders._rows', ['orders' => $orders, 'showSupplier' => ! $supplier, 'inProject' => $request->boolean('in_project')])->render(),
+            $orders, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response
@@ -101,11 +106,26 @@ class PurchaseOrderController extends Controller
             ->money('Not Billed', $unbilled['amount'], 'file', 'warning', ['unbilled' => 'any'], ListSummary::many($unbilled['receipts'], 'receipt'));
     }
 
+    /** Sets not_billed, billed and paid on each order of the page, so a row can say where its money stands. */
+    private function attachBilling(Collection $orders): void
+    {
+        $ids = $orders->modelKeys();
+        $unbilled = Unbilled::byOrder($ids);
+        $billed = SupplierBill::query()->whereIn('purchase_order_id', $ids)->whereIn('status', ['approved', 'paid'])
+            ->groupBy('purchase_order_id')->selectRaw('purchase_order_id, SUM(total_amount) AS amount')->pluck('amount', 'purchase_order_id');
+        $paid = SupplierPaymentAllocation::query()->join('supplier_bills', 'supplier_bills.id', '=', 'supplier_payment_allocations.supplier_bill_id')
+            ->whereIn('supplier_bills.purchase_order_id', $ids)->whereIn('supplier_bills.status', ['approved', 'paid'])
+            ->whereHas('payment', fn (Builder $q) => $q->where('status', 'approved'))
+            ->groupBy('supplier_bills.purchase_order_id')->selectRaw('supplier_bills.purchase_order_id AS po, SUM(supplier_payment_allocations.amount) AS amount')->toBase()->pluck('amount', 'po');
+        $orders->each(fn (PurchaseOrder $o) => $o->setAttribute('not_billed', $unbilled[$o->id] ?? '0.00')
+            ->setAttribute('billed', Money::amount((string) ($billed[$o->id] ?? 0)))->setAttribute('paid', Money::amount((string) ($paid[$o->id] ?? 0))));
+    }
+
     private function listing(Request $request): Builder
     {
         abort_unless($request->user()->can('purchases.view'), 403);
 
-        $query = PurchaseOrder::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'project:id,public_id,code', 'warehouse:id,code'])
+        $query = PurchaseOrder::query()->visibleTo($request->user())->with(['supplier:id,public_id,name', 'project:id,public_id,code', 'warehouse:id,code,name', 'lines.material:id,name,unit_id', 'lines.material.unit:id,code'])
             ->withSum('lines as ordered_qty', 'quantity')->withSum('lines as received_qty', 'received_qty');
         if (array_key_exists($status = (string) $request->input('status'), PurchaseOrder::STATUSES)) {
             $query->where('status', $status);

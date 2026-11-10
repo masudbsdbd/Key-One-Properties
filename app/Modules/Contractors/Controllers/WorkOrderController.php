@@ -42,7 +42,7 @@ class WorkOrderController extends Controller
         $contractor = Contractor::findByPublicId($request->input('contractor'));
         $orders = TableQuery::paginate($query, $request);
 
-        return Ajax::table(view('contractors.work-orders._rows', ['orders' => $orders, 'showContractor' => ! $contractor])->render(), $orders, ['stats' => $this->summary($request)->render()]);
+        return Ajax::table(view('contractors.work-orders._rows', ['orders' => $orders, 'showContractor' => ! $contractor, 'inProject' => $request->boolean('in_project')])->render(), $orders, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response

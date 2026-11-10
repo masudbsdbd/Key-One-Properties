@@ -54,7 +54,7 @@ class ExpenseController extends Controller
             ->money('Approved, Unpaid', $row->unpaid, 'clock', 'warning', ['status' => 'approved'])
             ->money('Awaiting Approval', $row->pending, 'alert', 'accent', ['status' => 'submitted'], ListSummary::many($row->pending_n, 'expense'));
 
-        return Ajax::table(view('expenses._rows', ['expenses' => $expenses])->render(), $expenses, ['stats' => $summary->render()]);
+        return Ajax::table(view('expenses._rows', ['expenses' => $expenses, 'inProject' => $request->boolean('in_project')])->render(), $expenses, ['stats' => $summary->render()]);
     }
 
     public function export(Request $request): Response

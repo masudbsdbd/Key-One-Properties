@@ -332,17 +332,22 @@
     @endisset
     @isset($tabs['purchases'])
         <section id="panel-purchases" role="tabpanel" aria-labelledby="tab-purchases" hidden>
-            <x-data-table :url="route('purchase-orders.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search PO number" :columns="[
-                ['label' => 'Order', 'sort' => 'date'], ['label' => 'Supplier'], ['label' => 'Warehouse'], ['label' => 'Total', 'class' => 'text-right', 'sort' => 'total'], ['label' => 'Received'], ['label' => 'Status'],
+            <x-data-table summary :url="route('purchase-orders.table', ['project' => $project->public_id, 'in_project' => 1])" sort="date" dir="desc" search="Search PO number" :columns="[
+                ['label' => 'Order', 'sort' => 'date'], ['label' => 'Supplier'], ['label' => 'Items'], ['label' => 'Total', 'class' => 'text-right', 'sort' => 'total'], ['label' => 'Received'], ['label' => 'Billing'], ['label' => 'Status'],
             ]">
+                <x-slot:filters>
+                    <select name="status" class="form-control w-44" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\PurchaseOrder::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
+                    <select name="unbilled" class="form-control w-48" data-table-filter aria-label="Billing"><option value="">All billing</option>@foreach (App\Modules\Purchasing\Services\Unbilled::FILTERS as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
+                    <input type="hidden" name="late" data-table-filter>
+                </x-slot:filters>
                 <x-slot:toolbar>@can('purchases.create')<x-button icon="plus" data-remote-modal="{{ route('purchase-orders.create', ['project' => $project->public_id]) }}" data-size="max-w-5xl">Purchase Order</x-button>@endcan</x-slot:toolbar>
             </x-data-table>
         </section>
     @endisset
     @isset($tabs['contractors'])
         <section id="panel-contractors" role="tabpanel" aria-labelledby="tab-contractors" hidden>
-            <x-data-table summary :url="route('work-orders.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search work order" :columns="[
-                ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Due', 'class' => 'text-right'], ['label' => 'Progress'], ['label' => 'Status'],
+            <x-data-table summary :url="route('work-orders.table', ['project' => $project->public_id, 'in_project' => 1])" sort="date" dir="desc" search="Search work order" :columns="[
+                ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Due', 'class' => 'text-right'], ['label' => 'Progress'], ['label' => 'Status'],
             ]">
                 <x-slot:toolbar>@can('contractors.workorder.create')<x-button icon="plus" data-remote-modal="{{ route('work-orders.create', ['project' => $project->public_id]) }}" data-size="max-w-3xl">Work Order</x-button>@endcan</x-slot:toolbar>
             </x-data-table>
@@ -350,8 +355,8 @@
     @endisset
     @isset($tabs['expenses'])
         <section id="panel-expenses" role="tabpanel" aria-labelledby="tab-expenses" hidden>
-            <x-data-table :url="route('expenses.table', ['project' => $project->public_id])" sort="date" dir="desc" search="Search number, description or payee" :columns="[
-                ['label' => 'Expense', 'sort' => 'date'], ['label' => 'Category'], ['label' => 'Scope'], ['label' => 'Payee'], ['label' => 'Amount', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Status'],
+            <x-data-table summary :url="route('expenses.table', ['project' => $project->public_id, 'in_project' => 1])" sort="date" dir="desc" search="Search number, description or payee" :columns="[
+                ['label' => 'Expense', 'sort' => 'date'], ['label' => 'Category'], ['label' => 'Payee'], ['label' => 'Amount', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Status'],
             ]">
                 <x-slot:filters>
                     <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\Expense::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>

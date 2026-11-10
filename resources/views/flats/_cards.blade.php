@@ -9,6 +9,7 @@
             <div class="min-w-0">
                 <a href="{{ route('flats.show', $flat) }}" class="block text-2xl font-semibold leading-7 text-ink-900 hover:text-accent-700">{{ $flat->flat_no }}</a>
                 <p class="truncate text-sm text-ink-600"><x-ref :to="$flat->project">{{ $flat->project->name }}</x-ref></p>
+                @if ($flat->deal)<p class="truncate text-[13px] text-ink-600"><x-ref :to="$flat->deal">{{ $flat->deal->customer?->full_name }}</x-ref></p>@endif
             </div>
             <span class="flex shrink-0 items-center gap-2">
                 <x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge>

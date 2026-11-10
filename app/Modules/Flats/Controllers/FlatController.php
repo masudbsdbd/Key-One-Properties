@@ -5,8 +5,11 @@ namespace App\Modules\Flats\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Flat;
+use App\Models\FlatBooking;
+use App\Models\FlatSale;
 use App\Models\Floor;
 use App\Models\Project;
+use App\Models\User;
 use App\Modules\Flats\Requests\FlatRequest;
 use App\Modules\Flats\Services\FlatDeal;
 use App\Modules\Flats\Services\FlatService;
@@ -15,6 +18,7 @@ use App\Support\Ajax;
 use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -40,6 +44,7 @@ class FlatController extends Controller
         $query = $this->listing($request);
         $project = Project::findByPublicId($request->input('project'));
         $flats = TableQuery::paginate($query, $request);
+        $this->attachDeals($flats->getCollection(), $request->user());
         $cards = $request->input('view') === 'cards';
         $response = Ajax::table(view($cards ? 'flats._cards' : 'flats._rows', [
             'flats' => $flats,
@@ -113,6 +118,20 @@ class FlatController extends Controller
         }
 
         return $query;
+    }
+
+    /** Sets `deal` on booked and sold units: the live sale or open booking, with its customer, when the user may see it. */
+    private function attachDeals(Collection $flats, User $user): void
+    {
+        $ids = $flats->whereIn('status', ['booked', 'sold'])->modelKeys();
+        if (! $ids) {
+            return;
+        }
+        $live = fn (string $model, array $statuses) => $model::query()->whereIn('flat_id', $ids)->whereIn('status', $statuses)
+            ->with('customer:id,public_id,full_name')->latest('id')->get()->unique('flat_id')->keyBy('flat_id');
+        $sales = $user->can('sales.sale.view') ? $live(FlatSale::class, FlatSale::ACTIVE) : collect();
+        $bookings = $user->can('sales.booking.view') ? $live(FlatBooking::class, FlatBooking::OPEN) : collect();
+        $flats->each(fn (Flat $flat) => $flat->setAttribute('deal', $sales[$flat->id] ?? $bookings[$flat->id] ?? null));
     }
 
     private function listing(Request $request): Builder

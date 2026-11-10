@@ -162,6 +162,10 @@ class PurchasingHttpTest extends TestCase
         $table = fn (array $q) => $this->actingAs($this->buyer)->ajax()->get(route('purchase-orders.table', $q))->assertOk()->json('data');
         $this->assertStringContainsString($po->po_no, $table(['unbilled' => 'any'])['html']);
         $this->assertStringContainsString('22,670', $table([])['stats']);
+        // The row itself says what was ordered and that the received goods are not billed yet.
+        $this->assertStringContainsString('Not Billed', $table([])['html']);
+        $this->assertStringContainsString('22,670', $table([])['html']);
+        $this->assertStringContainsString(e($po->lines()->first()->material->name), $table([])['html']);
         $this->assertStringNotContainsString($po->po_no, $table(['unbilled' => 'late'])['html']);
         $grn->forceFill(['received_at' => now()->subDays(Unbilled::ALERT_DAYS + 1)->toDateString()])->save();
         $this->assertStringContainsString($po->po_no, $table(['unbilled' => 'late'])['html']);

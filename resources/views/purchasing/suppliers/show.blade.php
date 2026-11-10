@@ -71,7 +71,7 @@
 
     <section id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" hidden>
         <x-data-table :url="route('purchase-orders.table', ['supplier' => $supplier->public_id])" sort="date" dir="desc" search="Search PO number" :columns="[
-            ['label' => 'Order', 'sort' => 'date'], ['label' => 'Warehouse'], ['label' => 'Total', 'class' => 'text-right', 'sort' => 'total'], ['label' => 'Received'], ['label' => 'Status'],
+            ['label' => 'Order', 'sort' => 'date'], ['label' => 'Items'], ['label' => 'Total', 'class' => 'text-right', 'sort' => 'total'], ['label' => 'Received'], ['label' => 'Billing'], ['label' => 'Status'],
         ]" />
     </section>
     <section id="panel-bills" role="tabpanel" aria-labelledby="tab-bills" hidden>
