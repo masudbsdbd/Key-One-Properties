@@ -1,5 +1,7 @@
-@php($actor = auth()->user())
-@php($selectable = $actor->can('flats.change_status'))
+@php
+    $actor = auth()->user();
+    $selectable = $actor->can('flats.change_status');
+@endphp
 @forelse ($flats as $flat)
     <tr>
         @if ($selectable)<td><input type="checkbox" class="form-check" value="{{ $flat->public_id }}" data-select-row aria-label="Select {{ $flat->flat_no }}"></td>@endif
@@ -11,18 +13,23 @@
         <td class="whitespace-nowrap text-right tabular-nums">{{ App\Support\Format::money($flat->list_price, false) }}</td>
         <td><x-badge :tone="App\Models\Flat::STATUS_TONES[$flat->status] ?? 'neutral'">{{ App\Models\Flat::STATUSES[$flat->status] ?? $flat->status }}</x-badge></td>
         <td class="whitespace-nowrap text-right">
-            @can('changePrice', $flat)
-                <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('flats.price.edit', $flat) }}" data-size="max-w-md" aria-label="Change price of {{ $flat->flat_no }}"><x-icon name="tag" size="h-4 w-4" /></button>
-            @endcan
-            @if (! $flat->isLockedBySales() && $actor->can('changeStatus', $flat))
-                <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('flats.status.edit', $flat) }}" data-size="max-w-md" aria-label="Change status of {{ $flat->flat_no }}"><x-icon name="refresh" size="h-4 w-4" /></button>
-            @endif
+            @php
+                $canPrice = $actor->can('changePrice', $flat);
+                $canStatus = ! $flat->isLockedBySales() && $actor->can('changeStatus', $flat);
+                $canDelete = $actor->can('delete', $flat);
+                $item = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted';
+            @endphp
             @can('update', $flat)
                 <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('flats.edit', $flat) }}" data-size="max-w-3xl" aria-label="Edit {{ $flat->flat_no }}"><x-icon name="edit" size="h-4 w-4" /></button>
             @endcan
-            @can('delete', $flat)
-                <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-row-action="delete" data-url="{{ route('flats.destroy', $flat) }}" data-confirm="Delete unit {{ $flat->flat_no }}?" data-confirm-text="Delete" aria-label="Delete {{ $flat->flat_no }}"><x-icon name="trash" size="h-4 w-4" /></button>
-            @endcan
+            @if ($canPrice || $canStatus || $canDelete)
+                <button type="button" class="btn btn-ghost btn-icon" data-menu-button aria-controls="unit-menu-{{ $flat->public_id }}" aria-expanded="false" aria-label="More for {{ $flat->flat_no }}"><x-icon name="more" size="h-4 w-4" /></button>
+                <div id="unit-menu-{{ $flat->public_id }}" data-menu data-menu-float hidden class="fixed z-30 w-48 rounded-card border border-line bg-surface p-1.5 text-left shadow-raised">
+                    @if ($canPrice)<button type="button" class="{{ $item }} text-ink-700" data-remote-modal="{{ route('flats.price.edit', $flat) }}" data-size="max-w-md"><x-icon name="tag" size="h-4 w-4 text-ink-400" />Change Price</button>@endif
+                    @if ($canStatus)<button type="button" class="{{ $item }} text-ink-700" data-remote-modal="{{ route('flats.status.edit', $flat) }}" data-size="max-w-md"><x-icon name="refresh" size="h-4 w-4 text-ink-400" />Change Status</button>@endif
+                    @if ($canDelete)<button type="button" class="{{ $item }} text-danger-600" data-row-action="delete" data-url="{{ route('flats.destroy', $flat) }}" data-confirm="Delete unit {{ $flat->flat_no }}?" data-confirm-text="Delete"><x-icon name="trash" size="h-4 w-4" />Delete</button>@endif
+                </div>
+            @endif
         </td>
     </tr>
 @empty

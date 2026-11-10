@@ -89,12 +89,27 @@ export function initShell() {
             if (owns) {
                 menu.hidden = !menu.hidden;
                 menuButton.setAttribute('aria-expanded', String(!menu.hidden));
-            } else if (!menu.contains(event.target) || event.target.closest('[data-remote-modal], [data-action], a[href]')) {
+                if (!menu.hidden) float(menu, menuButton);
+            } else if (!menu.contains(event.target) || event.target.closest('[data-remote-modal], [data-action], [data-row-action], a[href]')) {
                 menu.hidden = true;
                 document.querySelector(`[aria-controls="${menu.id}"]`)?.setAttribute('aria-expanded', 'false');
             }
         });
     });
+
+    // Row menus sit inside scrolling tables, so they are placed on the viewport and follow their button.
+    const follow = () => document.querySelectorAll('[data-menu-float]:not([hidden])').forEach((menu) => {
+        const button = document.querySelector(`[aria-controls="${menu.id}"]`);
+        const box = button?.getBoundingClientRect();
+        if (box && box.bottom > 0 && box.top < window.innerHeight) {
+            float(menu, button);
+        } else {
+            menu.hidden = true;
+            button?.setAttribute('aria-expanded', 'false');
+        }
+    });
+    window.addEventListener('scroll', follow, { capture: true, passive: true });
+    window.addEventListener('resize', follow);
 
     document.addEventListener('keydown', (event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -109,4 +124,13 @@ export function initShell() {
             document.body.classList.remove('sidebar-open');
         }
     });
+}
+
+function float(menu, button) {
+    if (!menu.hasAttribute('data-menu-float')) return;
+    const anchor = button.getBoundingClientRect();
+    const { offsetWidth: width, offsetHeight: height } = menu;
+    const below = anchor.bottom + 6 + height <= window.innerHeight;
+    menu.style.top = `${below ? anchor.bottom + 6 : Math.max(8, anchor.top - height - 6)}px`;
+    menu.style.left = `${Math.max(8, Math.min(anchor.right - width, window.innerWidth - width - 8))}px`;
 }
