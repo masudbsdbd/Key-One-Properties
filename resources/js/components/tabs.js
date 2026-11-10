@@ -14,6 +14,7 @@ export function initTabs(root = document) {
                 if (panel) panel.hidden = !active;
             });
             if (focus) tab.focus();
+            if (list.scrollWidth > list.clientWidth) list.scrollLeft = Math.max(0, tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2);
             if (list.dataset.hash !== 'false') history.replaceState(null, '', `#${tab.dataset.tab || tab.id}`);
             tab.dispatchEvent(new CustomEvent('tab:shown', { bubbles: true }));
         };
@@ -28,8 +29,17 @@ export function initTabs(root = document) {
             });
         });
 
+        // A strip too long for the screen fades at the edge that still has tabs.
+        const edges = () => {
+            list.classList.toggle('more-right', list.scrollLeft + list.clientWidth < list.scrollWidth - 4);
+            list.classList.toggle('more-left', list.scrollLeft > 4);
+        };
+        list.addEventListener('scroll', edges, { passive: true });
+        window.addEventListener('resize', edges);
+
         const fromHash = tabs.find((t) => `#${t.dataset.tab || t.id}` === window.location.hash);
         select(fromHash || tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0]);
+        edges();
 
         if (list.dataset.hash !== 'false') {
             window.addEventListener('hashchange', () => {

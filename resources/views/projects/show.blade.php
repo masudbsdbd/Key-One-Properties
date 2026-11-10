@@ -2,7 +2,7 @@
     $user = auth()->user();
     $construction = Gate::allows('construction:view', $project);
     $tabs = array_filter([
-        'overview' => 'Overview', 'stages' => 'Stages & Progress',
+        'overview' => 'Overview', 'stages' => 'Stages',
         'packages' => $construction ? 'Work Packages' : null,
         'flats' => Route::has('projects.buildings.index') ? 'Units' : null,
         'labour' => $construction ? 'Labour' : null,
@@ -51,7 +51,7 @@
         @include('projects.partials._summary')
     </div>
 
-    <div class="mb-6 mt-8 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
+    <div class="mb-6 mt-8 flex gap-5 overflow-x-auto border-b border-line" role="tablist">
         @foreach ($tabs as $key => $label)
             <button type="button" role="tab" class="tab" id="tab-{{ $key }}" data-tab="{{ $key }}" aria-controls="panel-{{ $key }}">{{ $label }}@if ($pending[$key] ?? 0)<span class="badge badge-warning ml-1.5 h-5 px-1.5" data-tooltip="Awaiting approval">{{ $pending[$key] }}</span>@endif</button>
         @endforeach
@@ -61,7 +61,7 @@
     <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="space-y-6">
         <div class="grid items-start gap-6 lg:grid-cols-3">
             <x-card title="Stages" :padded="false" class="min-w-0 lg:col-span-2">
-                <x-slot:actions><a href="#stages" class="text-[13px] font-medium text-accent-700 hover:underline">Stages & Progress</a></x-slot:actions>
+                <x-slot:actions><a href="#stages" class="text-[13px] font-medium text-accent-700 hover:underline">All Stages</a></x-slot:actions>
                 @if ($project->stages->isEmpty())
                     <x-empty-state icon="layers" title="No stages" />
                 @else

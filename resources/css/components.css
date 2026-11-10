@@ -133,6 +133,10 @@
     .filter-row > [data-period] { flex: 0 1 auto; max-width: none; }
     .filter-row > input[type='hidden'] { display: none; }
 
+    [role='tablist'].more-right { mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent); }
+    [role='tablist'].more-left { mask-image: linear-gradient(to left, #000 calc(100% - 3rem), transparent); }
+    [role='tablist'].more-left.more-right { mask-image: linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent); }
+
     /* Table / Cards switch */
     .view-switch { @apply inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-ink-600 transition-colors hover:text-ink-900; }
     .view-switch.is-active { @apply bg-sidebar text-white hover:text-white; }
