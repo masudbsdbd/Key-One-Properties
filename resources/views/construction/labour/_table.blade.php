@@ -1,7 +1,6 @@
 <x-data-table summary :selectable="auth()->user()->can('construction.labour.approve')" :url="route('labour.table', $project ? ['project' => $project->public_id] : [])" sort="date" dir="desc" search="Search entry number or notes" :columns="array_values(array_filter([
-    ['label' => 'Entry'],
+    ['label' => 'Entry', 'sort' => 'date'],
     $project ? null : ['label' => 'Project'],
-    ['label' => 'Date', 'sort' => 'date'],
     ['label' => 'Labour'],
     ['label' => 'Work Package'],
     ['label' => 'Amount', 'sort' => 'amount', 'class' => 'text-right'],

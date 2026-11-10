@@ -4,11 +4,10 @@
     @php($canApprove = $actor->can('construction:labour-approve', $entry->project))
     <tr>
         @if ($selectable ?? false)<td>@if ($canApprove && $entry->status === 'submitted')<input type="checkbox" class="form-check" value="{{ $entry->public_id }}" data-select-row aria-label="Select {{ $entry->entry_no }}">@endif</td>@endif
-        <td class="whitespace-nowrap"><p class="font-medium text-ink-900">{{ $entry->entry_no }}</p>@if ($entry->creator)<p class="text-[13px] text-ink-500">By {{ $entry->creator->name }}</p>@endif</td>
+        <td class="whitespace-nowrap"><p class="font-medium text-ink-900">{{ $entry->entry_no }}</p><p class="text-[13px] text-ink-500">{{ App\Support\Format::date($entry->work_date) }}@if ($entry->creator) · By {{ $entry->creator->name }}@endif</p></td>
         @if ($showProject)<td class="whitespace-nowrap text-ink-600"><x-ref :to="$entry->project">{{ $entry->project->name }}</x-ref></td>@endif
-        <td class="whitespace-nowrap">{{ App\Support\Format::date($entry->work_date) }}</td>
         <td class="whitespace-nowrap">{{ $types[$entry->labour_type] ?? $entry->labour_type }}<span class="block text-[13px] text-ink-500">{{ $entry->headcount }} {{ Str::plural('worker', $entry->headcount) }} × {{ $days = rtrim(rtrim($entry->units, '0'), '.') }} {{ (float) $days === 1.0 ? 'day' : 'days' }} @ {{ App\Support\Format::money($entry->rate, false) }}</span></td>
-        <td class="text-ink-600">@if ($entry->workPackage)<span class="font-medium text-ink-800">{{ $entry->workPackage->code }}</span><span class="block max-w-40 truncate text-[12px] text-ink-500">{{ $entry->workPackage->name }}</span>@else — @endif</td>
+        <td class="text-ink-600">@if ($entry->workPackage)<span class="font-medium text-ink-800">{{ $entry->workPackage->code }}</span><span class="block max-w-28 truncate text-[12px] text-ink-500" data-tooltip="{{ $entry->workPackage->name }}">{{ $entry->workPackage->name }}</span>@else — @endif</td>
         <td class="text-right"><x-money :value="$entry->total_amount" /></td>
         <td><x-status-badge :status="$entry->status" />@if ($entry->rejection_reason || $entry->reversal_reason)<span class="block max-w-32 truncate text-[13px] text-ink-500" data-tooltip="{{ $entry->rejection_reason ?? $entry->reversal_reason }}">{{ $entry->rejection_reason ?? $entry->reversal_reason }}</span>@endif</td>
         <td class="whitespace-nowrap text-right">
@@ -21,5 +20,5 @@
         </td>
     </tr>
 @empty
-    <tr><td colspan="{{ ($showProject ? 8 : 7) + (($selectable ?? false) ? 1 : 0) }}"><x-empty-state icon="users" title="No labour entries" /></td></tr>
+    <tr><td colspan="{{ ($showProject ? 7 : 6) + (($selectable ?? false) ? 1 : 0) }}"><x-empty-state icon="users" title="No labour entries" /></td></tr>
 @endforelse
