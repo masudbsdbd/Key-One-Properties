@@ -45,9 +45,26 @@
                     <x-button size="sm" variant="ghost" data-remote-modal="{{ route('installment-plans.reschedules.reject.form', [$plan, $pendingReschedule]) }}" data-size="max-w-md">Reject</x-button>
                 @endcan
             </x-slot:actions>
-            <div class="grid gap-6 md:grid-cols-2">
-                <div><p class="detail-label mb-2">Current</p>@foreach ($pendingReschedule->old_schedule_snapshot as $o)<p class="flex justify-between text-sm"><span>#{{ $o['sequence_no'] }} · {{ App\Support\Format::date(\Illuminate\Support\Carbon::parse($o['due_date'])) }}</span><x-money :value="$o['principal_outstanding']" /></p>@endforeach</div>
-                <div><p class="detail-label mb-2">Proposed</p>@foreach ($pendingReschedule->new_schedule_snapshot as $n)<p class="flex justify-between text-sm"><span>{{ App\Support\Format::date(\Illuminate\Support\Carbon::parse($n['due_date'])) }}</span><x-money :value="$n['amount']" /></p>@endforeach</div>
+            @php
+                $sides = [
+                    'Current' => collect($pendingReschedule->old_schedule_snapshot)->map(fn ($o) => ['#'.$o['sequence_no'], $o['due_date'], $o['principal_outstanding']]),
+                    'Proposed' => collect($pendingReschedule->new_schedule_snapshot)->values()->map(fn ($n, $i) => [(string) ($i + 1), $n['due_date'], $n['amount']]),
+                ];
+            @endphp
+            <div class="grid items-start gap-6 md:grid-cols-2">
+                @foreach ($sides as $side => $lines)
+                    <div class="overflow-hidden rounded-card border border-line">
+                        <p class="flex items-baseline justify-between gap-3 bg-surface-muted px-4 py-2.5 text-sm"><span class="font-semibold text-ink-900">{{ $side }}</span><span class="text-ink-500">{{ $lines->count() }} installments</span></p>
+                        <table class="w-full text-sm">
+                            <tbody class="divide-y divide-line">
+                                @foreach ($lines as [$no, $due, $amount])
+                                    <tr><td class="w-12 px-4 py-2 tabular-nums text-ink-500">{{ $no }}</td><td class="px-2 py-2">{{ App\Support\Format::date(\Illuminate\Support\Carbon::parse($due)) }}</td><td class="px-4 py-2 text-right"><x-money :value="$amount" /></td></tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot><tr class="border-t border-line font-semibold text-ink-900"><td colspan="2" class="px-4 py-2.5">Total</td><td class="px-4 py-2.5 text-right"><x-money :value="App\Support\Money::add('0', ...$lines->map(fn ($l) => (string) $l[2])->all())" /></td></tr></tfoot>
+                        </table>
+                    </div>
+                @endforeach
             </div>
             <p class="mt-3 text-sm text-ink-500">{{ $pendingReschedule->reason }} · {{ $pendingReschedule->requester->name }}</p>
         </x-card>
