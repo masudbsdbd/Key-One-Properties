@@ -9,8 +9,10 @@ use App\Models\WorkPackage;
 use App\Support\Ajax;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class MilestoneController extends Controller
 {
@@ -20,7 +22,7 @@ class MilestoneController extends Controller
 
         return Ajax::success(null, ['html' => view('construction.milestones._list', [
             'project' => $project,
-            'milestones' => $project->milestones()->with('workPackage:id,code,name')->get(),
+            'milestones' => $project->milestones()->with(['workPackage:id,code,name', 'changes'])->get(),
         ])->render()]);
     }
 
@@ -52,9 +54,22 @@ class MilestoneController extends Controller
     public function update(Request $request, Project $project, Milestone $milestone): JsonResponse
     {
         Gate::authorize('construction:manage', $project);
+        $from = $milestone->planned_at->toDateString();
         $milestone->fill($this->validated($request));
         $milestone->work_package_id = $this->packageId($request, $project);
-        $milestone->save();
+        $moved = $milestone->planned_at->toDateString() !== $from;
+        $reason = trim((string) $request->input('reschedule_reason'));
+        if ($moved && $reason === '') {
+            throw ValidationException::withMessages(['reschedule_reason' => 'Enter why the date moved.']);
+        }
+        $request->validate(['reschedule_reason' => ['nullable', 'string', 'max:255']]);
+
+        DB::transaction(function () use ($milestone, $moved, $from, $reason, $request) {
+            $milestone->save();
+            if ($moved) {
+                $milestone->changes()->create(['from_date' => $from, 'to_date' => $milestone->planned_at->toDateString(), 'reason' => $reason, 'changed_by' => $request->user()->id]);
+            }
+        });
 
         return Ajax::success('Milestone updated.');
     }

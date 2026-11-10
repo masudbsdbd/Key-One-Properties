@@ -68,4 +68,26 @@ class MilestoneTest extends TestCase
         $this->assertSame('Done 3 days late', $milestone->timing()['label']);
         $this->actingAs($this->manager)->ajax()->post(route('construction.milestones.complete', [$this->project, $milestone]))->assertStatus(409);
     }
+
+    public function test_moving_a_milestone_keeps_the_first_date_and_needs_a_reason(): void
+    {
+        $milestone = $this->milestone('2026-12-15');
+        $this->assertSame('2026-12-15', $milestone->original_planned_at->toDateString());
+        $update = fn (array $extra) => $this->actingAs($this->manager)->ajax()->put(route('construction.milestones.update', [$this->project, $milestone]),
+            ['title' => 'Roof cast', 'status' => 'pending', ...$extra]);
+
+        $update(['planned_at' => '2027-01-15'])->assertStatus(422)->assertJsonPath('errors.reschedule_reason.0', 'Enter why the date moved.');
+        $update(['planned_at' => '2026-12-15', 'title' => 'Roof slab cast'])->assertOk();
+        $update(['planned_at' => '2027-01-15', 'reschedule_reason' => 'Rain'])->assertOk();
+        $update(['planned_at' => '2027-02-15', 'reschedule_reason' => 'Rod supply late'])->assertOk();
+
+        $milestone->refresh();
+        $this->assertSame(['2026-12-15', '2027-02-15', 62], [$milestone->original_planned_at->toDateString(), $milestone->planned_at->toDateString(), $milestone->slip()]);
+        $this->assertSame(['Rain', 'Rod supply late'], $milestone->changes->pluck('reason')->all());
+        $this->assertSame($this->manager->id, $milestone->changes->first()->changed_by);
+
+        $html = $this->actingAs($this->manager)->ajax()->get(route('construction.milestones.index', $this->project))->json('data.html');
+        $this->assertStringContainsString('Moved 2× · +62 days', $html);
+        $this->assertStringContainsString('Rod supply late', $html);
+    }
 }

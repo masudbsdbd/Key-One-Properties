@@ -25,6 +25,15 @@
                         @if ($milestone->completed_at) · Done {{ App\Support\Format::date($milestone->completed_at) }}@endif
                         @if ($milestone->workPackage) · {{ $milestone->workPackage->code }}@endif
                     </p>
+                    @if ($milestone->changes->isNotEmpty())
+                        @php
+                            $slip = $milestone->slip();
+                            $history = $milestone->changes->map(fn ($c) => App\Support\Format::date($c->from_date).' → '.App\Support\Format::date($c->to_date).': '.$c->reason)->implode(' · ');
+                        @endphp
+                        <span class="mt-1 inline-flex items-center gap-1 rounded-full bg-warning-50 px-2 py-0.5 text-[12px] font-medium text-warning-600" tabindex="0" data-tooltip="{{ $history }}">
+                            Moved {{ $milestone->changes->count() }}× · {{ $slip >= 0 ? '+' : '−' }}{{ abs($slip) }} {{ \Illuminate\Support\Str::plural('day', abs($slip)) }} · first plan {{ App\Support\Format::date($milestone->original_planned_at) }}
+                        </span>
+                    @endif
                 </div>
                 @php $timing = $milestone->timing(); @endphp
                 <x-badge :tone="$timing['tone']" class="shrink-0">{{ $timing['label'] }}</x-badge>

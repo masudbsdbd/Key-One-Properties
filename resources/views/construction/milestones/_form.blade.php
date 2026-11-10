@@ -6,6 +6,9 @@
     <x-form.select name="work_package" label="Work Package" :options="$packages" :selected="$milestone->workPackage?->public_id" placeholder="None" />
     <x-form.select name="status" label="Status" :options="App\Models\Milestone::STATUSES" :selected="$milestone->status" required />
     <x-form.input name="completed_at" type="date" label="Completed On" :value="$milestone->completed_at?->toDateString()" />
+    @if ($milestone->exists)
+        <x-form.input name="reschedule_reason" label="Reason for Date Change" maxlength="255" wrapper-class="sm:col-span-2" />
+    @endif
     <x-form.actions class="sm:col-span-2 mt-0">
         <x-button variant="secondary" data-modal-close>Cancel</x-button>
         <x-button type="submit" icon="check">Save</x-button>

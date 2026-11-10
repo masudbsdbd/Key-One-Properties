@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -24,7 +25,23 @@ class Milestone extends Model
 
     protected function casts(): array
     {
-        return ['planned_at' => 'date', 'completed_at' => 'date'];
+        return ['planned_at' => 'date', 'original_planned_at' => 'date', 'completed_at' => 'date'];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(fn (Milestone $m) => $m->original_planned_at ??= $m->planned_at);
+    }
+
+    public function changes(): HasMany
+    {
+        return $this->hasMany(MilestoneChange::class)->orderBy('id');
+    }
+
+    /** Days the current plan sits after the first plan; negative when it was brought forward. */
+    public function slip(): int
+    {
+        return $this->original_planned_at ? (int) self::day($this->original_planned_at)->diffInDays(self::day($this->planned_at), false) : 0;
     }
 
     public function getActivitylogOptions(): LogOptions
