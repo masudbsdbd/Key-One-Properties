@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasPublicId;
+use App\Support\Dates;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -68,6 +69,14 @@ class ContractorBill extends Model
     }
 
     /** Ledger charge: what becomes payable (advance is settled separately in the ledger). */
+    public const OLD_DAYS = 30;
+
+    /** Approved bills still unpaid more than OLD_DAYS after their bill date. */
+    public function scopeLongUnpaid(Builder $query): Builder
+    {
+        return $query->where('contractor_bills.status', 'approved')->whereDate('bill_date', '<', Dates::today()->subDays(self::OLD_DAYS)->toDateString());
+    }
+
     public function chargeAmount(): string
     {
         return Money::amount(Money::sub(Money::sub($this->gross_amount, $this->retention_amount), $this->other_deductions));

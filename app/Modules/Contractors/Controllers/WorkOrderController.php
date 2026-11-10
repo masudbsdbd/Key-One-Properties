@@ -100,6 +100,9 @@ class WorkOrderController extends Controller
             $query->where('project_id', $project->id);
         }
 
+        if ($request->input('settle') === '1') {
+            $query->readyToSettle();
+        }
         TableQuery::period($query, $request, 'start_date');
 
         return TableQuery::prepare($query, $request, ['wo_no', 'title'], ['date' => 'created_at', 'amount' => 'contract_amount'], 'date', 'desc');

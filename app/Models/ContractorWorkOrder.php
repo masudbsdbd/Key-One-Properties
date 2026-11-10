@@ -93,6 +93,15 @@ class ContractorWorkOrder extends Model
     }
 
     /** Measured value that counts against the contract (drafts included, rejected excluded). */
+    /** Approved, fully measured and billed, but not settled yet. */
+    public function scopeReadyToSettle(Builder $query): Builder
+    {
+        return $query->where('contractor_work_orders.status', 'approved')
+            ->whereDoesntHave('measurements', fn ($m) => $m->whereIn('status', ['draft', 'approved']))
+            ->whereDoesntHave('bills', fn ($b) => $b->where('status', 'draft'))
+            ->whereRaw("(SELECT COALESCE(SUM(m.measured_amount), 0) FROM contractor_measurements m WHERE m.work_order_id = contractor_work_orders.id AND m.status = 'billed') >= contractor_work_orders.contract_amount");
+    }
+
     public function measuredAmount(): string
     {
         return Money::amount((string) $this->measurements()->whereIn('status', ['draft', 'approved', 'billed'])->sum('measured_amount'));

@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\User;
 use App\Modules\Contractors\Services\ContractorService;
+use App\Support\Dashboard;
 use App\Support\Reconciliation\SubledgerReconciler;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -251,5 +252,26 @@ class ContractorServiceTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame('Only 100.00 of advance is unused.', $e->errors()['amount'][0]);
         }
+    }
+
+    public function test_dashboard_flags_old_unpaid_bills_and_work_orders_ready_to_settle(): void
+    {
+        $wo = $this->workOrder('1000', '10');
+        $first = $this->service->createBill($wo, [$this->measured($wo, '60', '10')], ['bill_date' => now()->subDays(45)->toDateString()], $this->engineer);
+        $this->service->approveBill($first, $this->manager);
+        $this->assertSame([], ContractorWorkOrder::query()->readyToSettle()->pluck('id')->all());
+
+        $last = $this->service->createBill($wo->fresh(), [$this->measured($wo, '40', '10')], ['bill_date' => now()->toDateString()], $this->engineer);
+        $this->service->approveBill($last, $this->manager);
+        $this->assertSame([$first->id], ContractorBill::query()->longUnpaid()->pluck('id')->all());
+        $this->assertSame([$wo->id], ContractorWorkOrder::query()->readyToSettle()->pluck('id')->all());
+
+        $viewer = $this->userWith(['projects.view_all', 'contractors.view']);
+        $items = collect((new Dashboard($viewer))->get('attention')['items'])->keyBy('label');
+        $this->assertSame([1, '540.00'], [$items['Contractor bills unpaid 30+ days']['count'], $items['Contractor bills unpaid 30+ days']['amount']]);
+        $this->assertSame([1, '100.00'], [$items['Work orders ready to settle']['count'], $items['Work orders ready to settle']['amount']]);
+
+        $this->service->settle($wo->fresh(), now()->toDateString(), $this->engineer);
+        $this->assertSame([], ContractorWorkOrder::query()->readyToSettle()->pluck('id')->all());
     }
 }

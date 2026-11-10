@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\ContractorBill;
 use App\Models\ContractorPayment;
+use App\Models\ContractorWorkOrder;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\CustomerRefund;
@@ -145,6 +146,14 @@ class Dashboard
                 ->when($this->project, fn ($q) => $q->whereIn('goods_receipts.purchase_order_id', PurchaseOrder::query()->where('project_id', $this->project->id)->select('id'))));
             $items[] = ['label' => 'Goods not billed for '.Unbilled::ALERT_DAYS.'+ days', 'count' => $unbilled['receipts'], 'amount' => $unbilled['amount'],
                 'href' => route('purchase-orders.index', $this->filters(['unbilled' => 'late'])), 'tone' => 'warning', 'icon' => 'download'];
+        }
+        if ($u->can('contractors.view')) {
+            $old = ContractorBill::query()->visibleTo($u)->longUnpaid()->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->with('payments')->get();
+            $items[] = ['label' => 'Contractor bills unpaid '.ContractorBill::OLD_DAYS.'+ days', 'count' => $old->count(), 'amount' => Money::add('0', ...$old->map(fn ($b) => $b->outstanding())->all()),
+                'href' => route('contractor-bills.index', $this->filters(['old' => '1'])), 'tone' => 'danger', 'icon' => 'file'];
+            $settle = ContractorWorkOrder::query()->visibleTo($u)->readyToSettle()->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->get();
+            $items[] = ['label' => 'Work orders ready to settle', 'count' => $settle->count(), 'amount' => Money::add('0', ...$settle->map(fn ($w) => $w->retentionHeld())->all()),
+                'href' => route('work-orders.index', $this->filters(['settle' => '1'])), 'tone' => 'warning', 'icon' => 'check-square'];
         }
         if ($u->can('materials.view')) {
             $warehouses = Warehouse::query()->visibleTo($u)->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->select('warehouses.id');

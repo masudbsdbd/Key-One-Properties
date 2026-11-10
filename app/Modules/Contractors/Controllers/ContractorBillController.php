@@ -95,6 +95,9 @@ class ContractorBillController extends Controller
         if ($project = Project::findByPublicId($request->input('project'))) {
             $query->where('project_id', $project->id);
         }
+        if ($request->input('old') === '1') {
+            $query->longUnpaid();
+        }
         TableQuery::period($query, $request, 'bill_date');
 
         return TableQuery::prepare($query, $request, ['bill_no'], ['date' => 'bill_date', 'net' => 'net_payable'], 'date', 'desc');

@@ -8,6 +8,7 @@
         ['label' => 'Work Order', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Project'], ['label' => 'Contract', 'class' => 'text-right', 'sort' => 'amount'], ['label' => 'Due', 'class' => 'text-right'], ['label' => 'Progress'], ['label' => 'Status'],
     ]">
         <x-slot:filters>
+            <input type="hidden" name="settle" data-table-filter>
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\ContractorWorkOrder::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
             <div class="w-56"><select name="contractor" class="form-control" data-table-filter data-select data-select-url="{{ route('options.contractors') }}" data-placeholder="All contractors" aria-label="Contractor"><option value=""></option></select></div>
             <div class="w-56"><select name="project" class="form-control" data-table-filter data-select data-select-url="{{ route('options.projects') }}" data-placeholder="All projects" aria-label="Project"><option value=""></option></select></div>
