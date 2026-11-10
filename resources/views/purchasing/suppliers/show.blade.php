@@ -37,11 +37,21 @@
                     <div class="min-w-0"><p class="truncate font-semibold text-ink-900">{{ $supplier->name }}</p><p class="text-sm text-ink-500">{{ $supplier->supplier_code }}</p><x-status-badge :status="$supplier->status" class="mt-1" /></div>
                 </div>
                 <dl class="mt-5 space-y-3 border-t border-line pt-5 text-sm">
-                    <div class="flex gap-3"><x-icon name="users" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Contact</dt><dd class="text-ink-900">{{ $supplier->contact_person ?: '—' }}</dd></div>
-                    <div class="flex gap-3"><x-icon name="phone" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Mobile</dt><dd class="text-ink-900">{{ $supplier->mobile ? App\Support\Phone::display($supplier->mobile) : '—' }}</dd></div>
-                    <div class="flex gap-3"><x-icon name="mail" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Email</dt><dd class="break-all text-ink-900">{{ $supplier->email ?: '—' }}</dd></div>
-                    <div class="flex gap-3"><x-icon name="map-pin" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Address</dt><dd class="text-ink-900">{{ $supplier->address ?: '—' }}</dd></div>
-                    <div class="flex gap-3"><x-icon name="id-card" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">TIN / BIN</dt><dd class="text-ink-900">{{ $supplier->tax_id ?: '—' }}</dd></div>
+                    @if ($supplier->contact_person)
+                        <div class="flex gap-3"><x-icon name="users" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Contact</dt><dd class="text-ink-900">{{ $supplier->contact_person ?: '—' }}</dd></div>
+                    @endif
+                    @if ($supplier->mobile)
+                        <div class="flex gap-3"><x-icon name="phone" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Mobile</dt><dd class="text-ink-900">{{ $supplier->mobile ? App\Support\Phone::display($supplier->mobile) : '—' }}</dd></div>
+                    @endif
+                    @if ($supplier->email)
+                        <div class="flex gap-3"><x-icon name="mail" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Email</dt><dd class="break-all text-ink-900">{{ $supplier->email ?: '—' }}</dd></div>
+                    @endif
+                    @if ($supplier->address)
+                        <div class="flex gap-3"><x-icon name="map-pin" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Address</dt><dd class="text-ink-900">{{ $supplier->address ?: '—' }}</dd></div>
+                    @endif
+                    @if ($supplier->tax_id)
+                        <div class="flex gap-3"><x-icon name="id-card" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">TIN / BIN</dt><dd class="text-ink-900">{{ $supplier->tax_id ?: '—' }}</dd></div>
+                    @endif
                 </dl>
             </x-card>
             <x-card title="Payable Aging">

@@ -62,11 +62,21 @@
                 <div class="min-w-0"><p class="truncate font-semibold text-ink-900">{{ $contractor->name }}</p><p class="text-sm text-ink-500">{{ $contractor->contractor_code }}@if ($contractor->trade) · {{ $contractor->trade }}@endif</p><x-status-badge :status="$contractor->status" class="mt-1" /></div>
             </div>
             <dl class="mt-5 grid gap-3 border-t border-line pt-5 text-sm sm:grid-cols-2">
-                <div class="flex gap-3"><x-icon name="users" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Contact</dt><dd class="text-ink-900">{{ $contractor->contact_person ?: '—' }}</dd></div>
-                <div class="flex gap-3"><x-icon name="phone" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Mobile</dt><dd class="text-ink-900">{{ $contractor->mobile ? App\Support\Phone::display($contractor->mobile) : '—' }}</dd></div>
-                <div class="flex gap-3"><x-icon name="mail" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Email</dt><dd class="break-all text-ink-900">{{ $contractor->email ?: '—' }}</dd></div>
-                <div class="flex gap-3"><x-icon name="id-card" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">TIN</dt><dd class="text-ink-900">{{ $contractor->tax_id ?: '—' }}</dd></div>
-                <div class="flex gap-3 sm:col-span-2"><x-icon name="map-pin" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Address</dt><dd class="text-ink-900">{{ $contractor->address ?: '—' }}</dd></div>
+                @if ($contractor->contact_person)
+                    <div class="flex gap-3"><x-icon name="users" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Contact</dt><dd class="text-ink-900">{{ $contractor->contact_person ?: '—' }}</dd></div>
+                @endif
+                @if ($contractor->mobile)
+                    <div class="flex gap-3"><x-icon name="phone" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Mobile</dt><dd class="text-ink-900">{{ $contractor->mobile ? App\Support\Phone::display($contractor->mobile) : '—' }}</dd></div>
+                @endif
+                @if ($contractor->email)
+                    <div class="flex gap-3"><x-icon name="mail" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Email</dt><dd class="break-all text-ink-900">{{ $contractor->email ?: '—' }}</dd></div>
+                @endif
+                @if ($contractor->tax_id)
+                    <div class="flex gap-3"><x-icon name="id-card" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">TIN</dt><dd class="text-ink-900">{{ $contractor->tax_id ?: '—' }}</dd></div>
+                @endif
+                @if ($contractor->address)
+                    <div class="flex gap-3 sm:col-span-2"><x-icon name="map-pin" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Address</dt><dd class="text-ink-900">{{ $contractor->address ?: '—' }}</dd></div>
+                @endif
             </dl>
         </x-card>
     </section>

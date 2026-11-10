@@ -72,7 +72,9 @@
         <x-card title="Contract">
             <dl class="space-y-2 text-sm">
                 <div class="flex justify-between"><dt class="text-ink-500">Sale Price</dt><dd><x-money :value="$sale->sale_price" /></dd></div>
-                <div class="flex justify-between"><dt class="text-ink-500">Discount</dt><dd><x-money :value="'-'.$sale->discount_amount" muted /></dd></div>
+                @if ((float) $sale->discount_amount)
+                    <div class="flex justify-between"><dt class="text-ink-500">Discount</dt><dd><x-money :value="'-'.$sale->discount_amount" muted /></dd></div>
+                @endif
                 <div class="flex justify-between border-t border-line pt-2 font-semibold text-ink-900"><dt>Contract Value</dt><dd><x-money :value="$sale->net_contract_value" /></dd></div>
                 <div class="flex justify-between"><dt class="text-ink-500">Received</dt><dd><x-money :value="$refundable" /></dd></div>
                 @if ($balance !== null)<div class="flex justify-between"><dt class="text-ink-500">Customer Balance</dt><dd class="font-medium"><x-money :value="$balance" /></dd></div>@endif

@@ -26,23 +26,27 @@
             </div>
             <dl class="mt-6 space-y-4 border-t border-line pt-5">
                 <div class="flex items-start gap-3"><x-icon name="phone" size="h-4 w-4 mt-0.5 text-ink-400" /><div><dt class="sr-only">Mobile</dt><dd class="text-sm text-ink-900">{{ App\Support\Phone::display($customer->primary_mobile) }}</dd>@if ($customer->alternate_mobile)<dd class="text-[13px] text-ink-500">{{ App\Support\Phone::display($customer->alternate_mobile) }}</dd>@endif</div></div>
-                <div class="flex items-start gap-3"><x-icon name="mail" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Email</dt><dd class="text-sm text-ink-900 break-all">{{ $customer->email ?: '—' }}</dd></div>
-                <div class="flex items-start gap-3"><x-icon name="briefcase" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Occupation</dt><dd class="text-sm text-ink-900">{{ $customer->occupation ?: '—' }}</dd></div>
-                <div class="flex items-start gap-3"><x-icon name="calendar" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Date of birth</dt><dd class="text-sm text-ink-900">{{ App\Support\Format::date($customer->date_of_birth) }}</dd></div>
+                @if ($customer->email)
+                    <div class="flex items-start gap-3"><x-icon name="mail" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Email</dt><dd class="text-sm text-ink-900 break-all">{{ $customer->email ?: '—' }}</dd></div>
+                @endif
+                @if ($customer->occupation)
+                    <div class="flex items-start gap-3"><x-icon name="briefcase" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Occupation</dt><dd class="text-sm text-ink-900">{{ $customer->occupation ?: '—' }}</dd></div>
+                @endif
+                @if ($customer->date_of_birth)
+                    <div class="flex items-start gap-3"><x-icon name="calendar" size="h-4 w-4 mt-0.5 text-ink-400" /><dt class="sr-only">Date of birth</dt><dd class="text-sm text-ink-900">{{ App\Support\Format::date($customer->date_of_birth) }}</dd></div>
+                @endif
+                @if ($customer->nid_or_passport)
                 <div class="flex items-start gap-3">
                     <x-icon name="id-card" size="h-4 w-4 mt-0.5 text-ink-400" />
                     <dt class="sr-only">NID / Passport</dt>
                     <dd class="flex items-center gap-2 text-sm text-ink-900">
-                        @if ($customer->nid_or_passport)
                             <span class="font-mono" data-identity-value>{{ auth()->user()->can('viewSensitive', $customer) ? $customer->maskedIdentity() : '••••••••' }}</span>
                             @can('viewSensitive', $customer)
                                 <button type="button" class="btn btn-ghost btn-sm h-7 px-2" data-reveal-identity data-url="{{ route('customers.identity', $customer) }}"><x-icon name="eye" size="h-4 w-4" />Show</button>
                             @endcan
-                        @else
-                            —
-                        @endif
                     </dd>
                 </div>
+                @endif
             </dl>
             <p class="mt-6 border-t border-line pt-4 text-[13px] text-ink-500">{{ $customer->creator?->name }} · {{ App\Support\Format::datetime($customer->created_at) }}</p>
         </x-card>

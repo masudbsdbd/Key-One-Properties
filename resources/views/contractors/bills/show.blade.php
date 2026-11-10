@@ -61,9 +61,15 @@
                 <dl class="space-y-2 text-sm">
                     <div class="flex justify-between"><dt class="text-ink-500">{{ $release ? 'Retention Released' : 'Gross' }}</dt><dd><x-money :value="$bill->gross_amount" /></dd></div>
                     @unless ($release)
-                        <div class="flex justify-between"><dt class="text-ink-500">Advance Adjustment</dt><dd><x-money :value="'-'.$bill->advance_adjustment" muted /></dd></div>
-                        <div class="flex justify-between"><dt class="text-ink-500">Retention</dt><dd><x-money :value="'-'.$bill->retention_amount" muted /></dd></div>
-                        <div class="flex justify-between"><dt class="text-ink-500">Other Deductions @if ($bill->deduction_note)<span class="text-ink-400">· {{ $bill->deduction_note }}</span>@endif</dt><dd><x-money :value="'-'.$bill->other_deductions" muted /></dd></div>
+                        @if ((float) $bill->advance_adjustment)
+                            <div class="flex justify-between"><dt class="text-ink-500">Advance Adjustment</dt><dd><x-money :value="'-'.$bill->advance_adjustment" muted /></dd></div>
+                        @endif
+                        @if ((float) $bill->retention_amount)
+                            <div class="flex justify-between"><dt class="text-ink-500">Retention</dt><dd><x-money :value="'-'.$bill->retention_amount" muted /></dd></div>
+                        @endif
+                        @if ((float) $bill->other_deductions)
+                            <div class="flex justify-between"><dt class="text-ink-500">Other Deductions @if ($bill->deduction_note)<span class="text-ink-400">· {{ $bill->deduction_note }}</span>@endif</dt><dd><x-money :value="'-'.$bill->other_deductions" muted /></dd></div>
+                        @endif
                     @endunless
                     <div class="flex justify-between border-t border-line pt-2 font-semibold text-ink-900"><dt>Net Payable</dt><dd><x-money :value="$bill->net_payable" /></dd></div>
                     <div class="flex justify-between"><dt class="text-ink-500">Paid</dt><dd><x-money :value="$paid" /></dd></div>
