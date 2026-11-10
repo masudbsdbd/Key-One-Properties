@@ -142,6 +142,7 @@
     .summary-tile.st-danger .summary-tile-icon { @apply bg-danger-50 text-danger-600; }
     .summary-tile.st-violet .summary-tile-icon { @apply bg-violet-50 text-violet-600; }
     .summary-tile.st-accent .summary-tile-icon { @apply bg-accent-50 text-accent-700; }
+    .card-link { @apply transition-shadow hover:shadow-md hover:ring-1 hover:ring-accent-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500; }
     .summary-tile.is-clickable { @apply hover:border-accent-300 hover:bg-accent-50/40; }
     .summary-tile.is-active { @apply border-accent-500 bg-accent-50/60 ring-1 ring-accent-500; }
 

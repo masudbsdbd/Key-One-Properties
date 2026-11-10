@@ -20,10 +20,12 @@ use App\Models\Investor;
 use App\Models\InvestorCapitalTransaction;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorProfitDistribution;
+use App\Models\LabourEntry;
 use App\Models\MaterialBorrow;
 use App\Models\MaterialTransfer;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
+use App\Models\StockIssue;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
@@ -70,6 +72,12 @@ final class RecordLink
     public static function url(?Model $record, ?User $user = null): ?string
     {
         $user ??= auth()->user();
+        if ($user && $record instanceof LabourEntry) {
+            return Gate::forUser($user)->allows('construction:view', $record->project) ? route('labour.index', ['search' => $record->entry_no]) : null;
+        }
+        if ($user && $record instanceof StockIssue) {
+            return $user->can('materials.view') && $record->warehouse?->isVisibleTo($user) ? route('stock.movements', ['issue' => $record->public_id]) : null;
+        }
         if (! $record || ! $user || ! $record->exists || ! isset(self::MAP[$record::class]) || $record->getRouteKey() === null) {
             return null;
         }

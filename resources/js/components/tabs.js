@@ -30,5 +30,14 @@ export function initTabs(root = document) {
 
         const fromHash = tabs.find((t) => `#${t.dataset.tab || t.id}` === window.location.hash);
         select(fromHash || tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0]);
+
+        if (list.dataset.hash !== 'false') {
+            window.addEventListener('hashchange', () => {
+                const tab = tabs.find((t) => `#${t.dataset.tab || t.id}` === window.location.hash);
+                if (!tab) return;
+                select(tab);
+                list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
     });
 }

@@ -21,6 +21,18 @@ class BladeTemplatesTest extends TestCase
         $this->assertSame([], $glued);
     }
 
+    public function test_no_inline_php_directive_comes_before_a_php_block(): void
+    {
+        $mixed = collect(File::allFiles(resource_path('views')))
+            // Blade pairs the first @php with the next @endphp, so an inline @php(...) before a block swallows the template.
+            ->filter(fn ($f) => str_ends_with($f->getFilename(), '.blade.php') && str_contains($f->getContents(), '@endphp')
+                && preg_match('/@php\s*\(/', $f->getContents(), $inline, PREG_OFFSET_CAPTURE) && preg_match('/@php(?!\s*\()/', $f->getContents(), $block, PREG_OFFSET_CAPTURE)
+                && $inline[0][1] < $block[0][1])
+            ->map(fn ($f) => $f->getRelativePathname())->values()->all();
+
+        $this->assertSame([], $mixed);
+    }
+
     public function test_project_summary_counts_units_not_yet_released(): void
     {
         $floor = FlatFactory::floorFor();

@@ -43,6 +43,7 @@
     <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="space-y-6">
         <div class="grid items-start gap-6 lg:grid-cols-3">
             <x-card title="Stages" :padded="false" class="min-w-0 lg:col-span-2">
+                <x-slot:actions><a href="#stages" class="text-[13px] font-medium text-accent-700 hover:underline">Stages & Progress</a></x-slot:actions>
                 @if ($project->stages->isEmpty())
                     <x-empty-state icon="layers" title="No stages" />
                 @else
@@ -106,11 +107,12 @@
                         <div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">Spent</dt><dd class="font-semibold tabular-nums text-ink-900">{{ $fmt($c['spent']) }}</dd></div>
                         @if ($c['remaining'] !== null)<div class="flex items-center justify-between gap-4"><dt class="text-sm text-ink-500">{{ $c['over'] ? 'Over Budget' : 'Remaining Budget' }}</dt><dd @class(['font-semibold tabular-nums', 'text-danger-600' => $c['over'], 'text-ink-900' => ! $c['over']])>{{ $fmt(ltrim($c['remaining'], '-')) }}</dd></div>@endif
                     </dl>
-                    <a href="{{ route('construction.cost', $project) }}" class="mt-3 inline-block text-[13px] font-medium text-accent-700 hover:underline">Cost details</a>
+                    @isset($tabs['cost'])<a href="#cost" class="mt-3 inline-block text-[13px] font-medium text-accent-700 hover:underline">Cost details</a>@endisset
                 </x-card>
             @endif
 
             <x-card title="Latest Progress" :padded="false" class="min-w-0">
+                <x-slot:actions><a href="#stages" class="text-[13px] font-medium text-accent-700 hover:underline">All updates</a></x-slot:actions>
                 @forelse ($o['updates'] as $update)
                     <div class="border-b border-line px-5 py-3 last:border-0">
                         <div class="flex items-baseline justify-between gap-3"><p class="truncate text-sm font-medium text-ink-900">{{ $update->stage?->name ?? 'Project' }}</p><span class="shrink-0 text-[12px] tabular-nums text-ink-500">{{ (float) $update->previous_percent }}% → <span class="font-semibold text-ink-900">{{ (float) $update->progress_percent }}%</span></span></div>

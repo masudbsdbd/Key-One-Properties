@@ -1,8 +1,17 @@
-@php($total = App\Support\Money::add(...array_values($totals)))
+@php $total = App\Support\Money::add(...array_values($totals)); @endphp
 <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
     <x-stat-card label="Total Cost" :value="App\Support\Format::money($total, false)" icon="bar-chart" />
     @foreach (App\Models\ProjectCostAllocation::CATEGORIES as $key => $label)
-        <x-stat-card :label="$label" :value="App\Support\Format::money($totals[$key], false)" :icon="['material' => 'layers', 'labour' => 'users', 'contractor' => 'user', 'expense' => 'note'][$key]" />
+        @php
+            $tab = match ($key) {
+                'material' => auth()->user()->can('materials.view') ? '#materials' : null,
+                'labour' => Gate::allows('construction:view', $project) ? '#labour' : null,
+                'contractor' => auth()->user()->can('contractors.view') ? '#contractors' : null,
+                'expense' => auth()->user()->can('expenses.view.project') ? '#expenses' : null,
+                default => null,
+            };
+        @endphp
+        <x-stat-card :label="$label" :value="App\Support\Format::money($totals[$key], false)" :icon="['material' => 'layers', 'labour' => 'users', 'contractor' => 'user', 'expense' => 'note'][$key]" :href="$tab" />
     @endforeach
 </div>
 
@@ -22,7 +31,7 @@
                             <tr>
                                 <td class="whitespace-nowrap">{{ App\Support\Format::date($row->effective_at) }}</td>
                                 <td>{{ App\Models\ProjectCostAllocation::CATEGORIES[$row->cost_category] ?? $row->cost_category }}</td>
-                                <td class="text-ink-600">{{ Str::headline(class_basename($row->source_type)) }}@if ($row->reversal_of_id) <x-badge tone="danger">Reversal</x-badge>@endif</td>
+                                <td class="whitespace-nowrap"><x-ref :to="$row->source" class="font-medium text-ink-900">{{ $row->sourceLabel() }}</x-ref><span class="block text-[12px] text-ink-500">{{ Str::headline(class_basename($row->source_type)) }}</span>@if ($row->reversal_of_id) <x-badge tone="danger">Reversal</x-badge>@endif</td>
                                 <td class="text-right"><x-money :value="$row->amount" /></td>
                             </tr>
                         @endforeach

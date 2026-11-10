@@ -264,6 +264,9 @@ class StockController extends Controller
         if (array_key_exists($type = (string) $request->input('type'), StockMovement::TYPES)) {
             $query->where('movement_type', $type);
         }
+        if ($request->filled('issue')) {
+            $query->whereHasMorph('reference', [StockIssue::class], fn ($q) => $q->where('public_id', (string) $request->input('issue')));
+        }
 
         return TableQuery::period($query, $request, 'posted_at');
     }

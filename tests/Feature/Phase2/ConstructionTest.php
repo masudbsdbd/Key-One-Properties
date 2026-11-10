@@ -198,6 +198,9 @@ class ConstructionTest extends TestCase
 
         $this->assertSame('15300.00', CostAttribution::totals($this->project)['labour']);
         $this->assertDatabaseHas('financial_events', ['event_type' => 'labour.approved', 'amount' => '15300.00']);
+        $cost = $this->actingAs($this->manager)->ajax()->get(route('construction.cost', $this->project))->json('data.html');
+        $this->assertStringContainsString(e(route('labour.index', ['search' => $entry->entry_no])), $cost);
+        $this->assertStringContainsString('href="#labour"', $cost);
 
         $this->actingAs($this->manager)->ajax()->post(route('labour.reverse', $entry), ['reason' => 'Wrong project'])->assertOk();
         $this->assertSame('0.00', CostAttribution::totals($this->project)['labour']);
