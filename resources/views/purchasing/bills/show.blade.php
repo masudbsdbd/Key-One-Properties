@@ -55,8 +55,10 @@
                             @endforeach
                         </tbody>
                         <tfoot class="border-t border-line text-sm">
-                            <tr><td colspan="3" class="px-5 py-2 text-right text-ink-500">Subtotal</td><td class="px-5 py-2 text-right"><x-money :value="$bill->subtotal" /></td></tr>
-                            <tr><td colspan="3" class="px-5 py-2 text-right text-ink-500">VAT / Tax</td><td class="px-5 py-2 text-right"><x-money :value="$bill->tax_amount" muted /></td></tr>
+                            @if ((float) $bill->tax_amount)
+                                <tr><td colspan="3" class="px-5 py-2 text-right text-ink-500">Subtotal</td><td class="px-5 py-2 text-right"><x-money :value="$bill->subtotal" /></td></tr>
+                                <tr><td colspan="3" class="px-5 py-2 text-right text-ink-500">VAT / Tax</td><td class="px-5 py-2 text-right"><x-money :value="$bill->tax_amount" muted /></td></tr>
+                            @endif
                             <tr><td colspan="3" class="px-5 py-2 text-right font-semibold text-ink-900">Total</td><td class="px-5 py-2 text-right font-semibold"><x-money :value="$bill->total_amount" /></td></tr>
                         </tfoot>
                     </table>

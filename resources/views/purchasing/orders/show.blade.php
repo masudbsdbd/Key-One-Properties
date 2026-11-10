@@ -73,10 +73,10 @@
                             @endforeach
                         </tbody>
                         <tfoot class="border-t border-line text-sm">
-                            <tr><td colspan="4" class="px-5 pt-3 pb-1 text-right text-ink-500">Subtotal</td><td class="px-5 pt-3 pb-1 text-right"><x-money :value="$order->subtotal" /></td></tr>
+                            @if ((float) $order->discount_amount || (float) $order->tax_amount)<tr><td colspan="4" class="px-5 pt-3 pb-1 text-right text-ink-500">Subtotal</td><td class="px-5 pt-3 pb-1 text-right"><x-money :value="$order->subtotal" /></td></tr>@endif
                             @if ((float) $order->discount_amount)<tr><td colspan="4" class="px-5 py-1 text-right text-ink-500">Discount</td><td class="px-5 py-1 text-right"><x-money :value="'-'.$order->discount_amount" muted /></td></tr>@endif
                             @if ((float) $order->tax_amount)<tr><td colspan="4" class="px-5 py-1 text-right text-ink-500">Tax</td><td class="px-5 py-1 text-right"><x-money :value="$order->tax_amount" muted /></td></tr>@endif
-                            <tr><td colspan="4" class="px-5 pt-1 pb-3 text-right font-semibold text-ink-900">Total</td><td class="px-5 pt-1 pb-3 text-right font-semibold"><x-money :value="$order->total_amount" /></td></tr>
+                            <tr><td colspan="4" class="px-5 py-3 text-right font-semibold text-ink-900">Total</td><td class="px-5 py-3 text-right font-semibold"><x-money :value="$order->total_amount" /></td></tr>
                         </tfoot>
                     </table>
                 </div>

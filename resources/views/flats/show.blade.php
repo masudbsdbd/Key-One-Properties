@@ -44,20 +44,28 @@
         @include('flats._deal')
     @endif
 
-    <div class="mt-6 grid gap-6 xl:grid-cols-2">
-        <x-card title="Price History" :padded="false">
+    <div class="mt-6 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
+        @foreach (['prices' => ['Price History', $flat->priceHistory->count()], 'statuses' => ['Status History', $flat->statusHistory->count()], 'images' => ['Images', $flat->media->count()], 'activity' => ['Activity', null]] as $key => [$label, $count])
+            <button type="button" role="tab" class="tab" id="tab-{{ $key }}" data-tab="{{ $key }}" aria-controls="panel-{{ $key }}">{{ $label }}@if ($count !== null)<span class="ml-1.5 rounded-full bg-ink-900/5 px-1.5 text-[12px] font-medium text-ink-500">{{ $count }}</span>@endif</button>
+        @endforeach
+    </div>
+
+    <section id="panel-prices" role="tabpanel" aria-labelledby="tab-prices" class="mt-6">
+        <x-card :padded="false">
             <div data-partial-url="{{ route('flats.history', [$flat, 'type' => 'price']) }}">
                 @include('flats.partials._price-history', ['history' => $flat->priceHistory])
             </div>
         </x-card>
-        <x-card title="Status History" :padded="false">
+    </section>
+    <section id="panel-statuses" role="tabpanel" aria-labelledby="tab-statuses" class="mt-6" hidden>
+        <x-card :padded="false">
             <div data-partial-url="{{ route('flats.history', [$flat, 'type' => 'status']) }}">
                 @include('flats.partials._status-history', ['history' => $flat->statusHistory])
             </div>
         </x-card>
-    </div>
-
-    <x-card title="Images" class="mt-6">
+    </section>
+    <section id="panel-images" role="tabpanel" aria-labelledby="tab-images" class="mt-6" hidden>
+        <x-card title="Images">
         @can('manageMedia', $flat)
             <x-slot:actions>
                 <form method="POST" action="{{ route('flats.media.store', $flat) }}" enctype="multipart/form-data" data-ajax-form data-reset data-refresh-partials>
@@ -67,12 +75,14 @@
                 </form>
             </x-slot:actions>
         @endcan
-        <div data-partial-url="{{ route('flats.media.index', $flat) }}">
-            @include('flats.partials._media')
-        </div>
-    </x-card>
-
-    <x-card title="Activity" class="mt-6" :padded="false">
-        @include('projects.partials._activity', ['entries' => $activity])
-    </x-card>
+            <div data-partial-url="{{ route('flats.media.index', $flat) }}">
+                @include('flats.partials._media')
+            </div>
+        </x-card>
+    </section>
+    <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" class="mt-6" hidden>
+        <x-card :padded="false">
+            @include('projects.partials._activity', ['entries' => $activity])
+        </x-card>
+    </section>
 </x-layouts.app>
