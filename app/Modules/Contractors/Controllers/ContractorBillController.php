@@ -80,8 +80,9 @@ class ContractorBillController extends Controller
     {
         abort_unless($request->user()->can('contractors.view'), 403);
 
-        $query = ContractorBill::query()->visibleTo($request->user())->with(['contractor:id,public_id,name', 'workOrder:id,public_id,wo_no,title', 'project:id,code'])
-            ->withSum(['payments as paid' => fn ($q) => $q->where('status', 'approved')], 'amount');
+        $query = ContractorBill::query()->visibleTo($request->user())->with(['contractor:id,public_id,name', 'workOrder:id,public_id,wo_no,title,project_id,contractor_id,status', 'project:id,code'])
+            ->withSum(['payments as paid' => fn ($q) => $q->where('status', 'approved')], 'amount')
+            ->withSum(['payments as reserved' => fn ($q) => $q->whereIn('status', ['pending', 'approved'])], 'amount');
         if (array_key_exists($status = (string) $request->input('status'), ContractorBill::STATUSES)) {
             $query->where('status', $status);
         }

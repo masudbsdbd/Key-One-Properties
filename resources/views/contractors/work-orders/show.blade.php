@@ -126,7 +126,7 @@
             <div>
                 <h2 class="card-title mb-3">Bills</h2>
                 <x-data-table :url="route('contractor-bills.table', ['work_order' => $order->public_id])" sort="date" dir="desc" :search="false" :columns="[
-                    ['label' => 'Bill', 'sort' => 'date'], ['label' => 'Gross', 'class' => 'text-right'], ['label' => 'Net Payable', 'class' => 'text-right'], ['label' => 'Outstanding', 'class' => 'text-right'], ['label' => 'Status'],
+                    ['label' => 'Bill', 'sort' => 'date'], ['label' => 'Gross', 'class' => 'text-right'], ['label' => 'Net Payable', 'class' => 'text-right'], ['label' => 'Outstanding', 'class' => 'text-right'], ['label' => 'Status'], ['label' => '', 'class' => 'w-24'],
                 ]" />
             </div>
 

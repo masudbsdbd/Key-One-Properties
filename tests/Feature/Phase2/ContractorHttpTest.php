@@ -90,6 +90,9 @@ class ContractorHttpTest extends TestCase
         // Pay the bill; over-payment is rejected; duplicate submit makes one payment.
         $payable = $this->actingAs($this->engineer)->ajax()->get(route('work-orders.payable', ['work_order' => $wo->public_id]))->assertOk()->json('data.html');
         $this->assertStringContainsString($bill->public_id, $payable);
+        $payLink = e(route('contractor-payments.create', ['work_order' => $wo->public_id, 'bill' => $bill->public_id]));
+        $billRows = fn () => $this->actingAs($this->engineer)->ajax()->get(route('contractor-bills.table', ['work_order' => $wo->public_id]))->json('data.html');
+        $this->assertStringContainsString($payLink, $billRows());
         $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), [
             'work_order' => $wo->public_id, 'bill' => $bill->public_id, 'payment_date' => now()->toDateString(), 'amount' => '750.01', 'payment_method' => 'cash', 'idempotency_key' => (string) Str::uuid(),
         ])->assertStatus(422)->assertJsonValidationErrors('amount');
@@ -97,6 +100,8 @@ class ContractorHttpTest extends TestCase
         $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), $pay)->assertOk();
         $this->actingAs($this->engineer)->ajax()->post(route('contractor-payments.store'), $pay)->assertOk();
         $this->assertSame(2, ContractorPayment::query()->count());
+        // The pending payment covers the bill, so the row stops offering Pay.
+        $this->assertStringNotContainsString($payLink, $billRows());
         $this->actingAs($this->manager)->ajax()->post(route('contractor-payments.approve', ContractorPayment::query()->latest('id')->first()))->assertOk();
         $this->assertSame('0.00', $contractor->balance());
         $this->assertSame('paid', $bill->fresh()->status);

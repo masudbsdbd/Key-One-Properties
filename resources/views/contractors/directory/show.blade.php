@@ -38,7 +38,7 @@
     </section>
     <section id="panel-bills" role="tabpanel" aria-labelledby="tab-bills" hidden>
         <x-data-table :url="route('contractor-bills.table', ['contractor' => $contractor->public_id])" sort="date" dir="desc" search="Search bill number" :columns="[
-            ['label' => 'Bill', 'sort' => 'date'], ['label' => 'Work Order'], ['label' => 'Gross', 'class' => 'text-right'], ['label' => 'Net Payable', 'class' => 'text-right', 'sort' => 'net'], ['label' => 'Outstanding', 'class' => 'text-right'], ['label' => 'Status'],
+            ['label' => 'Bill', 'sort' => 'date'], ['label' => 'Work Order'], ['label' => 'Gross', 'class' => 'text-right'], ['label' => 'Net Payable', 'class' => 'text-right', 'sort' => 'net'], ['label' => 'Outstanding', 'class' => 'text-right'], ['label' => 'Status'], ['label' => '', 'class' => 'w-24'],
         ]" />
     </section>
     <section id="panel-payments" role="tabpanel" aria-labelledby="tab-payments" hidden>

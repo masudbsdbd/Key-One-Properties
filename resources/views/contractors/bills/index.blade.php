@@ -1,7 +1,7 @@
 <x-layouts.app title="Contractor Bills">
     <x-page-header title="Contractor Bills" :breadcrumbs="['Dashboard' => route('dashboard'), 'Contractor Bills' => null]" />
     <x-data-table summary data-table-history :url="route('contractor-bills.table')" sort="date" dir="desc" search="Search bill number" :columns="[
-        ['label' => 'Bill', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Work Order'], ['label' => 'Gross', 'class' => 'text-right'], ['label' => 'Net Payable', 'class' => 'text-right', 'sort' => 'net'], ['label' => 'Outstanding', 'class' => 'text-right'], ['label' => 'Status'],
+        ['label' => 'Bill', 'sort' => 'date'], ['label' => 'Contractor'], ['label' => 'Work Order'], ['label' => 'Gross', 'class' => 'text-right'], ['label' => 'Net Payable', 'class' => 'text-right', 'sort' => 'net'], ['label' => 'Outstanding', 'class' => 'text-right'], ['label' => 'Status'], ['label' => '', 'class' => 'w-24'],
     ]">
         <x-slot:filters>
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\ContractorBill::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
