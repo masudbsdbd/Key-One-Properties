@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Phase5;
 
+use App\Models\Customer;
 use App\Models\LedgerAccount;
 use App\Models\Project;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Modules\Accounting\Services\CashBank;
 use App\Modules\Accounting\Services\Ledger;
@@ -101,6 +103,32 @@ class FinancialReportsTest extends TestCase
         $this->actingAs($this->viewer)->get(route('accounting.projects', ['project' => $this->project->public_id]))->assertOk()->assertSee('Unit Financials');
 
         $this->actingAs($this->viewer)->get(route('accounting.overview'))->assertOk()->assertSee('Profit &amp; Loss', false)->assertSee('Balance Sheet')->assertSee('16,95,000')->assertSee('Automatic posting is off');
+    }
+
+    public function test_receivables_and_payables_list_each_party_and_agree_with_the_overview(): void
+    {
+        $admin = $this->superAdmin();
+        $customer = Customer::factory()->create(['full_name' => 'Rahim Uddin']);
+        $supplier = (new Supplier(['name' => 'Shah Cement', 'status' => 'active']))->forceFill(['supplier_code' => 'SUP-T-1', 'created_by' => $admin->id]);
+        $supplier->save();
+        $ledger = app(Ledger::class);
+        $post = fn (array $lines) => $ledger->post(['type' => 'manual', 'date' => Carbon::parse('2026-11-08'), 'narration' => 'Party test'], $lines, $admin);
+        $post([['account' => 'customer_receivable', 'debit' => '250000', 'customer_id' => $customer->id], ['account' => 'other_income', 'credit' => '250000']]);
+        $post([['account' => 'other_income', 'debit' => '40000'], ['account' => 'customer_advance', 'credit' => '40000', 'customer_id' => $customer->id]]);
+        $post([['account' => 'purchase_variance', 'debit' => '90000'], ['account' => 'supplier_payable', 'credit' => '90000', 'supplier_id' => $supplier->id]]);
+        $post([['account' => 'general_expense_other', 'debit' => '15000'], ['account' => 'expense_payable', 'credit' => '15000']]);
+
+        $receivables = $this->actingAs($this->viewer)->get(route('accounting.receivables'))->assertOk();
+        $receivables->assertSee('Rahim Uddin')->assertSee('2,50,000')->assertSee('40,000')->assertSee('2,10,000')->assertSee('No customer named')->assertSee('3,00,000');
+
+        $payables = $this->actingAs($this->viewer)->get(route('accounting.payables'))->assertOk();
+        $payables->assertSee('Shah Cement')->assertSee('90,000')->assertSee('Expenses Payable')->assertSee('To Pay Suppliers, Contractors and Others')->assertSee('1,05,000')->assertSee('Total with Investors');
+
+        // The overview tile and the report show the same amount to pay.
+        $this->actingAs($this->viewer)->get(route('accounting.overview'))->assertOk()->assertSee('1,05,000')->assertSee('Receivables')->assertSee('Payables');
+        $csv = $this->actingAs($this->viewer)->get(route('accounting.payables', ['format' => 'csv']))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Shah Cement', $csv);
+        $this->actingAs($this->userWith(['accounting.journal.view']))->get(route('accounting.receivables'))->assertForbidden();
     }
 
     public function test_reports_are_permissioned_and_projects_stay_in_scope(): void

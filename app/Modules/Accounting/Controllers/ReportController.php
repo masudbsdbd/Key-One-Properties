@@ -4,11 +4,15 @@ namespace App\Modules\Accounting\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cheque;
+use App\Models\Contractor;
+use App\Models\Customer;
 use App\Models\Flat;
+use App\Models\Investor;
 use App\Models\JournalEntry;
 use App\Models\LedgerAccount;
 use App\Models\MoneyAccount;
 use App\Models\Project;
+use App\Models\Supplier;
 use App\Modules\Accounting\Services\Balances;
 use App\Modules\Accounting\Services\EventPoster;
 use App\Modules\Accounting\Services\Ledger;
@@ -20,6 +24,7 @@ use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,7 +49,7 @@ class ReportController extends Controller
             'year' => $year,
             'cash' => Money::add('0', ...MoneyAccount::query()->pluck('ledger_account_id')->map(fn ($id) => Money::amount($net[$id] ?? 0))->all()),
             'receivable' => $natural('customer_receivable'),
-            'payable' => Money::add($natural('supplier_payable'), $natural('contractor_payable'), $natural('expense_payable'), $natural('wages_payable')),
+            'payable' => $this->payableSections(Ledger::today()->toDateString())['trade'],
             'pl' => $pl, 'plMonth' => $plMonth,
             'sheet' => $this->statements->balanceSheet(min($year['to'], Ledger::today()->toDateString())),
             'attention' => array_filter([
@@ -174,6 +179,95 @@ class ReportController extends Controller
         }
 
         return $this->page($request, 'projects', $project ? 'Unit Financials' : 'Project Financials', compact('range', 'rows', 'columns', 'totals', 'project'), ['project' => true]);
+    }
+
+    public function receivables(Request $request): View|JsonResponse|Response
+    {
+        abort_unless($request->user()->can('accounting.reports.view'), 403);
+        $range = Statements::range($request, 'all');
+        $figures = $this->statements->byParty('customer_id', ['customer_receivable', 'customer_advance'], $range['to']);
+        $customers = Customer::query()->whereIn('id', $figures->keys())->get(['id', 'public_id', 'full_name', 'customer_code', 'created_by'])->keyBy('id');
+        $rows = $figures->map(fn (array $row, int $id) => [
+            'party' => $customers[$id] ?? null, 'name' => $customers[$id]->full_name ?? 'No customer named', 'code' => $customers[$id]->customer_code ?? null,
+            'owes' => $row['customer_receivable'], 'advance' => $row['customer_advance'], 'net' => Money::amount(Money::sub($row['customer_receivable'], $row['customer_advance'])),
+        ])->sortByDesc(fn (array $r) => (float) $r['net'])->values();
+        $totals = collect(['owes', 'advance', 'net'])->mapWithKeys(fn ($k) => [$k => Money::add('0', ...$rows->pluck($k)->all())]);
+
+        if ($request->filled('format')) {
+            $this->exportable($request);
+
+            return Report::make('Receivables')->meta(['As of' => $range['to']])
+                ->columns(['Customer' => 'text', 'Code' => 'text', 'Owes Us' => 'money', 'Advance We Hold' => 'money', 'Net' => 'money'])
+                ->rows(fn () => $rows->map(fn ($r) => [$r['name'], $r['code'], $r['owes'], $r['advance'], $r['net']]))
+                ->totals(['Total', null, $totals['owes'], $totals['advance'], $totals['net']])->respond($request);
+        }
+
+        return $this->page($request, 'receivables', 'Receivables', compact('range', 'rows', 'totals'), ['asOf' => true]);
+    }
+
+    public function payables(Request $request): View|JsonResponse|Response
+    {
+        abort_unless($request->user()->can('accounting.reports.view'), 403);
+        $range = Statements::range($request, 'all');
+        ['sections' => $sections, 'trade' => $trade, 'total' => $total] = $this->payableSections($range['to']);
+
+        if ($request->filled('format')) {
+            $this->exportable($request);
+            $rows = collect();
+            foreach ($sections as [$label, $list]) {
+                $list->each(fn ($r) => $rows->push([$label, $r['name'], $r['amount']]));
+            }
+
+            return Report::make('Payables')->meta(['As of' => $range['to']])->columns(['Group' => 'text', 'Name' => 'text', 'We Owe' => 'money'])
+                ->rows(fn () => $rows)->totals(['Total', null, $total])->respond($request);
+        }
+
+        return $this->page($request, 'payables', 'Payables', compact('range', 'sections', 'trade', 'total'), ['asOf' => true]);
+    }
+
+    /**
+     * What the company owes on a date: suppliers, contractors and other dues first, then investors.
+     *
+     * @return array{sections: array<string, array{0: string, 1: Collection, 2: string}>, trade: string, total: string}
+     */
+    private function payableSections(string $to): array
+    {
+        $sum = fn (Collection $rows, string $key) => Money::add('0', ...$rows->pluck($key)->all());
+
+        $supplierFigures = $this->statements->byParty('supplier_id', ['supplier_payable'], $to);
+        $suppliers = Supplier::query()->whereIn('id', $supplierFigures->keys())->get()->keyBy('id');
+        $supplierRows = $supplierFigures->map(fn (array $row, int $id) => ['party' => $suppliers[$id] ?? null, 'name' => $suppliers[$id]->name ?? 'No supplier named', 'amount' => $row['supplier_payable']])
+            ->sortByDesc(fn ($r) => (float) $r['amount'])->values();
+
+        $contractorFigures = $this->statements->byParty('contractor_id', ['contractor_payable', 'retention_payable', 'contractor_advance'], $to);
+        $contractors = Contractor::query()->whereIn('id', $contractorFigures->keys())->get()->keyBy('id');
+        $contractorRows = $contractorFigures->map(fn (array $row, int $id) => [
+            'party' => $contractors[$id] ?? null, 'name' => $contractors[$id]->name ?? 'No contractor named',
+            'payable' => $row['contractor_payable'], 'retention' => $row['retention_payable'], 'advance' => $row['contractor_advance'],
+            'amount' => Money::amount(Money::sub(Money::add($row['contractor_payable'], $row['retention_payable']), $row['contractor_advance'])),
+        ])->sortByDesc(fn ($r) => (float) $r['amount'])->values();
+
+        $investorFigures = $this->statements->byParty('investor_id', ['investor_capital', 'investor_profit_payable'], $to);
+        $investors = Investor::query()->whereIn('id', $investorFigures->keys())->get()->keyBy('id');
+        $investorRows = $investorFigures->map(fn (array $row, int $id) => [
+            'party' => $investors[$id] ?? null, 'name' => $investors[$id]->name ?? 'No investor named',
+            'capital' => $row['investor_capital'], 'profit' => $row['investor_profit_payable'], 'amount' => Money::amount(Money::add($row['investor_capital'], $row['investor_profit_payable'])),
+        ])->sortByDesc(fn ($r) => (float) $r['amount'])->values();
+
+        $net = Balances::byAccount(null, $to);
+        $otherRows = collect(['expense_payable', 'wages_payable', 'tax_payable', 'loan_payable', 'grni'])->map(fn (string $key) => [
+            'account' => LedgerAccount::forKey($key), 'name' => LedgerAccount::forKey($key)->name, 'amount' => Balances::natural(LedgerAccount::forKey($key), $net[LedgerAccount::forKey($key)->id] ?? '0'),
+        ])->filter(fn ($r) => Money::cmp($r['amount'], 0) !== 0)->values();
+
+        $sections = [
+            'suppliers' => ['Suppliers', $supplierRows, $sum($supplierRows, 'amount')],
+            'contractors' => ['Contractors', $contractorRows, $sum($contractorRows, 'amount')],
+            'other' => ['Other', $otherRows, $sum($otherRows, 'amount')],
+            'investors' => ['Investors', $investorRows, $sum($investorRows, 'amount')],
+        ];
+        $trade = Money::amount(Money::add($sections['suppliers'][2], $sections['contractors'][2], $sections['other'][2]));
+
+        return ['sections' => $sections, 'trade' => $trade, 'total' => Money::amount(Money::add($trade, $sections['investors'][2]))];
     }
 
     public function ledger(Request $request): View|JsonResponse|Response

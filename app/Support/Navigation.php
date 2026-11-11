@@ -116,6 +116,8 @@ class Navigation
                     ['label' => 'Profit & Loss', 'icon' => 'bar-chart', 'route' => 'accounting.profit-loss', 'active' => 'accounting.profit-loss', 'can' => 'accounting.reports.view'],
                     ['label' => 'Balance Sheet', 'icon' => 'layers', 'route' => 'accounting.balance-sheet', 'active' => 'accounting.balance-sheet', 'can' => 'accounting.reports.view'],
                     ['label' => 'Cash Flow', 'icon' => 'repeat', 'route' => 'accounting.cash-flow', 'active' => 'accounting.cash-flow', 'can' => 'accounting.reports.view'],
+                    ['label' => 'Receivables', 'icon' => 'users', 'route' => 'accounting.receivables', 'active' => 'accounting.receivables', 'can' => 'accounting.reports.view'],
+                    ['label' => 'Payables', 'icon' => 'briefcase', 'route' => 'accounting.payables', 'active' => 'accounting.payables', 'can' => 'accounting.reports.view'],
                     ['label' => 'Project Financials', 'icon' => 'building', 'route' => 'accounting.projects', 'active' => 'accounting.projects', 'can' => 'accounting.reports.view'],
                     ['label' => 'Trial Balance', 'icon' => 'check-square', 'route' => 'accounting.trial-balance', 'active' => 'accounting.trial-balance', 'can' => 'accounting.reports.view'],
                     ['label' => 'General Ledger', 'icon' => 'book', 'route' => 'accounting.ledger', 'active' => 'accounting.ledger', 'can' => 'accounting.ledger.view'],

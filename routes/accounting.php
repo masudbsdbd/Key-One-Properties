@@ -33,6 +33,8 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('balance-sheet', 'balanceSheet')->name('balance-sheet');
         Route::get('cash-flow', 'cashFlow')->name('cash-flow');
         Route::get('project-financials', 'projects')->name('projects');
+        Route::get('receivables', 'receivables')->name('receivables');
+        Route::get('payables', 'payables')->name('payables');
     });
 
     Route::prefix('periods')->name('periods.')->controller(PeriodController::class)->group(function () {

@@ -6,6 +6,8 @@
         $user->can('accounting.reports.view') ? ['Balance Sheet', 'accounting.balance-sheet', 'layers', $money($sheet['total_assets']), 'Total assets · owes '.$money($sheet['total_liabilities'])] : null,
         $user->can('accounting.reports.view') ? ['Cash Flow', 'accounting.cash-flow', 'repeat', $money($cash), 'In cash, bank and mobile accounts now'] : null,
         $user->can('accounting.reports.view') ? ['Project Financials', 'accounting.projects', 'building', $money($pl['total_income']), 'Income this fiscal year, by project and unit'] : null,
+        $user->can('accounting.reports.view') ? ['Receivables', 'accounting.receivables', 'users', $money($receivable), 'What each customer owes, less advances held'] : null,
+        $user->can('accounting.reports.view') ? ['Payables', 'accounting.payables', 'briefcase', $money($payable), 'Owed to suppliers, contractors and others, before investors'] : null,
         $user->can('accounting.reports.view') ? ['Trial Balance', 'accounting.trial-balance', 'check-square', null, 'Every account with its debit or credit balance'] : null,
         $user->can('accounting.ledger.view') ? ['General Ledger', 'accounting.ledger', 'book', null, 'Every entry of one account, with a running balance'] : null,
     ]);
@@ -32,8 +34,8 @@
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat-card label="Cash & Bank" :value="$money($cash)" icon="wallet" tone="success" :href="$user->can('accounting.cashbank.view') ? route('accounting.cash-bank.index') : null" />
-        <x-stat-card label="Customers Owe" :value="$money($receivable)" icon="users" tone="info" />
-        <x-stat-card label="To Pay" :value="$money($payable)" icon="briefcase" tone="warning" />
+        <x-stat-card label="Customers Owe" :value="$money($receivable)" icon="users" tone="info" :href="$user->can('accounting.reports.view') ? route('accounting.receivables') : null" />
+        <x-stat-card label="To Pay" :value="$money($payable)" icon="briefcase" tone="warning" :href="$user->can('accounting.reports.view') ? route('accounting.payables') : null" />
         <x-stat-card label="Net Profit This Fiscal Year" :value="$money($pl['net_profit'])" icon="bar-chart" :tone="App\Support\Money::cmp($pl['net_profit'], 0) < 0 ? 'danger' : 'accent'" :href="$user->can('accounting.reports.view') ? route('accounting.profit-loss') : null" />
     </div>
 

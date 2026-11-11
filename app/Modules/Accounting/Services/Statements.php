@@ -236,6 +236,30 @@ class Statements
         });
     }
 
+    /**
+     * Balances of the given accounts split by a party column (customer_id, supplier_id, …) on a date.
+     * The key 0 collects lines that name no party.
+     *
+     * @param  array<int, string>  $keys  system keys
+     * @return Collection<int, array<string, string>> party id => system key => balance in the account's own direction
+     */
+    public function byParty(string $column, array $keys, string $to): Collection
+    {
+        $accounts = collect($keys)->mapWithKeys(fn ($k) => [LedgerAccount::forKey($k)->id => $k]);
+        $rows = collect();
+        Balances::lines(null, $to)->whereIn('journal_lines.account_id', $accounts->keys())
+            ->groupBy('journal_lines.'.$column, 'journal_lines.account_id')
+            ->selectRaw('journal_lines.'.$column.' AS party, journal_lines.account_id, SUM(journal_lines.debit) - SUM(journal_lines.credit) AS net')->get()
+            ->each(function ($r) use ($rows, $accounts) {
+                $row = $rows->get((int) $r->party, []);
+                $row[$accounts[$r->account_id]] = Balances::natural(LedgerAccount::forKey($accounts[$r->account_id]), Money::amount($r->net));
+                $rows->put((int) $r->party, $row);
+            });
+
+        return $rows->map(fn (array $row) => $row + array_fill_keys($keys, '0.00'))
+            ->filter(fn (array $row) => collect($row)->contains(fn ($v) => Money::cmp($v, 0) !== 0));
+    }
+
     /** Lines of one account for the general ledger, oldest first within the period. */
     public function ledgerLines(LedgerAccount $account, ?string $from, string $to, array $where = []): Builder
     {
