@@ -38,6 +38,20 @@ Follow these rules in every session on this repository.
 - Do not commit code until the user gives the project/feature prompt.
 - Always report to the user in Bengali (code, commits and UI text stay in English).
 
+## Ease of use (client, 2026-11-11)
+
+The users are not technical. Every screen is built so the work can be finished in one place.
+
+- Act where the user is: a record's page offers the next steps for that record right there
+  (bill, pay, approve, receive, return, verify, set password). Do not send the user to another
+  page or module to finish a task that belongs to the record in front of them.
+- A row explains itself: each line shows what it is, who it concerns, how much, and where it
+  stands (paid, due, late, pending), so nothing has to be opened just to understand it.
+- Totals reconcile on the screen: when two numbers differ, the difference is shown and named.
+- Plain words over internal terms, the important numbers first, and one clear next action.
+- Things must be easy to find: state is visible on lists, and a control has a name, not only an icon.
+- Check every new or changed screen against these points before committing.
+
 ## UI copy
 
 - No explanatory or instructional text in the UI. Do not describe what a button,
