@@ -89,7 +89,7 @@ class Statements
      */
     public function profitAndLoss(?string $from, string $to, array $where = []): array
     {
-        $net = Balances::byAccount($from, $to, $where);
+        $net = Balances::byAccount($from, $to, $where, withClosing: false);
         $accounts = LedgerAccount::query()->whereIn('id', $net->keys())->whereIn('category', ['income', 'expense'])->with('parent')->orderBy('code')->get()
             ->map(fn (LedgerAccount $a) => ['account' => $a, 'amount' => Balances::natural($a, $net[$a->id])])->filter(fn (array $r) => Money::cmp($r['amount'], 0) !== 0);
         $is = fn (array $row, string $key) => $row['account']->system_key === $key || $row['account']->parent?->system_key === $key;
@@ -199,7 +199,7 @@ class Statements
 
         $rows = collect();
         foreach ([[$from, $period], [null, array_values(array_diff($keys, $period))]] as [$start, $wanted]) {
-            Balances::lines($start, $to, $where)->whereIn($column, $ids)
+            Balances::lines($start, $to, $where, withClosing: false)->whereIn($column, $ids)
                 ->whereIn('journal_lines.account_id', $accounts->filter(fn ($k) => in_array($k, $wanted, true))->keys())
                 ->groupBy($column, 'journal_lines.account_id')
                 ->selectRaw($column.' AS dim, journal_lines.account_id, SUM(journal_lines.debit) - SUM(journal_lines.credit) AS net')->get()

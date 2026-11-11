@@ -119,6 +119,8 @@ class Navigation
                     ['label' => 'Project Financials', 'icon' => 'building', 'route' => 'accounting.projects', 'active' => 'accounting.projects', 'can' => 'accounting.reports.view'],
                     ['label' => 'Trial Balance', 'icon' => 'check-square', 'route' => 'accounting.trial-balance', 'active' => 'accounting.trial-balance', 'can' => 'accounting.reports.view'],
                     ['label' => 'General Ledger', 'icon' => 'book', 'route' => 'accounting.ledger', 'active' => 'accounting.ledger', 'can' => 'accounting.ledger.view'],
+                    ['label' => 'Reconciliation', 'icon' => 'check-square', 'route' => 'accounting.reconciliation.index', 'active' => 'accounting.reconciliation.*', 'can' => 'accounting.reconciliation.view'],
+                    ['label' => 'Months & Years', 'icon' => 'lock', 'route' => 'accounting.periods.index', 'active' => 'accounting.periods.*', 'can' => ['accounting.period.lock', 'accounting.period.close']],
                     ['label' => 'Chart of Accounts', 'icon' => 'list', 'route' => 'accounting.accounts.index', 'active' => 'accounting.accounts.*', 'can' => 'accounting.coa.view'],
                     ['label' => 'Accounting Settings', 'icon' => 'settings', 'route' => 'accounting.settings.edit', 'active' => ['accounting.settings.*', 'accounting.opening.*'], 'can' => ['accounting.settings.manage', 'accounting.openingbalance.manage']],
                 ],

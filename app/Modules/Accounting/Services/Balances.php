@@ -16,11 +16,13 @@ class Balances
      *
      * @param  array<string, int|null>  $where  column => id (project_id, flat_id, money_account_id, …)
      */
-    public static function lines(?string $from = null, ?string $to = null, array $where = []): Builder
+    public static function lines(?string $from = null, ?string $to = null, array $where = [], bool $withClosing = true): Builder
     {
         return JournalLine::query()
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
             ->where('journal_entries.status', 'posted')
+            // Year-end closing entries empty the income and expense accounts; profit and loss reads without them.
+            ->when(! $withClosing, fn (Builder $q) => $q->where('journal_entries.journal_type', '!=', 'closing'))
             ->when($from, fn (Builder $q) => $q->where('journal_entries.accounting_date', '>=', $from))
             ->when($to, fn (Builder $q) => $q->where('journal_entries.accounting_date', '<=', $to))
             ->when(array_filter($where), fn (Builder $q) => $q->where(collect($where)->filter()->mapWithKeys(fn ($v, $k) => ['journal_lines.'.$k => $v])->all()));
@@ -31,9 +33,9 @@ class Balances
      *
      * @return Collection<int, string> account id => net debit
      */
-    public static function byAccount(?string $from = null, ?string $to = null, array $where = []): Collection
+    public static function byAccount(?string $from = null, ?string $to = null, array $where = [], bool $withClosing = true): Collection
     {
-        return self::lines($from, $to, $where)->groupBy('journal_lines.account_id')
+        return self::lines($from, $to, $where, $withClosing)->groupBy('journal_lines.account_id')
             ->selectRaw('journal_lines.account_id, SUM(journal_lines.debit) - SUM(journal_lines.credit) AS net')
             ->pluck('net', 'account_id')->map(fn ($net) => Money::amount($net));
     }

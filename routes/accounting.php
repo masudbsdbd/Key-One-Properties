@@ -4,6 +4,8 @@ use App\Modules\Accounting\Controllers\AccountController;
 use App\Modules\Accounting\Controllers\CashBankController;
 use App\Modules\Accounting\Controllers\ChequeController;
 use App\Modules\Accounting\Controllers\JournalController;
+use App\Modules\Accounting\Controllers\PeriodController;
+use App\Modules\Accounting\Controllers\ReconciliationController;
 use App\Modules\Accounting\Controllers\ReportController;
 use App\Modules\Accounting\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +32,24 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('balance-sheet', 'balanceSheet')->name('balance-sheet');
         Route::get('cash-flow', 'cashFlow')->name('cash-flow');
         Route::get('project-financials', 'projects')->name('projects');
+    });
+
+    Route::prefix('periods')->name('periods.')->controller(PeriodController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('list', 'list')->name('list');
+        Route::get('reason/{type}/{id}', 'reasonForm')->whereIn('type', ['period', 'year'])->name('reason');
+        Route::post('months/{period}/lock', 'lock')->name('lock');
+        Route::post('months/{period}/unlock', 'unlock')->name('unlock');
+        Route::post('years/{year}/close', 'close')->name('close');
+        Route::post('years/{year}/reopen', 'reopen')->name('reopen');
+    });
+
+    Route::prefix('reconciliation')->name('reconciliation.')->controller(ReconciliationController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('checks', 'checks')->name('checks');
+        Route::get('table', 'table')->name('table');
+        Route::post('post-all', 'postAll')->name('post-all');
+        Route::post('events/{event}/retry', 'retry')->name('retry');
     });
 
     Route::controller(SettingsController::class)->group(function () {

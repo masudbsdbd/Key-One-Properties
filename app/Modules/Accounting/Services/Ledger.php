@@ -154,7 +154,8 @@ class Ledger
             }
             $lines = $entry->lines()->get()->map(fn (JournalLine $l) => ['account' => $l->account_id, 'debit' => $l->credit, 'credit' => $l->debit, 'description' => $l->description] + $l->only(self::DIMENSIONS))->all();
             $reversal = $this->post([
-                'type' => 'reversal', 'date' => $date, 'narration' => 'Reversal of '.$entry->journal_no.': '.$reason, 'reference' => $entry->reference,
+                // The reversal of a year-end closing stays a closing entry, so both stay out of profit and loss.
+                'type' => $entry->journal_type === 'closing' ? 'closing' : 'reversal', 'date' => $date, 'narration' => 'Reversal of '.$entry->journal_no.': '.$reason, 'reference' => $entry->reference,
                 'source_key' => 'reversal:'.$entry->id, 'source' => $entry->source, 'project_id' => $entry->project_id, 'reversal_of_id' => $entry->id, 'event' => $event,
             ], $lines, $user);
             $entry->forceFill(['reversed_by_id' => $reversal->id])->save();
