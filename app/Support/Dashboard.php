@@ -16,18 +16,23 @@ use App\Models\FlatSale;
 use App\Models\InstallmentPlan;
 use App\Models\InstallmentScheduleItem;
 use App\Models\InvestorCapitalTransaction;
+use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorLedgerEntry;
 use App\Models\InvestorPayout;
 use App\Models\InvestorProfitDistribution;
+use App\Models\LabourEntry;
+use App\Models\Material;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\PurchaseOrder;
 use App\Models\StockBalance;
+use App\Models\StockIssueLine;
 use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WorkPackage;
 use App\Modules\Purchasing\Services\Unbilled;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,6 +59,9 @@ class Dashboard
         'aging' => ['collections.plan.view'],
         'units' => ['flats.view'],
         'milestones' => ['construction.view'],
+        'salestrend' => ['sales.sale.view'],
+        'latework' => ['construction.view'],
+        'site' => ['construction.view', 'materials.view'],
         'investors' => ['investor.view'],
     ];
 
@@ -438,11 +446,75 @@ class Dashboard
             ->withSum(['payouts as paid' => fn ($q) => $q->where('status', 'posted')], 'amount')->get()
             ->sum(fn ($d) => (float) $d->amount - (float) ($d->paid ?? 0));
 
+        // Active agreements where less has come in than the investor committed.
+        $received = InvestorLedgerEntry::query()->from('investor_ledger_entries as e')->leftJoin('investor_ledger_entries as o', 'o.id', '=', 'e.reversal_of_id')
+            ->whereIn('e.flat_id', $flats)->groupBy('e.investor_id', 'e.flat_id')
+            ->selectRaw("e.investor_id, e.flat_id, SUM(CASE WHEN {$kind} = 'capital_in' THEN e.amount WHEN {$kind} = 'capital_out' THEN -e.amount ELSE 0 END) AS capital")
+            ->toBase()->get()->mapWithKeys(fn ($r) => [$r->investor_id.':'.$r->flat_id => (string) $r->capital]);
+        $short = InvestorFlatAgreement::query()->where('status', 'active')->whereIn('flat_id', $flats)->with(['investor:id,public_id,name', 'flat:id,flat_no', 'project:id,code'])->get()
+            ->map(fn (InvestorFlatAgreement $a) => ['name' => $a->investor->name, 'unit' => $a->project->code.' · Unit '.$a->flat->flat_no, 'href' => RecordLink::url($a->investor, $this->user),
+                'amount' => Money::amount(Money::sub((string) $a->committed_capital, $received[$a->investor_id.':'.$a->flat_id] ?? '0'))])
+            ->filter(fn ($r) => Money::isPositive($r['amount']))->sortByDesc(fn ($r) => (float) $r['amount'])->values();
+
         return [
+            'short' => $short->take(4)->all(), 'short_more' => max(0, $short->count() - 4), 'short_total' => Money::amount(Money::add('0', ...$short->pluck('amount')->all())),
             'capital' => Money::amount((string) ($row->capital ?? 0)),
             'due' => Money::amount(Money::sub((string) ($row->payable ?? 0), (string) ($row->paid ?? 0))),
             'paid' => Money::amount((string) ($row->paid ?? 0)),
             'approved_unpaid' => Money::amount((string) $approved),
+        ];
+    }
+
+    /** Units sold and their contract value per month, last twelve months. */
+    private function salestrend(): array
+    {
+        $start = $this->today->startOfMonth()->subMonths(11);
+        $rows = FlatSale::query()->whereIn('project_id', $this->projectIds())->whereIn('status', FlatSale::ACTIVE)->where('agreement_date', '>=', $start->toDateString())
+            ->selectRaw("DATE_FORMAT(agreement_date, '%Y-%m') AS m, COUNT(*) AS n, SUM(net_contract_value) AS v")->groupByRaw("DATE_FORMAT(agreement_date, '%Y-%m')")->get()->keyBy('m');
+        $months = collect(range(0, 11))->map(function (int $i) use ($start, $rows) {
+            $month = $start->addMonths($i);
+
+            return ['label' => $month->format('M'), 'title' => $month->format('M Y'), 'units' => (int) ($rows[$month->format('Y-m')]->n ?? 0), 'value' => Money::amount((string) ($rows[$month->format('Y-m')]->v ?? 0)),
+                'href' => route('sales.index', $this->filters(['from' => $month->toDateString(), 'to' => $month->endOfMonth()->toDateString()]))];
+        });
+
+        return ['months' => $months->all(), 'max' => max(1, (float) $months->max(fn ($m) => (float) $m['value'])), 'units' => $months->sum('units'),
+            'value' => Money::amount(Money::add('0', ...$months->pluck('value')->all()))];
+    }
+
+    /** Work packages past their planned end that are not finished. */
+    private function latework(): array
+    {
+        $late = WorkPackage::query()->whereIn('project_id', $this->projectIds())->whereNotIn('status', ['completed'])->whereNotNull('planned_end_at')
+            ->whereDate('planned_end_at', '<', $this->today)->with('project:id,public_id,code,name');
+
+        return ['total' => (clone $late)->count(), 'rows' => $late->reorder()->orderBy('planned_end_at')->limit(6)->get()->map(fn (WorkPackage $p) => [
+            'name' => $p->name, 'code' => $p->project->code, 'href' => RecordLink::url($p->project, $this->user), 'days' => abs(Dates::daysUntil($p->planned_end_at)), 'progress' => (float) $p->progress_percent,
+        ])->all()];
+    }
+
+    /** The building site at a glance: workers today, labour cost this week, and the materials used most this month. */
+    private function site(): array
+    {
+        $u = $this->user;
+        $labour = fn () => LabourEntry::query()->whereIn('project_id', $this->projectIds())->whereIn('status', ['submitted', 'approved']);
+        $week = [$this->today->startOfWeek()->toDateString(), $this->today->toDateString()];
+        $materials = $u->can('materials.view') ? StockIssueLine::query()->join('stock_issues', 'stock_issues.id', '=', 'stock_issue_lines.stock_issue_id')
+            ->where('stock_issues.status', 'posted')->whereIn('stock_issues.project_id', $this->projectIds())->whereDate('stock_issues.issued_at', '>=', $this->today->startOfMonth())
+            ->groupBy('stock_issue_lines.material_id')->selectRaw('stock_issue_lines.material_id, SUM(stock_issue_lines.quantity - stock_issue_lines.returned_qty) AS qty, SUM(stock_issue_lines.total_value) AS value')
+            ->orderByDesc('value')->limit(4)->toBase()->get() : collect();
+        $names = Material::query()->whereIn('id', $materials->pluck('material_id'))->with('unit:id,code')->get()->keyBy('id');
+
+        return [
+            'labour' => $u->can('construction.view') ? [
+                'workers' => (int) $labour()->whereDate('work_date', $this->today)->sum('headcount'),
+                'today' => Money::amount((string) $labour()->whereDate('work_date', $this->today)->sum('total_amount')),
+                'week' => Money::amount((string) $labour()->whereBetween('work_date', $week)->sum('total_amount')),
+                'href' => route('labour.index', $this->filters(['from' => $week[0], 'to' => $week[1]])),
+            ] : null,
+            'materials' => $materials->map(fn ($m) => ['name' => $names[$m->material_id]?->name, 'qty' => Format::qty($m->qty).' '.$names[$m->material_id]?->unit?->code,
+                'value' => $u->can('materials.valuation.view') ? Money::amount((string) $m->value) : null])->all(),
+            'show_materials' => $u->can('materials.view'),
         ];
     }
 }

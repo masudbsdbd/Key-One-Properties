@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\FlatSale;
 use App\Models\Project;
 use App\Models\SupplierBill;
 use App\Models\User;
@@ -93,9 +94,17 @@ class DashboardTest extends TestCase
         }
 
         $this->actingAs($this->admin)->get(route('dashboard'))->assertOk()->assertSee('data-widget="today"', false)->assertSee('To Pay This Week')->assertSee('Top Overdue Customers');
-        foreach (['today', 'upcoming', 'debtors'] as $panel) {
+        foreach (['today', 'upcoming', 'debtors', 'salestrend', 'latework', 'site', 'investors'] as $panel) {
             $this->actingAs($this->admin)->ajax()->get(route('dashboard.panel', $panel))->assertOk();
         }
+        // Twelve months of sales add up to the sales made in that window.
+        $trend = $dashboard->get('salestrend');
+        $this->assertCount(12, $trend['months']);
+        $this->assertSame($trend['units'], FlatSale::query()->whereIn('status', FlatSale::ACTIVE)->where('agreement_date', '>=', now()->startOfMonth()->subMonths(11)->toDateString())->count());
+        // Capital not yet received is what active agreements committed less what came in.
+        $investors = $dashboard->get('investors');
+        $this->assertSame($investors['short_total'], Money::amount(Money::add('0', ...array_column($investors['short'], 'amount'))));
+
         $clerk = $this->userWith(['projects.view']);
         $this->actingAs($clerk)->ajax()->get(route('dashboard.panel', 'today'))->assertForbidden();
         $this->actingAs($clerk)->ajax()->get(route('dashboard.panel', 'debtors'))->assertForbidden();
