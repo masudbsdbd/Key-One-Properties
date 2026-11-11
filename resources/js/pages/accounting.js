@@ -186,3 +186,32 @@ export function initReportFilters() {
         load(url.toString()).then(() => body.scrollIntoView({ block: 'nearest' }));
     });
 }
+
+/** Bank reconciliation: ticking an entry saves at once and refreshes the totals. */
+export function initBankReconciliation() {
+    const card = document.querySelector('[data-recon]');
+    const summary = document.querySelector('[data-recon-summary]');
+    if (!card || !summary) return;
+    const save = async (boxes, ticked) => {
+        boxes.forEach((box) => { box.disabled = true; });
+        try {
+            const res = await http.post(card.dataset.url, { lines: boxes.map((box) => box.value), ticked: ticked ? 1 : 0 });
+            summary.innerHTML = res.data.html;
+        } catch {
+            boxes.forEach((box) => { box.checked = !ticked; });
+        } finally {
+            boxes.forEach((box) => { box.disabled = false; });
+        }
+    };
+    card.addEventListener('change', (event) => {
+        const box = event.target.closest('[data-recon-line]');
+        if (box) save([box], box.checked);
+    });
+    card.addEventListener('click', (event) => {
+        if (!event.target.closest('[data-recon-all]')) return;
+        const open = [...card.querySelectorAll('[data-recon-line]:not(:checked)')];
+        if (!open.length) return;
+        open.forEach((box) => { box.checked = true; });
+        save(open, true);
+    });
+}

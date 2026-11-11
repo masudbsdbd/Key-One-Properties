@@ -25,6 +25,11 @@ class BankReconciliation extends Model
         return $this->belongsTo(MoneyAccount::class);
     }
 
+    public function completer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
+    }
+
     public function lines(): HasMany
     {
         return $this->hasMany(JournalLine::class);

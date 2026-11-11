@@ -7,6 +7,9 @@
                     <x-button variant="secondary" icon="arrow-up" data-remote-modal="{{ route('accounting.cash-bank.move', ['direction' => 'out', 'account' => $account->public_id]) }}" data-size="max-w-2xl">Withdraw</x-button>
                     <x-button icon="repeat" data-remote-modal="{{ route('accounting.cash-bank.move', ['direction' => 'transfer', 'account' => $account->public_id]) }}" data-size="max-w-2xl">Transfer</x-button>
                 @endif
+                @can('accounting.bankreconciliation.manage')
+                    <x-button variant="ghost" icon="check-square" :href="route('accounting.bank-reconciliation.index', $account)">Reconcile</x-button>
+                @endcan
                 <x-button variant="ghost" icon="edit" data-remote-modal="{{ route('accounting.cash-bank.edit', $account) }}" data-size="max-w-2xl">Edit</x-button>
                 @unless ($account->isUsed())
                     <x-button variant="ghost" icon="trash" data-action="delete" data-url="{{ route('accounting.cash-bank.destroy', $account) }}" data-confirm="Delete {{ $account->name }}?" data-confirm-text="Delete">Delete</x-button>

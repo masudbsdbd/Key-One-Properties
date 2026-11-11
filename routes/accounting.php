@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Accounting\Controllers\AccountController;
+use App\Modules\Accounting\Controllers\BankReconciliationController;
 use App\Modules\Accounting\Controllers\CashBankController;
 use App\Modules\Accounting\Controllers\ChequeController;
 use App\Modules\Accounting\Controllers\JournalController;
@@ -77,6 +78,15 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('{account}/edit', 'edit')->name('edit');
         Route::put('{account}', 'update')->name('update');
         Route::delete('{account}', 'destroy')->name('destroy');
+    });
+
+    Route::name('bank-reconciliation.')->controller(BankReconciliationController::class)->group(function () {
+        Route::get('cash-bank/{account}/reconcile', 'index')->name('index');
+        Route::post('cash-bank/{account}/reconcile', 'store')->name('store');
+        Route::get('bank-reconciliations/{reconciliation}', 'show')->name('show');
+        Route::post('bank-reconciliations/{reconciliation}/tick', 'tick')->name('tick');
+        Route::post('bank-reconciliations/{reconciliation}/complete', 'complete')->name('complete');
+        Route::delete('bank-reconciliations/{reconciliation}', 'destroy')->name('destroy');
     });
 
     Route::prefix('cheques')->name('cheques.')->controller(ChequeController::class)->group(function () {
