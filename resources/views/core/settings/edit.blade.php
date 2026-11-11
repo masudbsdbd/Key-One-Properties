@@ -76,24 +76,18 @@
     <form method="POST" action="{{ route('settings.project-stages') }}" data-ajax-form class="mt-6 scroll-mt-24" id="default-stages" data-stage-templates>
         @csrf
         @method('PUT')
-        <x-card title="Default Project Stages">
-            <ol class="space-y-2" data-stage-template-list>
+        <x-card title="Default Project Stages & Work Packages">
+            @php $defaultPackages = App\Models\Project::defaultWorkPackages(); @endphp
+            <ol class="space-y-3" data-stage-template-list>
                 @foreach (App\Models\Project::defaultStages() as $name)
-                    <li class="flex items-center gap-2" data-stage-template>
-                        <span class="cursor-grab text-ink-400" data-drag-handle aria-label="Reorder"><x-icon name="drag" size="h-5 w-5" /></span>
-                        <span class="w-6 text-right text-sm tabular-nums text-ink-500" data-stage-number>{{ $loop->iteration }}</span>
-                        <input type="text" name="stages[]" value="{{ $name }}" maxlength="80" class="form-control flex-1" aria-label="Stage name">
-                        <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-stage-remove aria-label="Remove stage"><x-icon name="trash" size="h-4 w-4" /></button>
-                    </li>
+                    @include('core.settings._stage-template', ['name' => $name, 'number' => $loop->iteration, 'packages' => $defaultPackages[$name] ?? []])
                 @endforeach
             </ol>
             <template data-stage-template-row>
-                <li class="flex items-center gap-2" data-stage-template>
-                    <span class="cursor-grab text-ink-400" data-drag-handle aria-label="Reorder"><x-icon name="drag" size="h-5 w-5" /></span>
-                    <span class="w-6 text-right text-sm tabular-nums text-ink-500" data-stage-number></span>
-                    <input type="text" name="stages[]" maxlength="80" class="form-control flex-1" aria-label="Stage name">
-                    <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-stage-remove aria-label="Remove stage"><x-icon name="trash" size="h-4 w-4" /></button>
-                </li>
+                @include('core.settings._stage-template', ['name' => '', 'number' => '', 'packages' => []])
+            </template>
+            <template data-package-template>
+                @include('core.settings._package-chip', ['package' => '', 'index' => 0])
             </template>
             <span class="form-error" data-form-error hidden></span>
             <x-form.actions>

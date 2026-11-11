@@ -41,6 +41,7 @@ class ProjectRequest extends FormRequest
             'actual_completion_date' => ['nullable', 'date', 'after_or_equal:start_date', Rule::requiredIf($this->input('status') === 'completed')],
             'estimated_budget' => ['nullable', 'numeric', 'min:0', 'max:9999999999999999.99'],
             'status' => ['required', Rule::in(array_keys(Project::STATUSES))],
+            'default_work_packages' => ['nullable', 'boolean'],
         ];
     }
 

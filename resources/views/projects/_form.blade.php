@@ -15,6 +15,16 @@
     <x-form.input name="longitude" label="Longitude" :value="$project->longitude" inputmode="decimal" />
     <x-form.textarea name="description" label="Description" :value="$project->description" rows="3" wrapper-class="sm:col-span-2" />
 
+    @php
+        $defaultPackages = $project->exists ? 0 : array_sum(array_map('count', App\Models\Project::defaultWorkPackages()));
+    @endphp
+    @if ($defaultPackages)
+        <div class="sm:col-span-2">
+            <input type="hidden" name="default_work_packages" value="0">
+            <x-form.checkbox name="default_work_packages" label="Add {{ $defaultPackages }} default work packages" :checked="true" />
+        </div>
+    @endif
+
     <x-form.actions class="sm:col-span-2 mt-0">
         <x-button variant="secondary" data-modal-close>Cancel</x-button>
         <x-button type="submit" icon="check">{{ $project->exists ? 'Save' : 'Create Project' }}</x-button>

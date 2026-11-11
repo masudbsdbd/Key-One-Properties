@@ -21,6 +21,60 @@ class ConstructionService
     public function __construct(private CostAttribution $costs, private FinancialEventRecorder $events) {}
 
     /**
+     * Default work packages (Settings) this project does not have yet, for the stages it has.
+     *
+     * @return list<array{stage_id: int, name: string}>
+     */
+    public static function missingDefaultWorkPackages(Project $project): array
+    {
+        $stages = $project->stages()->pluck('id', 'name')->mapWithKeys(fn ($id, $name) => [mb_strtolower($name) => $id]);
+        $existing = $project->workPackages()->pluck('name')->mapWithKeys(fn ($name) => [mb_strtolower(trim($name)) => true])->all();
+        $missing = [];
+        foreach (Project::defaultWorkPackages() as $stage => $names) {
+            $stageId = $stages[mb_strtolower($stage)] ?? null;
+            foreach ($stageId ? $names : [] as $name) {
+                if (! isset($existing[mb_strtolower($name)])) {
+                    $existing[mb_strtolower($name)] = true;
+                    $missing[] = ['stage_id' => $stageId, 'name' => $name];
+                }
+            }
+        }
+
+        return $missing;
+    }
+
+    public function addDefaultWorkPackages(Project $project, User $user): int
+    {
+        $missing = self::missingDefaultWorkPackages($project);
+        if ($missing === []) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($project, $user, $missing) {
+            $taken = WorkPackage::withTrashed()->where('project_id', $project->id)->pluck('code')
+                ->mapWithKeys(fn ($code) => [mb_strtoupper($code) => true])->all();
+            $number = 0;
+            // One activity line for the batch instead of one per package.
+            activity()->withoutLogs(function () use ($project, $user, $missing, $taken, &$number) {
+                foreach ($missing as $row) {
+                    do {
+                        $code = 'WP-'.str_pad((string) ++$number, 2, '0', STR_PAD_LEFT);
+                    } while (isset($taken[$code]));
+
+                    $package = new WorkPackage(['code' => $code, 'name' => $row['name'], 'status' => 'not_started', 'budget_amount' => 0]);
+                    $package->project_id = $project->id;
+                    $package->stage_id = $row['stage_id'];
+                    $package->created_by = $user->id;
+                    $package->save();
+                }
+            });
+            $this->log($project, $user, $project, 'default_work_packages_added', ['work_packages' => count($missing)]);
+
+            return count($missing);
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function submitProgress(Project $project, array $data, User $user): ConstructionProgressUpdate

@@ -4,7 +4,11 @@
     $outside = $money ? $amount($unassigned ?? 0) : '0.00';
 @endphp
 @if ($packages->isEmpty())
-    <x-empty-state icon="layers" title="No work packages yet" />
+    <x-empty-state icon="layers" title="No work packages yet">
+        @if ($missingDefaults ?? 0)
+            @include('construction.work-packages._defaults-button', ['count' => $missingDefaults])
+        @endif
+    </x-empty-state>
 @else
     <div class="overflow-x-auto">
         <table class="data-table">
@@ -74,4 +78,9 @@
             </tfoot>
         </table>
     </div>
+    @if ($missingDefaults ?? 0)
+        <div class="flex justify-end border-t border-line px-5 py-3">
+            @include('construction.work-packages._defaults-button', ['count' => $missingDefaults])
+        </div>
+    @endif
 @endif

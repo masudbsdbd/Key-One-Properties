@@ -7,6 +7,7 @@ use App\Models\ProjectProgressUpdate;
 use App\Models\ProjectStage;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Modules\Construction\Services\ConstructionService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,9 @@ class ProjectService
 
             foreach (Project::defaultStages() as $i => $name) {
                 $project->stages()->create(['name' => $name, 'sequence' => $i + 1, 'status' => 'not_started']);
+            }
+            if (! empty($data['default_work_packages'])) {
+                app(ConstructionService::class)->addDefaultWorkPackages($project, $creator);
             }
             Warehouse::openSiteStore($project);
 

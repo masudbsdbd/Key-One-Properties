@@ -46,6 +46,32 @@ class Project extends Model
         'Handover',
     ];
 
+    /** Starter work packages per default stage; the saved list in Settings replaces it. */
+    public const DEFAULT_WORK_PACKAGES = [
+        'Planning & Approvals' => ['Soil Test', 'Architectural Design', 'Structural Design', 'Plan Approval'],
+        'Piling & Foundation' => ['Piling', 'Pile Cap', 'Foundation'],
+        'Structure' => ['Columns', 'Beams & Slabs', 'Stairs', 'Roof Slab'],
+        'Brickwork & Plaster' => ['Brickwork', 'Internal Plaster', 'External Plaster'],
+        'Electrical & Plumbing' => ['Electrical Wiring', 'Plumbing & Sanitary', 'Lift'],
+        'Finishing' => ['Tiles', 'Doors & Windows', 'Paint', 'Grill & Railing'],
+        'Handover' => ['Utility Connections', 'Final Cleaning', 'Handover'],
+    ];
+
+    /**
+     * Work packages every new project can start with, grouped by default stage.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function defaultWorkPackages(): array
+    {
+        $saved = json_decode((string) app(Settings::class)->get('projects.default_work_packages'), true);
+        $source = is_array($saved) ? $saved : self::DEFAULT_WORK_PACKAGES;
+
+        return collect(self::defaultStages())
+            ->mapWithKeys(fn (string $stage) => [$stage => array_values(array_filter((array) ($source[$stage] ?? []), 'is_string'))])
+            ->all();
+    }
+
     protected $fillable = [
         'code', 'name', 'description', 'location_text', 'address', 'latitude', 'longitude',
         'start_date', 'target_completion_date', 'actual_completion_date', 'estimated_budget', 'status',

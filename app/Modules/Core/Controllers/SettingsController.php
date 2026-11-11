@@ -79,17 +79,39 @@ class SettingsController extends Controller
     public function updateProjectStages(Request $request, Settings $settings): JsonResponse
     {
         Gate::authorize('settings.manage');
-        $request->merge(['stages' => array_values(array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : $v, (array) $request->input('stages', [])), fn ($v) => $v !== '' && $v !== null))]);
-        $data = $request->validate([
+        $clean = fn ($values) => array_values(array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : $v, (array) $values), fn ($v) => $v !== '' && $v !== null));
+        $groups = (array) $request->input('packages', []);
+        $stages = $packages = [];
+        // Work packages arrive by stage position; blank stage rows are dropped together with theirs.
+        foreach ((array) $request->input('stages', []) as $i => $name) {
+            if ($clean([$name]) !== []) {
+                $stages[] = $clean([$name])[0];
+                $packages[] = $clean($groups[$i] ?? []);
+            }
+        }
+        $request->merge(['stages' => $stages, 'packages' => $packages]);
+        $request->validate([
             'stages' => ['array', 'max:20'],
             'stages.*' => ['required', 'string', 'max:80', 'distinct:ignore_case'],
-        ], ['stages.*.distinct' => 'Each stage name must be different.']);
+            'packages' => ['array', 'max:20'],
+            'packages.*' => ['array', 'max:30'],
+            'packages.*.*' => ['required', 'string', 'max:160', 'distinct:ignore_case'],
+        ], [
+            'stages.*.distinct' => 'Each stage name must be different.',
+            'packages.*.*.distinct' => 'Each work package name must be different.',
+            'packages.*.max' => 'A stage can have at most 30 work packages.',
+        ]);
 
-        $before = Project::defaultStages();
-        $settings->put(['projects.default_stages' => json_encode($data['stages'] ?? [])]);
-        if ($before !== ($data['stages'] ?? [])) {
+        $before = ['stages' => Project::defaultStages(), 'work_packages' => array_sum(array_map('count', Project::defaultWorkPackages()))];
+        $beforeList = Project::defaultWorkPackages();
+        $list = array_combine($stages, $packages);
+        $settings->put([
+            'projects.default_stages' => json_encode($stages),
+            'projects.default_work_packages' => json_encode((object) $list),
+        ]);
+        if ($before['stages'] !== $stages || $beforeList !== $list) {
             activity('settings')->event('default_stages_updated')->causedBy($request->user())
-                ->withProperties(['name' => 'Default project stages', 'old' => ['stages' => $before], 'attributes' => ['stages' => $data['stages'] ?? []]])
+                ->withProperties(['name' => 'Default project stages', 'old' => $before, 'attributes' => ['stages' => $stages, 'work_packages' => array_sum(array_map('count', $list))]])
                 ->log('default_stages_updated');
         }
 

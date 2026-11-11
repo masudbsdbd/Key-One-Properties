@@ -227,6 +227,17 @@ Every list has a rows-per-page select. The choices default to 10, 25, 50, 100, 5
 an administrator changes both the list and the default under Settings › Rows per Page (at most 12 sizes, none above 5,000).
 A size that is not on the list falls back to the default, so a request cannot ask for an unbounded page.
 
+### Default work packages (client, 2026-11-11)
+
+Settings keeps a list of work packages under each default project stage (`projects.default_work_packages`,
+starter list in `Project::DEFAULT_WORK_PACKAGES`). A new project gets them with its stages when the
+"Add default work packages" box on the New Project form stays ticked. Only the name and stage are copied:
+budget, dates and the responsible person stay empty, the status is Not Started and codes run WP-01, WP-02, …
+An existing project can add the ones it is missing (matched by name, only for stages it has) from its
+Work Packages tab. Names are unique across the whole list.
+
+Bulk Create Units only offers floors that have no units; more units on a floor are added one by one.
+
 ## 11. Implementation checklist
 
 - [x] P1 Portal foundation: account type, links, grants, audits, middleware, portal route groups, tests

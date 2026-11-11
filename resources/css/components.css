@@ -69,6 +69,8 @@
     .badge { @apply inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-medium whitespace-nowrap; }
     .ref-link { @apply rounded-sm underline decoration-ink-300 decoration-dotted underline-offset-4 transition-colors hover:text-accent-700 hover:decoration-solid hover:decoration-accent-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500; }
     .badge-neutral { @apply bg-ink-900/5 text-ink-700; }
+    .chip { @apply inline-flex h-8 items-center gap-1 rounded-full border border-line bg-surface pl-3 pr-1 text-[13px] font-medium text-ink-700; }
+    .chip-remove { @apply inline-flex h-6 w-6 items-center justify-center rounded-full text-ink-400 hover:bg-danger-50 hover:text-danger-600; }
     .badge-accent { @apply bg-accent-50 text-accent-700; }
     .badge-success { @apply bg-success-50 text-success-600; }
     .badge-warning { @apply bg-warning-50 text-warning-600; }

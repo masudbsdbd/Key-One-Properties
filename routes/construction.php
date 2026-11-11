@@ -21,6 +21,7 @@ Route::prefix('construction')->name('construction.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
+        Route::post('defaults', 'addDefaults')->name('defaults');
         Route::get('{workPackage}/edit', 'edit')->name('edit');
         Route::put('{workPackage}', 'update')->name('update');
         Route::delete('{workPackage}', 'destroy')->name('destroy');

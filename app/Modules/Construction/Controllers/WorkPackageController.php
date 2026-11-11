@@ -10,6 +10,7 @@ use App\Models\ProjectCostAllocation;
 use App\Models\ProjectStage;
 use App\Models\User;
 use App\Models\WorkPackage;
+use App\Modules\Construction\Services\ConstructionService;
 use App\Support\Ajax;
 use App\Support\TableQuery;
 use Illuminate\Http\JsonResponse;
@@ -52,8 +53,17 @@ class WorkPackageController extends Controller
         return Ajax::success(null, ['html' => view('construction.work-packages._list', [
             'project' => $project, 'packages' => $packages, 'money' => $own !== null,
             'totals' => $totals,
+            'missingDefaults' => Gate::allows('construction:manage', $project) ? count(ConstructionService::missingDefaultWorkPackages($project)) : 0,
             'unassigned' => $own === null ? null : (float) ProjectCostAllocation::query()->where('project_id', $project->id)->whereNull('work_package_id')->sum('amount'),
         ])->render()]);
+    }
+
+    public function addDefaults(Request $request, Project $project, ConstructionService $service): JsonResponse
+    {
+        Gate::authorize('construction:manage', $project);
+        $added = $service->addDefaultWorkPackages($project, $request->user());
+
+        return Ajax::success($added ? $added.' work packages added.' : 'Nothing to add.');
     }
 
     public function create(Project $project): JsonResponse
