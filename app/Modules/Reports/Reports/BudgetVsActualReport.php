@@ -22,7 +22,7 @@ class BudgetVsActualReport extends BaseReport
 
     public function name(): string
     {
-        return 'Budget vs Actual';
+        return 'Work Package Budget vs Actual';
     }
 
     public function group(): string
