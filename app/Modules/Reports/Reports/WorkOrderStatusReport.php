@@ -58,7 +58,7 @@ class WorkOrderStatusReport extends BaseReport
 
     public function columns(): array
     {
-        return ['Contractor' => 'text', 'Work Order' => 'text', 'Status' => 'text', 'Contract' => 'money', 'Work Done' => 'money', 'Billed' => 'money', 'Paid' => 'money',
+        return ['Contractor' => 'text', 'Work Order' => 'text', 'Contract' => 'money', 'Work Done' => 'money', 'Billed' => 'money', 'Paid' => 'money',
             'Due Now' => 'money', 'Retention' => 'money'];
     }
 
@@ -83,7 +83,7 @@ class WorkOrderStatusReport extends BaseReport
 
     public function row(mixed $w): array
     {
-        return [$w->contractor->name, $w->wo_no.' · '.$w->project->code, ContractorWorkOrder::STATUSES[$w->status] ?? $w->status, $w->contract_amount, Money::amount((string) $w->measured_amount),
+        return [$w->contractor->name, $w->wo_no.' · '.$w->project->code.' · '.(ContractorWorkOrder::STATUSES[$w->status] ?? $w->status), $w->contract_amount, Money::amount((string) $w->measured_amount),
             Money::amount((string) $w->billed_amount), Money::amount((string) $w->paid_amount), Money::amount((string) $w->due_amount), $w->retentionHeld()];
     }
 
@@ -92,7 +92,7 @@ class WorkOrderStatusReport extends BaseReport
         $rows = (clone $query)->reorder()->get();
         $sum = fn (callable $value) => Money::amount(Money::add('0', ...$rows->map(fn ($r) => (string) $value($r))->all()));
 
-        return ['Total', null, null, $sum(fn ($r) => $r->contract_amount), $sum(fn ($r) => $r->measured_amount), $sum(fn ($r) => $r->billed_amount), $sum(fn ($r) => $r->paid_amount),
+        return ['Total', null, $sum(fn ($r) => $r->contract_amount), $sum(fn ($r) => $r->measured_amount), $sum(fn ($r) => $r->billed_amount), $sum(fn ($r) => $r->paid_amount),
             $sum(fn ($r) => $r->due_amount), $sum(fn ($r) => $r->retentionHeld())];
     }
 }

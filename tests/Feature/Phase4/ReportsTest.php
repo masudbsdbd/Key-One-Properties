@@ -112,7 +112,7 @@ class ReportsTest extends TestCase
         $this->assertSame(Money::amount((string) LabourEntry::query()->where('status', 'approved')->sum('total_amount')), $totals('labour-summary')[4]);
         // What is due on work orders is what approved contractor bills still owe.
         $due = ContractorBill::query()->where('status', 'approved')->get()->reduce(fn ($sum, $b) => Money::add($sum, $b->outstanding()), '0');
-        $this->assertSame(Money::amount($due), $totals('work-order-status')[7]);
+        $this->assertSame(Money::amount($due), $totals('work-order-status')[6]);
         // Profit paid to investors is the posted payouts.
         $this->assertSame(Money::amount((string) InvestorPayout::query()->where('status', 'posted')->sum('amount')), $totals('investor-payouts')[5]);
         // Every booking is listed once.
