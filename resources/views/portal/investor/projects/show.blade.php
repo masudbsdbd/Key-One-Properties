@@ -1,5 +1,5 @@
 <x-layouts.portal :title="$project->name" portal="investor">
-    <x-page-header :title="$project->name" :breadcrumbs="['Overview' => route('investor.dashboard'), 'Projects' => route('investor.projects.index'), $project->code => null]">
+    <x-page-header :title="$project->name" :breadcrumbs="['Home' => route('investor.dashboard'), 'Projects' => route('investor.projects.index'), $project->code => null]">
         <x-slot:actions>@if ($canFinancials)<x-button variant="secondary" icon="bar-chart" href="{{ route('investor.projects.financials', $project->public_id) }}">Financials</x-button>@endif</x-slot:actions>
     </x-page-header>
 

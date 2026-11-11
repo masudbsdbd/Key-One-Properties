@@ -1,7 +1,7 @@
 <x-layouts.portal title="My Investments" portal="investor">
-    <x-page-header title="My Investments" :breadcrumbs="['Overview' => route('investor.dashboard'), 'My Investments' => null]" />
+    <x-page-header title="My Investments" :breadcrumbs="['Home' => route('investor.dashboard'), 'My Investments' => null]" />
     <x-data-table :url="route('investor.investments.table')" sort="from" dir="desc" search="Search unit or agreement" :columns="[
-        ['label' => 'Unit', 'sort' => 'from'], ['label' => 'Agreement'], ['label' => 'Share', 'class' => 'text-right', 'sort' => 'share'], ['label' => 'Committed', 'class' => 'text-right', 'sort' => 'capital'], ['label' => 'Period'], ['label' => 'Status'],
+        ['label' => 'Unit', 'sort' => 'from'], ['label' => 'Your Share of Profit', 'class' => 'text-right', 'sort' => 'share'], ['label' => 'Agreed Investment', 'class' => 'text-right', 'sort' => 'capital'], ['label' => 'Since'], ['label' => 'Agreement'], ['label' => ''],
     ]">
         <x-slot:filters>
             <select name="status" class="form-control w-36" data-table-filter aria-label="Status"><option value="">All statuses</option><option value="active">Active</option><option value="closed">Closed</option></select>

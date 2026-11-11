@@ -123,19 +123,19 @@ class InvestorPortal
         $items = collect([['at' => $agreement->approved_at, 'title' => 'Agreement approved', 'meta' => $agreement->agreement_no.' · v'.$agreement->version, 'tone' => 'success']]);
         foreach ($this->capitalTransactions($agreement->flat) as $t) {
             if ($t->posted_at) {
-                $items->push(['at' => $t->posted_at, 'title' => ($t->transaction_type === 'contribution' ? 'Capital received' : 'Capital returned'), 'meta' => $t->transaction_no.' · '.Format::money($t->amount), 'tone' => 'info']);
+                $items->push(['at' => $t->posted_at, 'title' => ($t->transaction_type === 'contribution' ? 'Your investment received' : 'Capital returned to you'), 'meta' => Format::money($t->amount).' · '.$t->transaction_no, 'tone' => 'info']);
             }
             if ($t->reversed_at) {
-                $items->push(['at' => $t->reversed_at, 'title' => 'Capital entry reversed', 'meta' => $t->transaction_no, 'tone' => 'danger']);
+                $items->push(['at' => $t->reversed_at, 'title' => 'Investment entry cancelled', 'meta' => $t->transaction_no, 'tone' => 'danger']);
             }
         }
         InvestorProfitAllocation::query()->where('investor_id', $investor->id)->where('flat_id', $agreement->flat_id)->where('status', 'approved')
             ->with('calculation:id,calculation_no')->get()
-            ->each(fn ($a) => $items->push(['at' => $a->approved_at, 'title' => 'Profit approved', 'meta' => $a->calculation->calculation_no.' · '.Format::money($a->profit_amount), 'tone' => 'success']));
+            ->each(fn ($a) => $items->push(['at' => $a->approved_at, 'title' => 'Profit approved for you', 'meta' => Format::money($a->profit_amount).' · '.$a->calculation->calculation_no, 'tone' => 'success']));
         InvestorProfitDistribution::query()->where('investor_id', $investor->id)->where('flat_id', $agreement->flat_id)->whereNotNull('approved_at')->whereIn('status', ['approved', 'paid'])->get()
-            ->each(fn ($d) => $items->push(['at' => $d->approved_at, 'title' => 'Distribution approved', 'meta' => $d->distribution_no.' · '.Format::money($d->amount), 'tone' => 'warning']));
+            ->each(fn ($d) => $items->push(['at' => $d->approved_at, 'title' => 'Profit payment approved', 'meta' => Format::money($d->amount).' · '.$d->distribution_no, 'tone' => 'warning']));
         foreach ($this->payouts($agreement->flat) as $p) {
-            $items->push(['at' => $p->created_at, 'title' => $p->status === 'reversed' ? 'Payout reversed' : 'Profit paid', 'meta' => $p->payout_no.' · '.Format::money($p->amount), 'tone' => $p->status === 'reversed' ? 'danger' : 'success']);
+            $items->push(['at' => $p->created_at, 'title' => $p->status === 'reversed' ? 'Profit payment cancelled' : 'Profit paid to you', 'meta' => Format::money($p->amount).' · '.$p->payout_no, 'tone' => $p->status === 'reversed' ? 'danger' : 'success']);
         }
 
         return $items->filter(fn ($i) => $i['at'])->sortByDesc('at')->values();

@@ -11,6 +11,7 @@ use App\Modules\Portal\Services\PortalAccess;
 use App\Modules\Portal\Services\PortalContext;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\PageSize;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,10 +37,11 @@ class StatementController extends Controller
     {
         abort_unless($context->allows('investor.portal.investments.view'), 403);
         $page = max(1, (int) $request->input('page', 1));
-        $rows = $this->query($request, $context)->forPage($page, 25)->get();
+        $size = PageSize::resolve($request->input('per_page'));
+        $rows = $this->query($request, $context)->forPage($page, $size)->get();
         $total = $this->scope($request, $context)->count();
 
-        return Ajax::table(view('portal.investor._ledger_rows', ['rows' => $rows])->render(), new LengthAwarePaginator($rows, $total, 25, $page));
+        return Ajax::table(view('portal.investor._ledger_rows', ['rows' => $rows])->render(), new LengthAwarePaginator($rows, $total, $size, $page));
     }
 
     public function export(Request $request, PortalContext $context): Response

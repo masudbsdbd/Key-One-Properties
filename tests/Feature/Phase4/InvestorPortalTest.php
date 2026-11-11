@@ -117,7 +117,7 @@ class InvestorPortalTest extends TestCase
         $page = $this->actingAs($this->karimUser)->get(route('investor.investments.show', $karimAgreement->public_id))->assertOk();
         $page->assertSee('13,20,000')->assertSee('Approved')->assertDontSee('Rahim Portal');
         // Category breakdown needs a grant; totals are shown without one.
-        $page->assertSee('Shared cost')->assertDontSee('Contractor</dt>', false);
+        $page->assertSee('Share of Project Cost')->assertDontSee('Contractor</dt>', false);
     }
 
     public function test_documents_statements_and_files_never_cross_investors(): void
@@ -164,7 +164,7 @@ class InvestorPortalTest extends TestCase
         $agreement = InvestorFlatAgreement::query()->where('investor_id', $this->karim->id)->firstOrFail();
         $this->actingAs($this->karimUser)->get(route('investor.investments.show', $agreement->public_id))->assertOk()->assertSee('Estimated Profit')->assertSee('13,20,000');
         $profit->submit($c, $this->maker);
-        $this->actingAs($this->karimUser)->get(route('investor.investments.show', $agreement->public_id))->assertSee('Waiting for Approval')->assertSee('Pending Approval');
+        $this->actingAs($this->karimUser)->get(route('investor.investments.show', $agreement->public_id))->assertSee('New Profit Awaiting Approval')->assertSee('Pending Approval');
 
         $link = $this->karimUser->investorLinks()->firstOrFail();
         app(PortalAccountService::class)->grant($link, $this->flat, 'investor.portal.cost.contractor.view', null, $this->maker);
@@ -172,8 +172,8 @@ class InvestorPortalTest extends TestCase
 
         $this->karimUser->roles->first()->revokePermissionTo('investor.portal.profit.view');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-        $this->actingAs($this->karimUser->fresh())->get(route('investor.investments.show', $agreement->public_id))->assertOk()->assertDontSee('Waiting for Approval');
-        $this->actingAs($this->karimUser->fresh())->get(route('investor.dashboard'))->assertOk()->assertDontSee('Profit Paid');
+        $this->actingAs($this->karimUser->fresh())->get(route('investor.investments.show', $agreement->public_id))->assertOk()->assertDontSee('Awaiting Approval')->assertDontSee('Your Share (');
+        $this->actingAs($this->karimUser->fresh())->get(route('investor.dashboard'))->assertOk()->assertDontSee('Profit Received')->assertDontSee('Profit Paid');
     }
 
     private function file(InvestorFlatAgreement $agreement, bool $visible): Attachment

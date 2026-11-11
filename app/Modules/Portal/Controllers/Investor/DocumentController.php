@@ -23,7 +23,7 @@ class DocumentController extends Controller
         $portal = new InvestorPortal($context);
 
         return view('portal.investor.documents', [
-            'agreements' => $portal->agreements()->with(['flat:id,flat_no', 'project:id,code'])->orderByDesc('effective_from')->get(),
+            'agreements' => $portal->agreements()->with(['flat:id,flat_no', 'project:id,code,name'])->orderByDesc('effective_from')->get(),
             'capital' => $portal->capitalTransactions()->where('status', '!=', 'pending'),
             'payouts' => $portal->payouts(),
             'files' => $portal->sharedFiles(),

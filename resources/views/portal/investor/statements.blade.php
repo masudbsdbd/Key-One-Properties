@@ -1,12 +1,12 @@
-<x-layouts.portal title="Statements" portal="investor">
-    <x-page-header title="Statements" :breadcrumbs="['Overview' => route('investor.dashboard'), 'Statements' => null]" />
+<x-layouts.portal title="Statement" portal="investor">
+    <x-page-header title="Statement" :breadcrumbs="['Home' => route('investor.dashboard'), 'Statement' => null]" />
     <div class="mb-6 grid gap-4 sm:grid-cols-3">
-        <x-stat-card label="Capital Balance" :value="App\Support\Format::money($balances['capital'])" icon="tag" tone="accent" />
-        <x-portal.figure label="Profit Paid" :value="App\Support\Format::money($balances['paid'])" state="paid" />
-        <x-portal.figure label="Approved, Not Yet Paid" :value="App\Support\Format::money($balances['profit_due'])" state="approved" />
+        <x-stat-card label="You Have Invested" :value="App\Support\Format::money($balances['capital'])" icon="tag" tone="accent" />
+        <x-stat-card label="Profit Received" :value="App\Support\Format::money($balances['paid'])" icon="check" tone="success" />
+        <x-stat-card label="Profit to Receive" :value="App\Support\Format::money($balances['profit_due'])" icon="clock" tone="warning" />
     </div>
     <x-data-table :url="route('investor.statements.table')" :search="false" :columns="[
-        ['label' => 'Date'], ['label' => 'Entry'], ['label' => 'Description'], ['label' => 'Capital', 'class' => 'text-right'], ['label' => 'Profit', 'class' => 'text-right'], ['label' => 'Capital Balance', 'class' => 'text-right'], ['label' => 'Profit Due', 'class' => 'text-right'],
+        ['label' => 'Date'], ['label' => 'What Happened'], ['label' => 'Invested', 'class' => 'text-right'], ['label' => 'Profit', 'class' => 'text-right'], ['label' => 'Total Invested', 'class' => 'text-right'], ['label' => 'Profit to Receive', 'class' => 'text-right'],
     ]">
         <x-slot:filters>
             <div class="w-60"><select name="flat" class="form-control" data-table-filter @if (count($flats) > 7) data-select data-placeholder="All units" @endif aria-label="Unit"><option value="">All units</option>@foreach ($flats as $id => $label)<option value="{{ $id }}">{{ $label }}</option>@endforeach</select></div>

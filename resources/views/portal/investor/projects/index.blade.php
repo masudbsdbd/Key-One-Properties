@@ -1,5 +1,5 @@
 <x-layouts.portal title="Projects" portal="investor">
-    <x-page-header title="Projects" :breadcrumbs="['Overview' => route('investor.dashboard'), 'Projects' => null]" />
+    <x-page-header title="Project Progress" :breadcrumbs="['Home' => route('investor.dashboard'), 'Project Progress' => null]" />
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @forelse ($projects as $p)
             <a href="{{ route('investor.projects.show', $p->public_id) }}" class="card block p-5 hover:shadow-md">
