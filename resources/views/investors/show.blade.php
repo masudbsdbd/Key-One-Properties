@@ -33,6 +33,8 @@
                     $pos = $positions[$a->flat_id] ?? ['capital' => '0', 'paid' => '0', 'profit_due' => '0'];
                     $live = in_array($a->status, ['active', 'closed'], true);
                     $short = App\Support\Money::sub($a->committed_capital, $pos['capital']);
+                    $canPay = $payable[$a->flat_id] ?? '0';
+                    $inProgress = $live ? ($openPayments[$a->flat_id] ?? collect()) : collect();
                 @endphp
                 <div class="border-b border-line px-5 py-4 last:border-0">
                     <div class="flex flex-wrap items-center gap-3">
@@ -41,9 +43,6 @@
                             <span class="block text-[13px] text-ink-500">{{ $a->agreement_no }} · v{{ $a->version }} · {{ $a->effective_to ? App\Support\Format::date($a->effective_from).' – '.App\Support\Format::date($a->effective_to) : 'since '.App\Support\Format::date($a->effective_from) }}</span>
                         </a>
                         <x-status-badge :status="$a->status" :labels="App\Models\InvestorFlatAgreement::STATUSES" />
-                        @if ($a->status === 'active')
-                            @can('investor.capital.record')<x-button size="sm" variant="secondary" icon="tag" data-remote-modal="{{ route('investor-capital.create', ['agreement' => $a->public_id]) }}" data-size="max-w-2xl">Receive Capital</x-button>@endcan
-                        @endif
                     </div>
                     <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
                         <div><dt class="text-[12px] text-ink-500">Profit Share</dt><dd class="font-semibold tabular-nums text-ink-900">{{ App\Modules\Investors\Controllers\AgreementController::pct($a->profit_share_percent) }}</dd></div>
@@ -51,6 +50,28 @@
                         <div><dt class="text-[12px] text-ink-500">Profit Paid</dt><dd class="font-semibold tabular-nums text-success-600">{{ $live ? App\Support\Format::money($pos['paid']) : '—' }}</dd></div>
                         <div><dt class="text-[12px] text-ink-500">Profit to Pay</dt><dd @class(['font-semibold tabular-nums', 'text-warning-600' => $live && App\Support\Money::isPositive($pos['profit_due']), 'text-ink-900' => ! ($live && App\Support\Money::isPositive($pos['profit_due']))])>{{ $live ? App\Support\Format::money($pos['profit_due']) : '—' }}</dd></div>
                     </dl>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        @if ($live && App\Support\Money::isPositive($canPay))
+                            @can('investor.profit.distribution.create')<x-button size="sm" icon="check" data-remote-modal="{{ route('distributions.create', ['investor' => $investor->public_id, 'flat' => $a->flat->public_id]) }}" data-size="max-w-md">Pay Profit</x-button>@endcan
+                        @endif
+                        @if ($a->status === 'active')
+                            @can('investor.capital.record')<x-button size="sm" variant="secondary" icon="tag" data-remote-modal="{{ route('investor-capital.create', ['agreement' => $a->public_id]) }}" data-size="max-w-2xl">Receive Capital</x-button>@endcan
+                        @endif
+                        @if ($live && App\Support\Money::isPositive($pos['capital']))
+                            @can('investor.capital.return')<x-button size="sm" variant="ghost" icon="arrow-left" data-remote-modal="{{ route('investor-capital.create', ['agreement' => $a->public_id, 'type' => 'capital_return']) }}" data-size="max-w-2xl">Return Capital</x-button>@endcan
+                        @endif
+                    </div>
+                    @foreach ($inProgress as $d)
+                        <div class="mt-3 flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface-muted px-4 py-2.5 text-sm">
+                            <span class="min-w-0 flex-1">Profit payment <x-ref :to="$d" class="font-medium text-ink-900">{{ $d->distribution_no }}</x-ref> · <span class="font-semibold tabular-nums text-ink-900">{{ App\Support\Format::money($d->amount) }}</span></span>
+                            <x-status-badge :status="$d->status" :labels="App\Models\InvestorProfitDistribution::STATUSES" />
+                            @if ($d->status === 'pending_approval')
+                                @can('investor.profit.distribution.approve')<x-button size="sm" icon="check" data-action="post" data-url="{{ route('distributions.approve', $d) }}" data-reload data-confirm="Approve {{ $d->distribution_no }}?" data-confirm-message="{{ $investor->name }} · {{ App\Support\Format::money($d->amount) }}" data-confirm-text="Approve" data-tone="primary" :disabled="$d->requested_by === auth()->id() && ! auth()->user()->isSuperAdmin()" data-disabled-reason="Another person must approve">Approve</x-button>@endcan
+                            @else
+                                @can('investor.profit.payout.post')<x-button size="sm" icon="tag" data-remote-modal="{{ route('distributions.pay.form', $d) }}" data-size="max-w-lg">Pay Now</x-button>@endcan
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
             @empty
                 <x-empty-state icon="file" title="No agreements" />

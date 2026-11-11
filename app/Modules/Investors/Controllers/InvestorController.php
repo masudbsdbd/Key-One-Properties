@@ -8,7 +8,9 @@ use App\Models\Investor;
 use App\Models\InvestorCapitalTransaction;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorLedgerEntry;
+use App\Models\InvestorProfitDistribution;
 use App\Models\InvestorUserLink;
+use App\Modules\Investors\Services\DistributionService;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Investors\Services\InvestorService;
 use App\Support\Ajax;
@@ -124,6 +126,10 @@ class InvestorController extends Controller
             'profitPaid' => Money::amount((string) $totals->profit_paid),
             // What stands on each unit, so an agreement row needs no second page to be understood.
             'positions' => $agreements->pluck('flat_id')->unique()->mapWithKeys(fn ($flatId) => [$flatId => InvestorLedger::balances($investor, $flatId)]),
+            // Profit payments still in progress per unit, and what is left to put into a new payment.
+            'openPayments' => InvestorProfitDistribution::query()->where('investor_id', $investor->id)->whereIn('flat_id', $agreements->pluck('flat_id'))
+                ->whereIn('status', ['pending_approval', 'approved', 'partially_paid'])->latest('id')->get()->groupBy('flat_id'),
+            'payable' => $agreements->pluck('flat_id')->unique()->mapWithKeys(fn ($flatId) => [$flatId => DistributionService::available($investor, $flatId)]),
             'portal' => $links === null ? null : ['login' => $links->firstWhere(fn ($l) => $l->verified_at !== null) ?? $links->first(), 'state' => match (true) {
                 $links->isEmpty() => 'none', $links->contains(fn ($l) => $l->verified_at !== null) => 'active', default => 'pending',
             }],

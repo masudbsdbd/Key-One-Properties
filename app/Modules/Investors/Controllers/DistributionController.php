@@ -73,7 +73,7 @@ class DistributionController extends Controller
         $investor = Investor::findByPublicId($request->input('investor')) ?? abort(404);
         $flat = Flat::query()->visibleTo($request->user())->where('public_id', (string) $request->input('flat'))->with(['project', 'building'])->first() ?? abort(404);
 
-        return Ajax::success(null, ['title' => 'Distribute Profit', 'html' => view('investors.distributions._form', [
+        return Ajax::success(null, ['title' => 'Pay Profit', 'html' => view('investors.distributions._form', [
             'investor' => $investor, 'flat' => $flat, 'balances' => InvestorLedger::balances($investor, $flat->id),
             'available' => DistributionService::available($investor, $flat->id), 'key' => (string) Str::uuid(),
         ])->render()]);

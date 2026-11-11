@@ -247,13 +247,19 @@ class ProfitTest extends TestCase
         $karim = $this->investors[0];
 
         $this->assertStringContainsString('23,40,000', $this->actingAs($officer)->ajax()->get(route('distributions.payables'))->assertOk()->json('data.html'));
+        // The investor's own page offers the payment on the unit's row.
+        $payLink = e(route('distributions.create', ['investor' => $karim->public_id, 'flat' => $this->flat->public_id]));
+        $this->actingAs($officer)->get(route('investors.show', $karim))->assertOk()->assertSee($payLink, false)->assertSee('Pay Profit');
         $this->actingAs($officer)->ajax()->get(route('distributions.create', ['investor' => $karim->public_id, 'flat' => $this->flat->public_id]))->assertOk();
         $input = ['investor' => $karim->public_id, 'flat' => $this->flat->public_id, 'amount' => '9,999,999', 'idempotency_key' => (string) Str::uuid()];
         $this->actingAs($officer)->ajax()->post(route('distributions.store'), $input)->assertStatus(422)->assertJsonValidationErrors('amount');
         $this->actingAs($officer)->ajax()->post(route('distributions.store'), ['amount' => '1,000,000'] + $input)->assertOk();
         $d = InvestorProfitDistribution::query()->firstOrFail();
         $this->actingAs($officer)->ajax()->post(route('distributions.approve', $d))->assertForbidden();
+        // While it waits, the page shows the payment and lets the approver approve it there.
+        $this->actingAs($approver)->get(route('investors.show', $karim))->assertOk()->assertSee($d->distribution_no)->assertSee(route('distributions.approve', $d), false);
         $this->actingAs($approver)->ajax()->post(route('distributions.approve', $d))->assertOk();
+        $this->actingAs($officer)->get(route('investors.show', $karim))->assertOk()->assertSee(route('distributions.pay.form', $d), false)->assertSee('Pay Now');
         $this->actingAs($officer)->ajax()->post(route('distributions.pay', $d), ['paid_at' => now()->toDateString(), 'payment_method' => 'cheque', 'idempotency_key' => (string) Str::uuid()])
             ->assertStatus(422)->assertJsonValidationErrors('payment_reference');
         $this->actingAs($officer)->ajax()->post(route('distributions.pay', $d), ['paid_at' => now()->toDateString(), 'payment_method' => 'cash', 'idempotency_key' => (string) Str::uuid()])->assertOk();
