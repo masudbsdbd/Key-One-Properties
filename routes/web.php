@@ -52,7 +52,7 @@ Route::middleware(['auth', 'active', 'password.changed', 'two-factor.configured'
         Route::post('{type}/{owner}', 'store')->middleware('throttle:30,1')->name('store');
     });
 
-    foreach (['core', 'projects', 'flats', 'customers', 'construction', 'inventory', 'purchasing', 'contractors', 'expenses', 'sales', 'collections', 'investors', 'portal-admin', 'reports'] as $module) {
+    foreach (['core', 'projects', 'flats', 'customers', 'construction', 'inventory', 'purchasing', 'contractors', 'expenses', 'sales', 'collections', 'investors', 'accounting', 'portal-admin', 'reports'] as $module) {
         if (is_file($file = __DIR__."/{$module}.php")) {
             require $file;
         }

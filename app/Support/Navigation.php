@@ -11,7 +11,7 @@ class Navigation
 {
     private const GROUP_ICONS = [
         'Construction' => 'stairs', 'Inventory' => 'layers', 'Purchasing' => 'briefcase', 'Contractors' => 'user',
-        'Expenses' => 'note', 'Sales' => 'tag', 'Collections' => 'calendar-check', 'Investors' => 'users',
+        'Expenses' => 'note', 'Sales' => 'tag', 'Collections' => 'calendar-check', 'Investors' => 'users', 'Accounting' => 'calculator',
         'Reports' => 'bar-chart', 'Administration' => 'settings',
     ];
 
@@ -104,6 +104,13 @@ class Navigation
                     ['label' => 'Cost Allocation', 'icon' => 'layers', 'route' => 'cost-runs.index', 'active' => 'cost-runs.*', 'can' => 'investor.cost.view'],
                     ['label' => 'Flat Profit', 'icon' => 'bar-chart', 'route' => 'profit-calculations.index', 'active' => 'profit-calculations.*', 'can' => 'investor.cost.view'],
                     ['label' => 'Distributions', 'icon' => 'check-square', 'route' => 'distributions.index', 'active' => 'distributions.*', 'can' => 'investor.view'],
+                ],
+            ],
+            [
+                'title' => 'Accounting',
+                'items' => [
+                    ['label' => 'Journals', 'icon' => 'file', 'route' => 'accounting.journals.index', 'active' => 'accounting.journals.*', 'can' => 'accounting.journal.view'],
+                    ['label' => 'Chart of Accounts', 'icon' => 'list', 'route' => 'accounting.accounts.index', 'active' => 'accounting.accounts.*', 'can' => 'accounting.coa.view'],
                 ],
             ],
             [

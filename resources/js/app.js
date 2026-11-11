@@ -24,6 +24,7 @@ import { initPartials, reloadPartials } from './components/partials';
 import { initTooltips } from './components/tooltip';
 import { initProjectPages } from './pages/projects';
 import { initFlatPages } from './pages/flats';
+import { initJournalForm } from './pages/accounting';
 import { initCustomerPages } from './pages/customers';
 import { initCalculators } from './pages/calc';
 import { bindLineItems } from './components/lines';
@@ -54,6 +55,7 @@ $(() => {
     initTooltips();
     initProjectPages();
     initFlatPages();
+    initJournalForm();
     initCustomerPages();
     initCalculators();
     bindLineItems();
