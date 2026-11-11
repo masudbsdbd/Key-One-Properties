@@ -1,9 +1,10 @@
 /**
  * Small hover/focus tooltip. Text comes from data-tooltip, or from aria-label
  * when the control has no visible text. A disabled control with
- * data-disabled-reason shows that reason instead.
+ * data-disabled-reason shows that reason instead. data-tooltip-content="#id"
+ * shows the markup of that <template> and also opens on click, for touch.
  */
-const SELECTOR = '[data-disabled-reason], .select2-container, [data-tooltip], [data-tooltip-collapsed], button[aria-label], a[aria-label], [role="button"][aria-label], label[aria-label]';
+const SELECTOR = '[data-disabled-reason], .select2-container, [data-tooltip], [data-tooltip-content], [data-tooltip-collapsed], button[aria-label], a[aria-label], [role="button"][aria-label], label[aria-label]';
 const GAP = 8;
 
 let tip;
@@ -51,11 +52,19 @@ function place(el) {
     tip.dataset.side = above ? 'top' : 'bottom';
 }
 
+function richContent(el) {
+    const template = el.dataset.tooltipContent && !disabledReason(el) ? document.querySelector(el.dataset.tooltipContent) : null;
+    return template?.content ? template.content.cloneNode(true) : null;
+}
+
 function show(el) {
-    const text = textFor(el);
-    if (!text) return;
+    const rich = richContent(el);
+    const text = rich ? null : textFor(el);
+    if (!rich && !text) return;
     current = el;
-    tip.textContent = text;
+    tip.classList.toggle('tooltip-rich', !!rich);
+    if (rich) tip.replaceChildren(rich);
+    else tip.textContent = text;
     tip.hidden = false;
     el.setAttribute('aria-describedby', 'app-tooltip');
     place(el);
@@ -93,7 +102,11 @@ export function initTooltips() {
     });
     document.addEventListener('focusout', hide);
     ['click', 'keydown', 'scroll'].forEach((name) => document.addEventListener(name, (e) => {
-        if (name !== 'keydown' || e.key === 'Escape') hide();
+        if (name === 'keydown' && e.key !== 'Escape') return;
+        const rich = name === 'click' ? e.target.closest?.('[data-tooltip-content]') : null;
+        const reopen = rich && rich !== current;
+        hide();
+        if (reopen) show(rich);
     }, true));
     window.addEventListener('resize', hide);
 }

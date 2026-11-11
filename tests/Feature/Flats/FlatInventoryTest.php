@@ -225,6 +225,8 @@ class FlatInventoryTest extends TestCase
         $html = $this->actingAs($this->user)->ajax()->get(route('projects.flats.bulk', $this->project))->assertOk()->json('data.html');
         $this->assertStringContainsString('101, 102, 103', $html);
         $this->assertStringNotContainsString('Preview the units first', $html);
+        $this->assertStringContainsString('data-tooltip-content="#bulk-pattern-codes"', $html);
+        $this->assertStringContainsString('<template id="bulk-pattern-codes">', $html);
     }
 
     public function test_bulk_pattern_without_sequence_token_is_rejected(): void

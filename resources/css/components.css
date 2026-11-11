@@ -210,6 +210,15 @@
         transform: translateY(2px);
         transition: opacity 120ms ease, transform 120ms ease;
     }
+    .tooltip-rich {
+        @apply max-w-80 px-3.5 py-3 text-[12.5px] font-normal;
+    }
+    .tooltip-rich table { @apply w-full border-separate border-spacing-y-1; }
+    .tooltip-rich td { @apply py-0 pr-3 align-middle whitespace-nowrap last:pr-0; }
+    .tooltip-rich code { @apply rounded bg-white/10 px-1.5 py-0.5 font-mono text-[12px] text-white; }
+    .tooltip-rich .tooltip-muted { @apply text-white/65; }
+    .tooltip-rich .tooltip-title { @apply mb-1 text-[11px] font-semibold uppercase tracking-wide text-white/55; }
+    .tooltip-rich hr { @apply my-2.5 border-white/15; }
     .tooltip[data-side='bottom'] { transform: translateY(-2px); }
     .tooltip[data-side='right'] { transform: translateX(-2px); }
     .tooltip.is-visible { opacity: 1; transform: none; }

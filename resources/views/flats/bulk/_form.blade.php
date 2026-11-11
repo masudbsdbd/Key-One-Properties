@@ -18,7 +18,31 @@
             </div>
             <x-form.input name="start_index" type="number" label="Start From" min="1" value="1" />
             <div data-bulk-custom hidden>
-                <x-form.input name="pattern" id="bulk-pattern" label="Custom Pattern" value="{floor}{L}" hint="{floor}, {n}, {nn} or {L}" />
+                <x-form.input name="pattern" id="bulk-pattern" label="Custom Pattern" value="{floor}{L}" />
+                <p class="form-hint flex items-center gap-1.5">
+                    {floor}, {n}, {nn} or {L}
+                    <button type="button" class="inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-400 hover:text-accent-700" aria-label="Pattern codes" data-tooltip-content="#bulk-pattern-codes">
+                        <x-icon name="info" size="h-4 w-4" />
+                    </button>
+                </p>
+                <template id="bulk-pattern-codes">
+                    <p class="tooltip-title">Codes</p>
+                    <table>
+                        <tr><td><code>{floor}</code></td><td>Floor number</td><td class="tooltip-muted">1, 2, 3</td></tr>
+                        <tr><td><code>{n}</code></td><td>Unit number</td><td class="tooltip-muted">1, 2, 3</td></tr>
+                        <tr><td><code>{nn}</code></td><td>Unit number, 2 digits</td><td class="tooltip-muted">01, 02, 03</td></tr>
+                        <tr><td><code>{L}</code></td><td>Unit letter</td><td class="tooltip-muted">A, B, C</td></tr>
+                    </table>
+                    <hr>
+                    <p class="tooltip-title">On Floor 3</p>
+                    <table>
+                        <tr><td><code>{floor}{L}</code></td><td class="tooltip-muted">3A, 3B, 3C</td></tr>
+                        <tr><td><code>{floor}{n}</code></td><td class="tooltip-muted">31, 32, 33</td></tr>
+                        <tr><td><code>{floor}{nn}</code></td><td class="tooltip-muted">301, 302, 303</td></tr>
+                        <tr><td><code>{floor}-{L}</code></td><td class="tooltip-muted">3-A, 3-B, 3-C</td></tr>
+                        <tr><td><code>F{floor}/{n}</code></td><td class="tooltip-muted">F3/1, F3/2, F3/3</td></tr>
+                    </table>
+                </template>
             </div>
             <x-form.select name="flat_type" id="bulk-type" label="Type" :options="App\Models\Flat::TYPES" placeholder="Select type" />
             <x-form.input name="bedrooms" id="bulk-bedrooms" type="number" label="Bedrooms" min="0" max="20" />
