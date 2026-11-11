@@ -9,6 +9,7 @@ use App\Models\InvestorCapitalTransaction;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorLedgerEntry;
 use App\Models\InvestorUserLink;
+use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Investors\Services\InvestorService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
@@ -110,13 +111,22 @@ class InvestorController extends Controller
             ->with(['flat:id,public_id,flat_no,building_id,project_id', 'flat.building:id,code', 'project:id,code,name'])->orderByRaw("FIELD(status, 'active', 'pending', 'draft', 'rejected', 'closed', 'cancelled')")->orderByDesc('id')->get();
         $totals = $this->ledgerScope($request, $investor)->selectRaw("
             COALESCE(SUM(CASE COALESCE(o.entry_kind, e.entry_kind) WHEN 'capital_in' THEN e.amount WHEN 'capital_out' THEN -e.amount ELSE 0 END),0) AS capital,
-            COALESCE(SUM(CASE COALESCE(o.entry_kind, e.entry_kind) WHEN 'profit_payable' THEN e.amount WHEN 'profit_paid' THEN -e.amount ELSE 0 END),0) AS profit_due")->toBase()->first();
+            COALESCE(SUM(CASE COALESCE(o.entry_kind, e.entry_kind) WHEN 'profit_payable' THEN e.amount WHEN 'profit_paid' THEN -e.amount ELSE 0 END),0) AS profit_due,
+            COALESCE(SUM(CASE COALESCE(o.entry_kind, e.entry_kind) WHEN 'profit_paid' THEN e.amount ELSE 0 END),0) AS profit_paid")->toBase()->first();
+        $links = $user->canAny(['portal.links.manage', 'portal.grants.manage'])
+            ? InvestorUserLink::query()->where('investor_id', $investor->id)->whereNull('revoked_at')->with('user:id,email,mobile,last_login_at')->get() : null;
 
         return view('investors.show', [
             'investor' => $investor,
             'agreements' => $agreements,
             'capital' => Money::amount((string) $totals->capital),
             'profitDue' => Money::amount((string) $totals->profit_due),
+            'profitPaid' => Money::amount((string) $totals->profit_paid),
+            // What stands on each unit, so an agreement row needs no second page to be understood.
+            'positions' => $agreements->pluck('flat_id')->unique()->mapWithKeys(fn ($flatId) => [$flatId => InvestorLedger::balances($investor, $flatId)]),
+            'portal' => $links === null ? null : ['login' => $links->firstWhere(fn ($l) => $l->verified_at !== null) ?? $links->first(), 'state' => match (true) {
+                $links->isEmpty() => 'none', $links->contains(fn ($l) => $l->verified_at !== null) => 'active', default => 'pending',
+            }],
             'committed' => Money::amount((string) $agreements->where('status', 'active')->sum('committed_capital')),
             'activity' => Activity::query()->where('subject_type', $investor->getMorphClass())->where('subject_id', $investor->id)->with('causer')->latest()->limit(50)->get(),
         ]);

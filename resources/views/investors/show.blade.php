@@ -9,10 +9,12 @@
     </x-page-header>
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-stat-card label="Capital Invested" :value="App\Support\Format::money($capital)" icon="tag" tone="accent" />
-        <x-stat-card label="Committed (Active)" :value="App\Support\Format::money($committed)" icon="file" tone="info" />
-        <x-stat-card label="Profit Due" :value="App\Support\Format::money($profitDue)" icon="bar-chart" :tone="App\Support\Money::isPositive($profitDue) ? 'warning' : 'success'" />
-        <x-stat-card label="Active Units" :value="$agreements->where('status', 'active')->count()" icon="door" tone="success" />
+        <x-stat-card label="Capital Invested" :value="App\Support\Format::money($capital)" icon="tag" tone="accent">
+            <x-slot:meta><span class="text-ink-500">of {{ App\Support\Format::money($committed) }} committed</span></x-slot:meta>
+        </x-stat-card>
+        <x-stat-card label="Profit Paid" :value="App\Support\Format::money($profitPaid)" icon="check" tone="success" />
+        <x-stat-card label="Profit to Pay" :value="App\Support\Format::money($profitDue)" icon="clock" :tone="App\Support\Money::isPositive($profitDue) ? 'warning' : 'success'" />
+        <x-stat-card label="Total Profit" :value="App\Support\Format::money(App\Support\Money::add($profitPaid, $profitDue))" icon="bar-chart" tone="info" />
     </div>
 
     <div class="mb-6 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
@@ -27,14 +29,29 @@
     <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="grid gap-6 xl:grid-cols-3">
         <x-card title="Agreements" :padded="false" class="min-w-0 xl:col-span-2">
             @forelse ($agreements as $a)
-                <a href="{{ route('investor-agreements.show', $a) }}" class="flex items-center gap-3 border-b border-line px-5 py-3 last:border-0 hover:bg-surface-muted">
-                    <span class="min-w-0 flex-1">
-                        <span class="block font-medium text-ink-900">{{ $a->project->code }} · {{ $a->flat->building->code }} · Unit {{ $a->flat->flat_no }}</span>
-                        <span class="block text-[13px] text-ink-500">{{ $a->agreement_no }} · v{{ $a->version }} · {{ App\Support\Format::date($a->effective_from) }} – {{ $a->effective_to ? App\Support\Format::date($a->effective_to) : 'open' }}</span>
-                    </span>
-                    <span class="text-right"><span class="block font-semibold tabular-nums text-ink-900">{{ App\Modules\Investors\Controllers\AgreementController::pct($a->profit_share_percent) }}</span><x-money :value="$a->committed_capital" muted class="text-[13px]" /></span>
-                    <x-status-badge :status="$a->status" :labels="App\Models\InvestorFlatAgreement::STATUSES" />
-                </a>
+                @php
+                    $pos = $positions[$a->flat_id] ?? ['capital' => '0', 'paid' => '0', 'profit_due' => '0'];
+                    $live = in_array($a->status, ['active', 'closed'], true);
+                    $short = App\Support\Money::sub($a->committed_capital, $pos['capital']);
+                @endphp
+                <div class="border-b border-line px-5 py-4 last:border-0">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <a href="{{ route('investor-agreements.show', $a) }}" class="min-w-0 flex-1 hover:text-accent-700">
+                            <span class="block font-medium text-ink-900">{{ $a->project->name }} · Unit {{ $a->flat->flat_no }}</span>
+                            <span class="block text-[13px] text-ink-500">{{ $a->agreement_no }} · v{{ $a->version }} · {{ $a->effective_to ? App\Support\Format::date($a->effective_from).' – '.App\Support\Format::date($a->effective_to) : 'since '.App\Support\Format::date($a->effective_from) }}</span>
+                        </a>
+                        <x-status-badge :status="$a->status" :labels="App\Models\InvestorFlatAgreement::STATUSES" />
+                        @if ($a->status === 'active')
+                            @can('investor.capital.record')<x-button size="sm" variant="secondary" icon="tag" data-remote-modal="{{ route('investor-capital.create', ['agreement' => $a->public_id]) }}" data-size="max-w-2xl">Receive Capital</x-button>@endcan
+                        @endif
+                    </div>
+                    <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+                        <div><dt class="text-[12px] text-ink-500">Profit Share</dt><dd class="font-semibold tabular-nums text-ink-900">{{ App\Modules\Investors\Controllers\AgreementController::pct($a->profit_share_percent) }}</dd></div>
+                        <div><dt class="text-[12px] text-ink-500">Invested</dt><dd class="font-semibold tabular-nums text-ink-900">{{ $live ? App\Support\Format::money($pos['capital']) : '—' }}</dd><dd class="text-[12px] text-ink-500">of {{ App\Support\Format::money($a->committed_capital) }}@if ($a->status === 'active' && App\Support\Money::isPositive($short)) · <span class="font-medium text-warning-600">{{ App\Support\Format::money($short) }} short</span>@endif</dd></div>
+                        <div><dt class="text-[12px] text-ink-500">Profit Paid</dt><dd class="font-semibold tabular-nums text-success-600">{{ $live ? App\Support\Format::money($pos['paid']) : '—' }}</dd></div>
+                        <div><dt class="text-[12px] text-ink-500">Profit to Pay</dt><dd @class(['font-semibold tabular-nums', 'text-warning-600' => $live && App\Support\Money::isPositive($pos['profit_due']), 'text-ink-900' => ! ($live && App\Support\Money::isPositive($pos['profit_due']))])>{{ $live ? App\Support\Format::money($pos['profit_due']) : '—' }}</dd></div>
+                    </dl>
+                </div>
             @empty
                 <x-empty-state icon="file" title="No agreements" />
             @endforelse
@@ -42,10 +59,19 @@
         <x-card title="Profile">
             <div class="space-y-4">
                 <div><p class="detail-label">Code</p><p class="detail-value">{{ $investor->investor_code }}</p></div>
-                <div><p class="detail-label">Mobile</p><p class="detail-value">{{ App\Support\Phone::display($investor->mobile) ?: '—' }}</p></div>
-                <div><p class="detail-label">Email</p><p class="detail-value break-all">{{ $investor->email ?: '—' }}</p></div>
-                <div><p class="detail-label">TIN</p><p class="detail-value">{{ $investor->tax_id ?: '—' }}</p></div>
-                <div><p class="detail-label">Address</p><p class="detail-value">{{ $investor->address ?: '—' }}</p></div>
+                @if ($investor->mobile)<div><p class="detail-label">Mobile</p><p class="detail-value">{{ App\Support\Phone::display($investor->mobile) }}</p></div>@endif
+                @if ($investor->email)<div><p class="detail-label">Email</p><p class="detail-value break-all">{{ $investor->email }}</p></div>@endif
+                @if ($investor->tax_id)<div><p class="detail-label">TIN</p><p class="detail-value">{{ $investor->tax_id }}</p></div>@endif
+                @if ($investor->address)<div><p class="detail-label">Address</p><p class="detail-value">{{ $investor->address }}</p></div>@endif
+                @if ($portal)
+                    <div>
+                        <p class="detail-label">Portal Login</p>
+                        <a href="#portal" class="mt-0.5 inline-flex items-center gap-2">
+                            @if ($portal['state'] === 'active')<x-badge tone="success">Active</x-badge>@elseif ($portal['state'] === 'pending')<x-badge tone="warning">Pending Verification</x-badge>@else<span class="text-sm font-medium text-accent-700 hover:underline">Set Up</span>@endif
+                        </a>
+                        @if ($portal['login'])<p class="mt-1 text-[13px] text-ink-500">{{ $portal['login']->user->email ?: App\Support\Phone::display($portal['login']->user->mobile) }} · {{ $portal['login']->user->last_login_at ? 'last sign-in '.App\Support\Format::date($portal['login']->user->last_login_at) : 'never signed in' }}</p>@endif
+                    </div>
+                @endif
                 <div><p class="detail-label">Status</p><x-status-badge :status="$investor->status" :labels="App\Models\Investor::STATUSES" /></div>
             </div>
         </x-card>
