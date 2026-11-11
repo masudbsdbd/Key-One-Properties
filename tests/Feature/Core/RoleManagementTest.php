@@ -19,11 +19,11 @@ class RoleManagementTest extends TestCase
     public function test_super_admin_can_create_role_with_permissions_and_it_is_audited(): void
     {
         $this->actingAs($this->superAdmin())->ajax()->post(route('roles.store'), [
-            'name' => 'Accountant',
+            'name' => 'Site Auditor',
             'permissions' => ['dashboard.view', 'customers.view'],
         ])->assertOk();
 
-        $role = Role::findByName('Accountant');
+        $role = Role::findByName('Site Auditor');
         $this->assertEqualsCanonicalizing(['dashboard.view', 'customers.view'], $role->permissions->pluck('name')->all());
         $this->assertDatabaseHas('activity_log', ['log_name' => 'roles', 'event' => 'created', 'subject_id' => $role->id]);
     }
