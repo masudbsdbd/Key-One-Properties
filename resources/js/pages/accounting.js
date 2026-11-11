@@ -73,3 +73,25 @@ export function initJournalForm() {
         totals(form);
     });
 }
+
+function syncMove(form) {
+    const other = form.querySelector('[data-move-other]').value;
+    const own = form.querySelector('#move-account').value;
+    const show = { account: other.startsWith('account:'), purpose: other.startsWith('purpose:'), other: other === 'purpose:other' };
+    form.querySelectorAll('[data-move-when]').forEach((el) => { el.hidden = !show[el.dataset.moveWhen]; });
+    // The account on the other side cannot be the same one.
+    form.querySelectorAll('[data-move-other] option').forEach((option) => { option.disabled = own !== '' && option.value === `account:${own}`; });
+}
+
+/** Deposit, withdraw and transfer form: fields follow where the money comes from or goes. */
+export function initMoneyMoveForm() {
+    document.addEventListener('remote:loaded', (event) => {
+        const form = event.target.querySelector?.('[data-move-form]');
+        if (form) syncMove(form);
+    });
+    $(document).on('change', '[data-move-form] select', function () {
+        const form = this.closest('[data-move-form]');
+        syncMove(form);
+        if (this.id === 'move-account') $(form.querySelector('[data-move-other]')).trigger('change.select2');
+    });
+}

@@ -1,0 +1,1 @@
+<p @class(['text-[28px] font-semibold tabular-nums', 'text-ink-900' => App\Support\Money::cmp($balance, 0) >= 0, 'text-danger-600' => App\Support\Money::cmp($balance, 0) < 0])><x-money :value="$balance" /></p>

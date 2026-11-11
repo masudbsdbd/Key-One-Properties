@@ -109,6 +109,7 @@ class Navigation
             [
                 'title' => 'Accounting',
                 'items' => [
+                    ['label' => 'Cash & Bank', 'icon' => 'wallet', 'route' => 'accounting.cash-bank.index', 'active' => 'accounting.cash-bank.*', 'can' => 'accounting.cashbank.view'],
                     ['label' => 'Journals', 'icon' => 'file', 'route' => 'accounting.journals.index', 'active' => 'accounting.journals.*', 'can' => 'accounting.journal.view'],
                     ['label' => 'Chart of Accounts', 'icon' => 'list', 'route' => 'accounting.accounts.index', 'active' => 'accounting.accounts.*', 'can' => 'accounting.coa.view'],
                 ],

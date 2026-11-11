@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Accounting\Controllers\AccountController;
+use App\Modules\Accounting\Controllers\CashBankController;
 use App\Modules\Accounting\Controllers\JournalController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,23 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('list', 'list')->name('list');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
+        Route::get('{account}/edit', 'edit')->name('edit');
+        Route::put('{account}', 'update')->name('update');
+        Route::delete('{account}', 'destroy')->name('destroy');
+    });
+
+    Route::prefix('cash-bank')->name('cash-bank.')->controller(CashBankController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('accounts', 'accounts')->name('accounts');
+        Route::get('table', 'table')->name('table');
+        Route::get('create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('move', 'moveForm')->name('move');
+        Route::post('move', 'move')->name('move.store');
+        Route::get('transactions/{transaction}/cancel', 'cancelForm')->name('cancel');
+        Route::post('transactions/{transaction}/cancel', 'cancel')->name('cancel.store');
+        Route::get('{account}', 'show')->name('show');
+        Route::get('{account}/balance', 'balance')->name('balance');
         Route::get('{account}/edit', 'edit')->name('edit');
         Route::put('{account}', 'update')->name('update');
         Route::delete('{account}', 'destroy')->name('destroy');

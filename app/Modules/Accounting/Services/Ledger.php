@@ -6,6 +6,7 @@ use App\Models\FinancialEvent;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\LedgerAccount;
+use App\Models\MoneyAccount;
 use App\Models\User;
 use App\Support\DocumentNumber;
 use App\Support\Money;
@@ -190,8 +191,10 @@ class Ledger
             }
             $debit = Money::add($debit, $dr);
             $credit = Money::add($credit, $cr);
-            $clean[] = ['account_id' => $account->id, 'debit' => $dr, 'credit' => $cr, 'description' => $line['description'] ?? null]
-                + array_map(fn ($v) => $v ?: null, array_intersect_key($line, array_flip(self::DIMENSIONS)));
+            $dimensions = array_map(fn ($v) => $v ?: null, array_intersect_key($line, array_flip(self::DIMENSIONS)));
+            // A line on a cash or bank ledger account always names its money account, so statements are complete.
+            $dimensions['money_account_id'] = $this->moneyAccountId($account) ?? ($dimensions['money_account_id'] ?? null);
+            $clean[] = ['account_id' => $account->id, 'debit' => $dr, 'credit' => $cr, 'description' => $line['description'] ?? null] + $dimensions;
         }
         if (count($clean) < 2) {
             throw ValidationException::withMessages(['lines' => 'A journal needs at least two lines.']);
@@ -201,6 +204,11 @@ class Ledger
         }
 
         return $clean;
+    }
+
+    private function moneyAccountId(LedgerAccount $account): ?int
+    {
+        return MoneyAccount::query()->where('ledger_account_id', $account->id)->value('id');
     }
 
     private function account(mixed $account): ?LedgerAccount
