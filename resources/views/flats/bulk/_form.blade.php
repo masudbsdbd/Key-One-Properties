@@ -1,4 +1,4 @@
-<form method="POST" action="{{ route('projects.flats.bulk.store', $project) }}" data-ajax-form data-bulk-form data-preview-url="{{ route('projects.flats.bulk.preview', $project) }}" class="space-y-6">
+<form method="POST" action="{{ route('projects.flats.bulk.store', $project) }}" data-ajax-form data-bulk-form data-patterns='@json($patterns)' data-preview-url="{{ route('projects.flats.bulk.preview', $project) }}" class="space-y-6">
     @csrf
     <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
 
@@ -12,8 +12,14 @@
                 <button type="button" class="mt-1.5 text-[13px] font-medium text-accent-700 hover:underline" data-select-all-floors data-url="{{ route('options.floors') }}">Select all floors</button>
             </div>
             <x-form.input name="per_floor" type="number" label="Units per Floor" min="1" max="50" placeholder="4" required />
-            <x-form.input name="pattern" label="Number Pattern" value="{floor}{L}" required hint="{floor}, {n} or {L} (A, B, C)" />
+            <div>
+                <x-form.select name="numbering" id="bulk-numbering" label="Unit Numbers" :options="$numbering + ['custom' => 'Custom']" selected="floor_letter" required />
+                <p class="form-hint" data-bulk-example></p>
+            </div>
             <x-form.input name="start_index" type="number" label="Start From" min="1" value="1" />
+            <div data-bulk-custom hidden>
+                <x-form.input name="pattern" id="bulk-pattern" label="Custom Pattern" value="{floor}{L}" hint="{floor}, {n}, {nn} or {L}" />
+            </div>
             <x-form.select name="flat_type" id="bulk-type" label="Type" :options="App\Models\Flat::TYPES" placeholder="Select type" />
             <x-form.input name="bedrooms" id="bulk-bedrooms" type="number" label="Bedrooms" min="0" max="20" />
             <x-form.input name="bathrooms" id="bulk-bathrooms" type="number" label="Bathrooms" min="0" max="20" />
@@ -27,7 +33,7 @@
         <x-form.actions class="mt-0">
             <x-button variant="secondary" data-modal-close>Cancel</x-button>
             <x-button variant="secondary" icon="eye" data-bulk-preview-button>Preview</x-button>
-            <x-button type="submit" icon="check" disabled data-bulk-submit data-disabled-reason="Preview the units first">Create Units</x-button>
+            <x-button type="submit" icon="check">Create Units</x-button>
         </x-form.actions>
     @endif
 </form>

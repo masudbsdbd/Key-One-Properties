@@ -17,6 +17,14 @@ class FlatService
 {
     public const BULK_LIMIT = 500;
 
+    /** Ready-made unit numbering styles: key => [label, pattern]. */
+    public const NUMBERING = [
+        'floor_letter' => ['1A, 1B, 1C', '{floor}{L}'],
+        'floor_number' => ['101, 102, 103', '{floor}{nn}'],
+        'letter_floor' => ['A1, B1, C1', '{L}{floor}'],
+        'floor_dash_letter' => ['1-A, 1-B, 1-C', '{floor}-{L}'],
+    ];
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -185,10 +193,10 @@ class FlatService
      * @param  Collection<int, array{floor: Floor, flat_no: string, exists: bool, duplicate: bool}>  $plan
      * @param  array<string, mixed>  $attributes
      */
-    public function bulkCreate(Collection $plan, array $attributes, ?string $price, User $user): int
+    public function bulkCreate(Collection $plan, array $attributes, ?string $price, User $user, string $field = 'pattern'): int
     {
-        if ($plan->contains(fn ($row) => $row['exists'] || $row['duplicate'])) {
-            throw ValidationException::withMessages(['pattern' => 'Some unit numbers already exist or repeat. Change the pattern.']);
+        if ($message = self::conflictMessage($plan)) {
+            throw ValidationException::withMessages([$field => $message]);
         }
 
         return DB::transaction(function () use ($plan, $attributes, $price, $user) {
@@ -203,7 +211,30 @@ class FlatService
     }
 
     /**
-     * Pattern tokens: {floor} floor number, {n} sequence number, {L} sequence letter (A, B, C...).
+     * @param  Collection<int, array{floor: Floor, flat_no: string, exists: bool, duplicate: bool}>  $plan
+     */
+    public static function conflictMessage(Collection $plan): ?string
+    {
+        $list = function (string $flag) use ($plan): ?string {
+            $numbers = $plan->filter(fn ($row) => $row[$flag])->pluck('flat_no')->unique()->values();
+            if ($numbers->isEmpty()) {
+                return null;
+            }
+            $more = $numbers->count() - 5;
+
+            return $numbers->take(5)->implode(', ').($more > 0 ? ' and '.$more.' more' : '');
+        };
+
+        return match (true) {
+            ($taken = $list('exists')) !== null => 'Already exists: '.$taken.'.',
+            ($repeated = $list('duplicate')) !== null => 'Repeats: '.$repeated.'.',
+            default => null,
+        };
+    }
+
+    /**
+     * Pattern tokens: {floor} floor number, {n} sequence number, {nn} two-digit sequence number,
+     * {L} sequence letter (A, B, C...).
      */
     public static function flatNumber(string $pattern, Floor $floor, int $index): string
     {
@@ -213,7 +244,12 @@ class FlatService
             $letter = chr(65 + (($n - 1) % 26)).$letter;
         }
 
-        return mb_strtoupper(strtr($pattern, ['{floor}' => $floorToken, '{n}' => (string) $index, '{L}' => $letter]));
+        return mb_strtoupper(strtr($pattern, [
+            '{floor}' => $floorToken,
+            '{nn}' => str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+            '{n}' => (string) $index,
+            '{L}' => $letter,
+        ]));
     }
 
     private function make(Floor $floor, array $attributes, User $user): Flat

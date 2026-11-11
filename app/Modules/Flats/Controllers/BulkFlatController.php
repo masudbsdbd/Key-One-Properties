@@ -30,6 +30,8 @@ class BulkFlatController extends Controller
                 'project' => $project,
                 'buildings' => $project->buildings()->pluck('name', 'public_id'),
                 'idempotencyKey' => (string) Str::uuid(),
+                'numbering' => array_map(fn ($style) => $style[0], FlatService::NUMBERING),
+                'patterns' => array_map(fn ($style) => $style[1], FlatService::NUMBERING),
             ])->render(),
         ]);
     }
@@ -60,7 +62,8 @@ class BulkFlatController extends Controller
 
         try {
             [, $plan] = $this->plan($request, $project);
-            $count = $this->service->bulkCreate($plan, $this->attributes($request), $request->input('list_price'), $request->user());
+            $count = $this->service->bulkCreate($plan, $this->attributes($request), $request->input('list_price'), $request->user(),
+                isset(FlatService::NUMBERING[$request->input('numbering')]) ? 'numbering' : 'pattern');
         } catch (\Throwable $e) {
             Cache::forget('bulk-flats:'.$request->input('idempotency_key'));
             throw $e;
@@ -83,13 +86,16 @@ class BulkFlatController extends Controller
             'list_price' => $request->filled('list_price') ? str_replace(',', '', (string) $request->input('list_price')) : null,
         ]);
 
+        $preset = FlatService::NUMBERING[$request->input('numbering')] ?? null;
+
         $data = $request->validate([
             'building' => ['required', 'string', Rule::exists('buildings', 'public_id')->where('project_id', $project->id)],
             'floors' => ['required', 'array', 'min:1', 'max:210'],
             'floors.*' => ['string', 'size:16'],
             'per_floor' => ['required', 'integer', 'between:1,50'],
             'start_index' => ['nullable', 'integer', 'between:1,500'],
-            'pattern' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9\-\/{}]+$/', 'regex:/\{(n|L)\}/'],
+            'numbering' => ['nullable', Rule::in([...array_keys(FlatService::NUMBERING), 'custom'])],
+            'pattern' => [Rule::requiredIf(! $preset), 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9\-\/{}]+$/', 'regex:/\{(n|nn|L)\}/'],
             'flat_type' => ['nullable', Rule::in(array_keys(Flat::TYPES))],
             'bedrooms' => ['nullable', 'integer', 'between:0,20'],
             'bathrooms' => ['nullable', 'integer', 'between:0,20'],
@@ -97,7 +103,7 @@ class BulkFlatController extends Controller
             'area_unit' => ['required', Rule::in(['sqft', 'sqm'])],
             'list_price' => ['nullable', 'numeric', 'min:0', 'max:9999999999999999.99'],
         ], [
-            'pattern.regex' => 'The pattern must contain {n} or {L} so each unit gets a different number.',
+            'pattern.regex' => 'The pattern must contain {n}, {nn} or {L} so each unit gets a different number.',
             'saleable_area.gt' => 'Saleable area must be greater than zero.',
         ]);
 
@@ -105,7 +111,7 @@ class BulkFlatController extends Controller
         $floors = $building->floors()->whereIn('public_id', $data['floors'])->get();
         abort_if($floors->count() !== count(array_unique($data['floors'])), 422, 'Select floors of the chosen building.');
 
-        $plan = $this->service->bulkPlan($building, $floors, (int) $data['per_floor'], $data['pattern'], (int) ($data['start_index'] ?? 1));
+        $plan = $this->service->bulkPlan($building, $floors, (int) $data['per_floor'], $preset[1] ?? $data['pattern'], (int) ($data['start_index'] ?? 1));
 
         return [$building, $plan];
     }

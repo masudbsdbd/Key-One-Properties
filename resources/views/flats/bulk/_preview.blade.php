@@ -18,4 +18,3 @@
         @endforeach
     </div>
 </div>
-<input type="hidden" data-bulk-ready value="{{ $conflicts ? '0' : '1' }}">

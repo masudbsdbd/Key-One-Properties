@@ -7,13 +7,42 @@ function bulkForm(target) {
 }
 
 function invalidate(form) {
-    const submit = form.querySelector('[data-bulk-submit]');
-    if (submit) {
-        submit.disabled = true;
-        submit.dataset.disabledReason = 'Preview the units first';
-    }
     const preview = form.querySelector('[data-bulk-preview]');
     if (preview && preview.innerHTML) preview.classList.add('opacity-50');
+}
+
+function letters(index) {
+    let out = '';
+    for (let n = index; n > 0; n = Math.floor((n - 1) / 26)) out = String.fromCharCode(65 + ((n - 1) % 26)) + out;
+    return out;
+}
+
+// Mirrors FlatService::flatNumber for the sample shown under the numbering field.
+function unitNumber(pattern, floor, index) {
+    const tokens = { '{floor}': String(floor), '{nn}': String(index).padStart(2, '0'), '{n}': String(index), '{L}': letters(index) };
+    return pattern.replace(/\{floor\}|\{nn\}|\{n\}|\{L\}/g, (token) => tokens[token]).toUpperCase();
+}
+
+function showExample(form) {
+    const example = form.querySelector('[data-bulk-example]');
+    if (!example) return;
+    const style = form.querySelector('#bulk-numbering').value;
+    const custom = style === 'custom';
+    form.querySelector('[data-bulk-custom]').hidden = !custom;
+    const pattern = custom ? form.querySelector('#bulk-pattern').value : JSON.parse(form.dataset.patterns)[style];
+    const count = Math.min(Math.max(parseInt(form.querySelector('[name="per_floor"]').value, 10) || 4, 1), 50);
+    const start = Math.max(parseInt(form.querySelector('[name="start_index"]').value, 10) || 1, 1);
+    if (!pattern) {
+        example.textContent = '';
+        return;
+    }
+    const shown = Math.min(count, 4);
+    const row = (floor) => {
+        const numbers = Array.from({ length: shown }, (_, i) => unitNumber(pattern, floor, start + i));
+        if (count > shown) numbers.push(`… ${unitNumber(pattern, floor, start + count - 1)}`);
+        return numbers.join(', ');
+    };
+    example.textContent = `Floor 1: ${row(1)} · Floor 2: ${row(2)}`;
 }
 
 async function preview(form, button) {
@@ -24,9 +53,6 @@ async function preview(form, button) {
         const box = form.querySelector('[data-bulk-preview]');
         box.classList.remove('opacity-50');
         box.innerHTML = res.data.html;
-        const submit = form.querySelector('[data-bulk-submit]');
-        submit.disabled = box.querySelector('[data-bulk-ready]')?.value !== '1';
-        submit.dataset.disabledReason = 'Resolve the conflicts shown in the preview';
     } catch (error) {
         if (error.status === 422) showErrors(form, error.errors);
     } finally {
@@ -62,9 +88,16 @@ export function initFlatPages() {
 
     document.addEventListener('input', (event) => {
         const form = bulkForm(event.target);
-        if (form) invalidate(form);
+        if (!form) return;
+        invalidate(form);
+        showExample(form);
     });
     $(document).on('change', '[data-bulk-form] select', function () {
         invalidate(bulkForm(this));
+        showExample(bulkForm(this));
+    });
+    document.addEventListener('remote:loaded', (event) => {
+        const form = event.target.querySelector('[data-bulk-form]');
+        if (form) showExample(form);
     });
 }

@@ -202,6 +202,31 @@ class FlatInventoryTest extends TestCase
         $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $payload)->assertStatus(409);
     }
 
+    public function test_bulk_create_with_a_numbering_style_needs_no_pattern_or_preview(): void
+    {
+        $building = $this->floor->building;
+        $tenth = $building->floors()->create(['floor_number' => 10, 'label' => '10th Floor']);
+        $payload = [
+            'building' => $building->public_id, 'floors' => [$this->floor->public_id, $tenth->public_id], 'per_floor' => 2,
+            'numbering' => 'floor_number', 'saleable_area' => '1200', 'area_unit' => 'sqft',
+            'idempotency_key' => '9f1f2b9e-6a6f-4c4f-9a59-6f2b5b8c1d14',
+        ];
+
+        $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $payload)->assertOk();
+        $this->assertSame(['1001', '1002', '101', '102'], Flat::query()->orderBy('flat_no')->pluck('flat_no')->all());
+
+        $payload['idempotency_key'] = '9f1f2b9e-6a6f-4c4f-9a59-6f2b5b8c1d15';
+        $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $payload)
+            ->assertStatus(422)->assertJsonPath('errors.numbering.0', 'Already exists: 101, 102, 1001, 1002.');
+
+        $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.preview', $this->project), ['numbering' => 'custom'] + $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('pattern');
+
+        $html = $this->actingAs($this->user)->ajax()->get(route('projects.flats.bulk', $this->project))->assertOk()->json('data.html');
+        $this->assertStringContainsString('101, 102, 103', $html);
+        $this->assertStringNotContainsString('Preview the units first', $html);
+    }
+
     public function test_bulk_pattern_without_sequence_token_is_rejected(): void
     {
         $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.preview', $this->project), [
