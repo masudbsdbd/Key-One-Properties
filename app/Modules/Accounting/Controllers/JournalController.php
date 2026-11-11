@@ -8,6 +8,7 @@ use App\Models\LedgerAccount;
 use App\Models\Project;
 use App\Modules\Accounting\Services\Ledger;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Spatie\Activitylog\Models\Activity;
+use Symfony\Component\HttpFoundation\Response;
 
 class JournalController extends Controller
 {
@@ -37,13 +39,31 @@ class JournalController extends Controller
     public function table(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('accounting.journal.view'), 403);
+        $rows = TableQuery::paginate($this->listing($request), $request);
+
+        return Ajax::table(view('accounting.journals._rows', ['journals' => $rows])->render(), $rows);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('accounting.journal.view') && $request->user()->can('accounting.reports.export'), 403);
+
+        return Report::make('Journals')->sumMoney()
+            ->meta(['Period' => TableQuery::periodLabel($request), 'Type' => JournalEntry::TYPES[(string) $request->input('type')] ?? null, 'Status' => JournalEntry::STATUSES[(string) $request->input('status')] ?? null])
+            ->columns(['Journal' => 'text', 'Date' => 'date', 'Type' => 'text', 'Details' => 'text', 'Reference' => 'text', 'Amount' => 'money', 'Status' => 'text'])
+            ->rows(fn () => $this->listing($request)->lazy()->map(fn (JournalEntry $j) => [$j->journal_no, $j->accounting_date, JournalEntry::TYPES[$j->journal_type] ?? $j->journal_type,
+                $j->narration, $j->reference, $j->total_amount, (JournalEntry::STATUSES[$j->status] ?? $j->status).($j->reversed_by_id ? ' · reversed' : '')]))
+            ->respond($request);
+    }
+
+    private function listing(Request $request): Builder
+    {
         $query = JournalEntry::query()->with(['source', 'reversalOf:id,public_id,journal_no', 'reversedBy:id,public_id,journal_no'])
             ->when($request->input('status'), fn (Builder $q, $s) => $s === 'reversed' ? $q->whereNotNull('reversed_by_id') : $q->where('status', $s))
             ->when($request->input('type'), fn (Builder $q, $t) => $q->where('journal_type', $t));
         TableQuery::period($query, $request, 'accounting_date');
-        $rows = TableQuery::apply($query, $request, ['journal_no', 'narration', 'reference'], ['date' => 'accounting_date', 'amount' => 'total_amount'], 'date', 'desc');
 
-        return Ajax::table(view('accounting.journals._rows', ['journals' => $rows])->render(), $rows);
+        return TableQuery::prepare($query, $request, ['journal_no', 'narration', 'reference'], ['date' => 'accounting_date', 'amount' => 'total_amount'], 'date', 'desc');
     }
 
     public function create(Request $request): View

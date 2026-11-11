@@ -53,6 +53,7 @@ class ReportController extends Controller
             'pl' => $pl, 'plMonth' => $plMonth,
             'sheet' => $this->statements->balanceSheet(min($year['to'], Ledger::today()->toDateString())),
             'attention' => array_filter([
+                'negative' => $user->can('accounting.cashbank.view') ? MoneyAccount::query()->get()->filter(fn (MoneyAccount $a) => Money::cmp($net[$a->ledger_account_id] ?? 0, 0) < 0)->count() : 0,
                 'backlog' => $user->can('accounting.reconciliation.view') && AccountingSettings::enabled() ? EventPoster::backlog()->count() : 0,
                 'journals' => $user->can('accounting.journal.approve') ? JournalEntry::query()->where('status', 'submitted')->count() : 0,
                 'cheques' => $user->canAny(['accounting.cashbank.view', 'accounting.cheque.manage']) ? Cheque::query()->whereIn('status', Cheque::OPEN)->count() : 0,

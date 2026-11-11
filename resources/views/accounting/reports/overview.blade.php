@@ -12,6 +12,7 @@
         $user->can('accounting.ledger.view') ? ['General Ledger', 'accounting.ledger', 'book', null, 'Every entry of one account, with a running balance'] : null,
     ]);
     $attentionLinks = [
+        'negative' => ['Cash or bank accounts below zero', route('accounting.cash-bank.index')],
         'backlog' => ['Transactions waiting to be posted', Route::has('accounting.reconciliation.index') ? route('accounting.reconciliation.index') : route('accounting.settings.edit')],
         'journals' => ['Journals waiting for approval', route('accounting.journals.index', ['status' => 'submitted'])],
         'cheques' => ['Cheques not settled yet', route('accounting.cheques.index')],

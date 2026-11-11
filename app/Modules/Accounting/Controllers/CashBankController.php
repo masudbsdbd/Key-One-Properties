@@ -12,6 +12,7 @@ use App\Modules\Accounting\Services\CashBank;
 use App\Modules\Accounting\Services\Ledger;
 use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Support\Ajax;
+use App\Support\Export\Report;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +23,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class CashBankController extends Controller
 {
@@ -68,18 +70,7 @@ class CashBankController extends Controller
     {
         abort_unless($request->user()->can('accounting.cashbank.view'), 403);
         $account = MoneyAccount::findByPublicId($request->input('account'));
-        $query = JournalLine::query()->select('journal_lines.*', 'journal_entries.accounting_date')
-            ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
-            ->where('journal_entries.status', 'posted')->whereNotNull('journal_lines.money_account_id')
-            ->when($request->filled('account'), fn (Builder $q) => $q->where('journal_lines.money_account_id', $account?->id ?? 0))
-            ->when($request->input('direction'), fn (Builder $q, $d) => $q->where($d === 'in' ? 'journal_lines.debit' : 'journal_lines.credit', '>', 0))
-            ->with(['entry.source', 'moneyAccount', 'customer', 'supplier', 'contractor', 'investor']);
-        TableQuery::period($query, $request, 'journal_entries.accounting_date');
-        $term = trim((string) $request->input('search'));
-        if ($term !== '') {
-            $like = '%'.addcslashes(mb_substr($term, 0, 100), '%_\\').'%';
-            $query->where(fn (Builder $q) => $q->where('journal_entries.narration', 'like', $like)->orWhere('journal_entries.journal_no', 'like', $like)->orWhere('journal_entries.reference', 'like', $like));
-        }
+        $query = $this->listing($request, $account);
         $rows = TableQuery::paginate($query->orderByDesc('journal_entries.accounting_date')->orderByDesc('journal_lines.id'), $request);
 
         // Running balance for a single account: the balance after the newest row on the page, then walked down.
@@ -99,6 +90,39 @@ class CashBankController extends Controller
             'lines' => $rows, 'single' => (bool) $account,
             'canManage' => $request->user()->can('accounting.cashbank.manage'), 'canJournal' => $request->user()->can('accounting.journal.view'),
         ])->render(), $rows);
+    }
+
+    public function export(Request $request): Response
+    {
+        abort_unless($request->user()->can('accounting.cashbank.view') && $request->user()->can('accounting.reports.export'), 403);
+        $account = MoneyAccount::findByPublicId($request->input('account'));
+        $query = $this->listing($request, $account)->orderBy('journal_entries.accounting_date')->orderBy('journal_lines.id');
+
+        return Report::make($account ? 'Statement · '.$account->name : 'Money In and Out')->sumMoney()
+            ->meta(['Period' => TableQuery::periodLabel($request), 'Account' => $account?->label()])
+            ->columns(['Date' => 'date', 'Journal' => 'text', 'Account' => 'text', 'Details' => 'text', 'In' => 'money', 'Out' => 'money'])
+            ->rows(fn () => $query->lazy()->map(fn (JournalLine $l) => [$l->entry->accounting_date, $l->entry->journal_no, $l->moneyAccount->name, $l->description ?: $l->entry->narration,
+                (float) $l->debit ? $l->debit : null, (float) $l->credit ? $l->credit : null]))
+            ->respond($request);
+    }
+
+    /** Posted lines on cash and bank accounts, with the filters of the list. */
+    private function listing(Request $request, ?MoneyAccount $account): Builder
+    {
+        $query = JournalLine::query()->select('journal_lines.*', 'journal_entries.accounting_date')
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_lines.journal_entry_id')
+            ->where('journal_entries.status', 'posted')->whereNotNull('journal_lines.money_account_id')
+            ->when($request->filled('account'), fn (Builder $q) => $q->where('journal_lines.money_account_id', $account?->id ?? 0))
+            ->when($request->input('direction'), fn (Builder $q, $d) => $q->where($d === 'in' ? 'journal_lines.debit' : 'journal_lines.credit', '>', 0))
+            ->with(['entry.source', 'moneyAccount', 'customer', 'supplier', 'contractor', 'investor']);
+        TableQuery::period($query, $request, 'journal_entries.accounting_date');
+        $term = trim((string) $request->input('search'));
+        if ($term !== '') {
+            $like = '%'.addcslashes(mb_substr($term, 0, 100), '%_\\').'%';
+            $query->where(fn (Builder $q) => $q->where('journal_entries.narration', 'like', $like)->orWhere('journal_entries.journal_no', 'like', $like)->orWhere('journal_entries.reference', 'like', $like));
+        }
+
+        return $query;
     }
 
     /** Accounts for the payment and receipt forms of the other modules: names only, never balances. */

@@ -126,6 +126,25 @@ class CashBankTest extends TestCase
         $this->assertNull(LedgerAccount::query()->find($empty->ledger_account_id));
     }
 
+    public function test_statements_and_journals_export_and_an_overdrawn_account_is_flagged(): void
+    {
+        $bank = $this->account('bank', 'Islami Bank', '5000');
+        $this->move('out', $bank, 'purpose:bank_charge', '7500')->assertOk();
+        $exporter = $this->userWith(['accounting.cashbank.view', 'accounting.journal.view', 'accounting.reports.export', 'accounting.dashboard.view']);
+
+        $csv = $this->actingAs($exporter)->get(route('accounting.cash-bank.export', ['account' => $bank->public_id, 'format' => 'csv']))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Opening balance of Islami Bank', $csv);
+        $this->assertStringContainsString('7500', str_replace(',', '', $csv));
+        $this->assertStringStartsWith('%PDF', $this->actingAs($exporter)->get(route('accounting.cash-bank.export', ['format' => 'pdf']))->assertOk()->getContent());
+        $journals = $this->actingAs($exporter)->get(route('accounting.journals.export', ['format' => 'csv', 'type' => 'payment']))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Bank charge', $journals);
+        $this->assertStringNotContainsString('Opening balance', $journals);
+
+        $this->actingAs($exporter)->get(route('accounting.overview'))->assertOk()->assertSee('Cash or bank accounts below zero');
+        $this->actingAs($this->accountant)->get(route('accounting.cash-bank.export', ['format' => 'csv']))->assertForbidden();
+        $this->actingAs($this->accountant)->get(route('accounting.journals.export', ['format' => 'csv']))->assertForbidden();
+    }
+
     public function test_cash_and_bank_needs_permission(): void
     {
         $cash = $this->account('cash', 'Office Cash', '10000');

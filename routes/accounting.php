@@ -69,6 +69,7 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('accounts', 'accounts')->name('accounts');
         Route::get('table', 'table')->name('table');
+        Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::get('move', 'moveForm')->name('move');
@@ -101,6 +102,7 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
     Route::prefix('journals')->name('journals.')->controller(JournalController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('table', 'table')->name('table');
+        Route::get('export', 'export')->middleware('throttle:20,1')->name('export');
         Route::get('create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::get('{journal}', 'show')->name('show');

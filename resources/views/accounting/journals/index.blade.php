@@ -12,5 +12,8 @@
             <select name="status" class="form-control w-48" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\JournalEntry::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach<option value="reversed">Reversed</option></select>
             <x-period />
         </x-slot:filters>
+        @can('accounting.reports.export')
+            <x-slot:toolbar><x-export-menu :url="route('accounting.journals.export')" /></x-slot:toolbar>
+        @endcan
     </x-data-table>
 </x-layouts.app>

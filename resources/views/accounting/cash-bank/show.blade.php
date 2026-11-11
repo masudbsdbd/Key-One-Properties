@@ -41,5 +41,8 @@
             <select name="direction" class="form-control w-36" data-table-filter aria-label="Direction"><option value="">In and out</option><option value="in">Money in</option><option value="out">Money out</option></select>
             <x-period />
         </x-slot:filters>
+        @can('accounting.reports.export')
+            <x-slot:toolbar><x-export-menu :url="route('accounting.cash-bank.export', ['account' => $account->public_id])" /></x-slot:toolbar>
+        @endcan
     </x-data-table>
 </x-layouts.app>
