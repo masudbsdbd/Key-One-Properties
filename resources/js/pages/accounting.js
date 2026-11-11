@@ -95,3 +95,19 @@ export function initMoneyMoveForm() {
         if (this.id === 'move-account') $(form.querySelector('[data-move-other]')).trigger('change.select2');
     });
 }
+
+/** Opening balances: totals per side and the amount that lands in Opening Balance Equity. */
+export function initOpeningForm() {
+    const form = document.querySelector('[data-opening-form]');
+    if (!form) return;
+    const update = () => {
+        const sum = (side) => Decimal.sum([...form.querySelectorAll(`[data-opening-amount="${side}"]`)].map((el) => clean(el.value)));
+        const asset = sum('asset');
+        const other = sum('other');
+        form.querySelector('[data-opening-total="asset"]').textContent = Decimal.format(asset);
+        form.querySelector('[data-opening-total="other"]').textContent = Decimal.format(other);
+        form.querySelector('[data-opening-total="difference"]').textContent = Decimal.format(Decimal.sum([asset, other.startsWith('-') ? other.slice(1) : `-${other}`]));
+    };
+    form.addEventListener('input', update);
+    update();
+}

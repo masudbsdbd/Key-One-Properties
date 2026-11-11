@@ -3,6 +3,7 @@
 use App\Modules\Accounting\Controllers\AccountController;
 use App\Modules\Accounting\Controllers\CashBankController;
 use App\Modules\Accounting\Controllers\JournalController;
+use App\Modules\Accounting\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('options/money-accounts', [CashBankController::class, 'options'])->middleware('throttle:120,1')->name('options.money-accounts');
@@ -17,6 +18,16 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('{account}/edit', 'edit')->name('edit');
         Route::put('{account}', 'update')->name('update');
         Route::delete('{account}', 'destroy')->name('destroy');
+    });
+
+    Route::controller(SettingsController::class)->group(function () {
+        Route::get('settings', 'edit')->name('settings.edit');
+        Route::put('settings', 'update')->name('settings.update');
+        Route::put('settings/defaults', 'defaults')->name('settings.defaults');
+        Route::get('settings/mapping', 'mappingForm')->name('settings.mapping.form');
+        Route::put('settings/mapping', 'mapping')->name('settings.mapping');
+        Route::get('opening-balances', 'opening')->name('opening.edit');
+        Route::put('opening-balances', 'saveOpening')->name('opening.update');
     });
 
     Route::prefix('cash-bank')->name('cash-bank.')->controller(CashBankController::class)->group(function () {
