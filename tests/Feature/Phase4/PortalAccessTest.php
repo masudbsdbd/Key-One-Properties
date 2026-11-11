@@ -163,6 +163,13 @@ class PortalAccessTest extends TestCase
         $html = $this->actingAs($this->admin)->ajax()->get(route('portal-access.panel', ['investor', $investor->public_id]))->assertOk()->json('data.html');
         $this->assertStringContainsString('rahim@example.com', $html);
         $this->assertStringContainsString('Active', $html);
+        // The panel itself says where and with what the investor signs in, and offers the password control by name.
+        $this->assertStringContainsString(route('login'), $html);
+        $this->assertStringContainsString('Signs in with', $html);
+        $this->assertStringContainsString('Set Password', $html);
+        $this->assertStringContainsString('Temporary password', $html);
+        $list = $this->actingAs($this->admin)->ajax()->get(route('investors.table'))->assertOk()->json('data.html');
+        $this->assertStringContainsString(route('investors.show', $investor).'#portal', $list);
 
         $this->actingAs($this->admin)->ajax()->get(route('portal-access.grants.create', ['investor', $link->public_id]))->assertOk()->assertSee('project:'.$flat->project->public_id);
         $this->actingAs($this->admin)->ajax()->post(route('portal-access.grants.store', ['investor', $link->public_id]), ['resource' => 'project:'.$flat->project->public_id, 'capability' => 'investor.portal.project.financials.view'])->assertOk();

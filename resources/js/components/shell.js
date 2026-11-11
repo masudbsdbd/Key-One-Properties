@@ -1,3 +1,4 @@
+import { toast } from './toast';
 const KEY = 'keyone.sidebar';
 
 function store(value) {
@@ -110,6 +111,18 @@ export function initShell() {
     });
     window.addEventListener('scroll', follow, { capture: true, passive: true });
     window.addEventListener('resize', follow);
+
+    // [data-copy="text"] puts the text on the clipboard.
+    document.addEventListener('click', async (event) => {
+        const copy = event.target.closest('[data-copy]');
+        if (!copy) return;
+        try {
+            await navigator.clipboard.writeText(copy.dataset.copy);
+            toast.success('Copied');
+        } catch {
+            toast.error('Could not copy');
+        }
+    });
 
     document.addEventListener('keydown', (event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {

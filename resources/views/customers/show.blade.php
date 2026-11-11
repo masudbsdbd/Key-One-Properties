@@ -60,7 +60,7 @@
                 @endcan
                 @canany(['sales.sale.view', 'sales.booking.view'])<button type="button" role="tab" class="tab" id="tab-sales" data-tab="sales" aria-controls="panel-sales">Sales</button>@endcanany
                 @can('collections.payment.view')<button type="button" role="tab" class="tab" id="tab-payments" data-tab="payments" aria-controls="panel-payments">Payments</button>@endcan
-                @canany(['portal.links.manage', 'portal.grants.manage'])<button type="button" role="tab" class="tab" id="tab-portal" data-tab="portal" aria-controls="panel-portal">Portal</button>@endcanany
+                @canany(['portal.links.manage', 'portal.grants.manage'])<button type="button" role="tab" class="tab" id="tab-portal" data-tab="portal" aria-controls="panel-portal">Portal Login</button>@endcanany
                 <button type="button" role="tab" class="tab" id="tab-activity" data-tab="activity" aria-controls="panel-activity">Activity</button>
             </div>
 

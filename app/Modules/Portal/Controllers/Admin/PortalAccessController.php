@@ -28,7 +28,7 @@ class PortalAccessController extends Controller
     {
         abort_unless($request->user()->canAny(['portal.links.manage', 'portal.grants.manage']), 403);
         $record = $this->owner($request, $type, $owner);
-        $links = $this->linkModel($type)::query()->where("{$type}_id", $record->id)->with(['user:id,name,email,mobile,last_login_at', 'user.roles:id,name'])->latest('id')->get();
+        $links = $this->linkModel($type)::query()->where("{$type}_id", $record->id)->with(['user:id,name,email,mobile,last_login_at,must_change_password', 'user.roles:id,name'])->latest('id')->get();
         $grants = PortalAccessGrant::query()->whereIn('user_id', $links->pluck('user_id'))->with('granter:id,name')->latest('id')->get()->groupBy('user_id');
 
         return Ajax::success(null, ['html' => view('portal.admin._panel', [

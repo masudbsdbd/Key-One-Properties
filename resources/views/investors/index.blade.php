@@ -4,9 +4,10 @@
             <x-slot:actions><x-button icon="plus" data-remote-modal="{{ route('investors.create') }}" data-size="max-w-2xl" data-auto-create>New Investor</x-button></x-slot:actions>
         @endcan
     </x-page-header>
-    <x-data-table summary data-table-history :url="route('investors.table')" sort="name" dir="asc" search="Search name, code or mobile" :columns="[
-        ['label' => 'Investor', 'sort' => 'name'], ['label' => 'Contact'], ['label' => 'Active Units', 'class' => 'text-right'], ['label' => 'Capital', 'class' => 'text-right'], ['label' => 'Status'],
-    ]">
+    <x-data-table summary data-table-history :url="route('investors.table')" sort="name" dir="asc" search="Search name, code or mobile" :columns="array_values(array_filter([
+        ['label' => 'Investor', 'sort' => 'name'], ['label' => 'Contact'], ['label' => 'Active Units', 'class' => 'text-right'], ['label' => 'Capital', 'class' => 'text-right'],
+        auth()->user()->canAny(['portal.links.manage', 'portal.grants.manage']) ? ['label' => 'Portal Login'] : null, ['label' => 'Status'],
+    ]))">
         <x-slot:filters>
             <select name="status" class="form-control w-40" data-table-filter aria-label="Status"><option value="">All statuses</option>@foreach (App\Models\Investor::STATUSES as $v => $l)<option value="{{ $v }}">{{ $l }}</option>@endforeach</select>
         </x-slot:filters>

@@ -8,6 +8,7 @@ use App\Models\Investor;
 use App\Models\InvestorCapitalTransaction;
 use App\Models\InvestorFlatAgreement;
 use App\Models\InvestorLedgerEntry;
+use App\Models\InvestorUserLink;
 use App\Modules\Investors\Services\InvestorService;
 use App\Support\Ajax;
 use App\Support\Export\Report;
@@ -38,8 +39,18 @@ class InvestorController extends Controller
     public function table(Request $request): JsonResponse
     {
         $investors = TableQuery::paginate($this->listing($request), $request);
+        $showPortal = $request->user()->canAny(['portal.links.manage', 'portal.grants.manage']);
+        if ($showPortal) {
+            // 'active' once a login is verified, 'pending' while one waits for verification, otherwise no login yet.
+            $links = InvestorUserLink::query()->whereIn('investor_id', $investors->modelKeys())->whereNull('revoked_at')->get(['investor_id', 'verified_at'])->groupBy('investor_id');
+            $investors->each(fn (Investor $i) => $i->setAttribute('portal', match (true) {
+                ! $links->has($i->id) => null,
+                $links[$i->id]->contains(fn ($l) => $l->verified_at !== null) => 'active',
+                default => 'pending',
+            }));
+        }
 
-        return Ajax::table(view('investors._rows', ['investors' => $investors])->render(), $investors, ['stats' => $this->summary($request)->render()]);
+        return Ajax::table(view('investors._rows', ['investors' => $investors, 'showPortal' => $showPortal])->render(), $investors, ['stats' => $this->summary($request)->render()]);
     }
 
     public function export(Request $request): Response

@@ -1,9 +1,15 @@
 @php $user = auth()->user(); @endphp
-<x-card title="Portal Access" :padded="false">
+<x-card title="Portal Login" :padded="false">
     <x-slot:actions>@can('portal.links.manage')<x-button size="sm" icon="user-plus" data-remote-modal="{{ route('portal-access.create', [$type, $owner->public_id]) }}" data-size="max-w-lg">New Account</x-button>@endcan</x-slot:actions>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-surface-muted px-5 py-2.5 text-sm">
+        <span class="text-ink-500">Sign-in Page</span>
+        <a href="{{ route('login') }}" target="_blank" rel="noopener" class="ref-link min-w-0 break-all font-medium text-ink-900">{{ route('login') }}</a>
+        <button type="button" class="btn btn-ghost btn-icon h-7 w-7" data-copy="{{ route('login') }}" aria-label="Copy sign-in page address"><x-icon name="file" size="h-4 w-4" /></button>
+    </div>
     @forelse ($links as $link)
         @php
             $state = $link->revoked_at ? ['Revoked', 'danger'] : ($link->verified_at ? ['Active', 'success'] : ['Pending Verification', 'warning']);
+            $signIn = array_filter([$link->user->email, $link->user->mobile ? App\Support\Phone::display($link->user->mobile) : null]);
             $userGrants = $grants->get($link->user_id, collect());
         @endphp
         <div class="border-b border-line px-5 py-4 last:border-0">
@@ -11,7 +17,8 @@
                 <x-avatar :name="$link->user->name" size="h-10 w-10 text-sm" />
                 <div class="min-w-0 flex-1">
                     <p class="font-medium text-ink-900">{{ $link->user->name }}</p>
-                    <p class="text-[13px] text-ink-500">{{ $link->user->email ?: App\Support\Phone::display($link->user->mobile) }}@if ($link->user->last_login_at) · last sign-in {{ App\Support\Format::date($link->user->last_login_at) }}@endif</p>
+                    <p class="text-[13px] text-ink-700">Signs in with <span class="font-medium text-ink-900">{{ implode(' or ', $signIn) }}</span></p>
+                    <p class="text-[13px] text-ink-500">{{ $link->user->last_login_at ? 'Last sign-in '.App\Support\Format::date($link->user->last_login_at) : 'Never signed in' }}@if ($link->user->must_change_password && ! $link->revoked_at) · Temporary password, changed at first sign-in @endif</p>
                 </div>
                 <x-badge :tone="$state[1]">{{ $state[0] }}</x-badge>
                 @if (! $link->revoked_at)
@@ -19,8 +26,8 @@
                         @unless ($link->verified_at)
                             <x-button size="sm" icon="check" data-action="post" data-url="{{ route('portal-access.links.verify', [$type, $link->public_id]) }}" data-confirm="Verify portal access for {{ $link->user->name }}?" data-confirm-text="Verify" data-tone="primary" :disabled="$link->created_by === $user->id && ! $user->isSuperAdmin()" data-disabled-reason="Another administrator must verify">Verify</x-button>
                         @endunless
-                        <button type="button" class="btn btn-ghost btn-icon" data-remote-modal="{{ route('portal-access.links.password.form', [$type, $link->public_id]) }}" data-size="max-w-md" aria-label="Reset password of {{ $link->user->name }}"><x-icon name="key" size="h-4 w-4" /></button>
-                        <button type="button" class="btn btn-ghost btn-icon text-danger-600" data-remote-modal="{{ route('portal-access.links.revoke.form', [$type, $link->public_id]) }}" data-size="max-w-md" aria-label="Revoke access of {{ $link->user->name }}"><x-icon name="lock" size="h-4 w-4" /></button>
+                        <x-button size="sm" variant="secondary" icon="key" data-remote-modal="{{ route('portal-access.links.password.form', [$type, $link->public_id]) }}" data-size="max-w-md">Set Password</x-button>
+                        <x-button size="sm" variant="ghost" icon="lock" class="text-danger-600" data-remote-modal="{{ route('portal-access.links.revoke.form', [$type, $link->public_id]) }}" data-size="max-w-md">Revoke</x-button>
                     @endcan
                 @endif
             </div>
@@ -48,6 +55,8 @@
             @endif
         </div>
     @empty
-        <x-empty-state icon="lock" title="No portal accounts" />
+        <x-empty-state icon="lock" title="No portal login yet">
+            @can('portal.links.manage')<x-button icon="user-plus" data-remote-modal="{{ route('portal-access.create', [$type, $owner->public_id]) }}" data-size="max-w-lg">New Account</x-button>@endcan
+        </x-empty-state>
     @endforelse
 </x-card>
