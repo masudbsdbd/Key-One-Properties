@@ -34,7 +34,8 @@ class FlatOptionsController extends Controller
             return Ajax::options([]);
         }
 
-        [$results, $more] = TableQuery::options($building->floors()->getQuery(), $request, ['label'],
+        $floors = $building->floors()->when($request->boolean('empty'), fn ($q) => $q->whereDoesntHave('flats'));
+        [$results, $more] = TableQuery::options($floors->getQuery(), $request, ['label'],
             fn (Floor $f) => ['id' => $f->public_id, 'text' => $f->label], 100);
 
         return Ajax::options($results, $more);

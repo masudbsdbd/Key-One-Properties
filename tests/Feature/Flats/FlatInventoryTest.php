@@ -175,7 +175,8 @@ class FlatInventoryTest extends TestCase
     {
         $building = $this->floor->building;
         $second = $building->floors()->create(['floor_number' => 2, 'label' => '2nd Floor']);
-        Flat::factory()->forFloor($this->floor)->create(['flat_no' => '1B']);
+        $third = $building->floors()->create(['floor_number' => 3, 'label' => '3rd Floor']);
+        Flat::factory()->forFloor($third)->create(['flat_no' => '1B']);
 
         $payload = [
             'building' => $building->public_id,
@@ -190,7 +191,8 @@ class FlatInventoryTest extends TestCase
 
         $html = $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.preview', $this->project), $payload)->assertOk()->json('data.html');
         $this->assertStringContainsString('1 conflicts', $html);
-        $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $payload)->assertStatus(422);
+        $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $payload)
+            ->assertStatus(422)->assertJsonPath('errors.pattern.0', 'Already exists: 1B.');
 
         $payload['start_index'] = 3;
         $payload['idempotency_key'] = '7f1f2b9e-6a6f-4c4f-9a59-6f2b5b8c1d12';
@@ -217,7 +219,13 @@ class FlatInventoryTest extends TestCase
 
         $payload['idempotency_key'] = '9f1f2b9e-6a6f-4c4f-9a59-6f2b5b8c1d15';
         $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.store', $this->project), $payload)
-            ->assertStatus(422)->assertJsonPath('errors.numbering.0', 'Already exists: 101, 102, 1001, 1002.');
+            ->assertStatus(422)->assertJsonPath('errors.floors.0', 'Already has units: '.$this->floor->label.', 10th Floor.');
+        $this->assertSame(4, Flat::query()->count());
+
+        $empty = $building->floors()->create(['floor_number' => 11, 'label' => '11th Floor']);
+        $options = $this->actingAs($this->user)->ajax()->get(route('options.floors', ['building' => $building->public_id, 'empty' => 1]))->assertOk()->json('results');
+        $this->assertSame([$empty->public_id], array_column($options, 'id'));
+        $this->assertCount(3, $this->actingAs($this->user)->ajax()->get(route('options.floors', ['building' => $building->public_id]))->json('results'));
 
         $this->actingAs($this->user)->ajax()->post(route('projects.flats.bulk.preview', $this->project), ['numbering' => 'custom'] + $payload)
             ->assertStatus(422)->assertJsonValidationErrors('pattern');

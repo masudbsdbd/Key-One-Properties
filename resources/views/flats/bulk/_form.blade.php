@@ -8,8 +8,8 @@
         <div class="grid gap-5 md:grid-cols-3">
             <x-form.select name="building" id="bulk-building" label="Building" :options="$buildings" required />
             <div class="md:col-span-2">
-                <x-form.select name="floors" id="bulk-floors" label="Floors" :url="route('options.floors')" depends-on="#bulk-building" depends-param="building" multiple required placeholder="Select floors" />
-                <button type="button" class="mt-1.5 text-[13px] font-medium text-accent-700 hover:underline" data-select-all-floors data-url="{{ route('options.floors') }}">Select all floors</button>
+                <x-form.select name="floors" id="bulk-floors" label="Floors" :url="route('options.floors', ['empty' => 1])" depends-on="#bulk-building" depends-param="building" multiple required placeholder="Select floors" />
+                <button type="button" class="mt-1.5 text-[13px] font-medium text-accent-700 hover:underline" data-select-all-floors data-url="{{ route('options.floors', ['empty' => 1]) }}">Select all floors</button>
             </div>
             <x-form.input name="per_floor" type="number" label="Units per Floor" min="1" max="50" placeholder="4" required />
             <div>

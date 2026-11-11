@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BulkFlatController extends Controller
 {
@@ -110,6 +111,14 @@ class BulkFlatController extends Controller
         $building = $project->buildings()->where('public_id', $data['building'])->firstOrFail();
         $floors = $building->floors()->whereIn('public_id', $data['floors'])->get();
         abort_if($floors->count() !== count(array_unique($data['floors'])), 422, 'Select floors of the chosen building.');
+
+        $occupied = $floors->filter(fn ($floor) => $floor->flats()->exists())->pluck('label');
+        if ($occupied->isNotEmpty()) {
+            $more = $occupied->count() - 5;
+            throw ValidationException::withMessages([
+                'floors' => 'Already has units: '.$occupied->take(5)->implode(', ').($more > 0 ? ' and '.$more.' more' : '').'.',
+            ]);
+        }
 
         $plan = $this->service->bulkPlan($building, $floors, (int) $data['per_floor'], $preset[1] ?? $data['pattern'], (int) ($data['start_index'] ?? 1));
 
