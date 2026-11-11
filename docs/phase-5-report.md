@@ -58,7 +58,9 @@ The scheduler runs `keyone:post-ledger` every 15 minutes to retry anything that 
 
 ## Verification (run in this environment)
 
-- `php artisan test`: 335 tests, 4,171 assertions, all passing (Phase 5 adds 41 tests in `tests/Feature/Phase5` and one in `ProfitTest`).
+- `php artisan test`: 338 tests, all passing (Phase 5 adds 44 tests in `tests/Feature/Phase5` and one in `ProfitTest`).
+- `RevenueRecognitionTest` follows one unit through an advance, recognition, a recalculation after completion and a
+  cancellation, checking each account after every step.
 - `LedgerIntegrationTest` runs the whole demo scenario with the books on: every event posts once, each journal
   balances, and suppliers, stock, project cost, investor capital and the balance sheet identity all agree.
 - `migrate:fresh --seed` on an empty database: 117 events posted, 0 failed, all seven reconciliation lines match,
@@ -75,8 +77,8 @@ The scheduler runs `keyone:post-ledger` every 15 minutes to retry anything that 
 | 4 | Locked period rejects postings, automatic ones included | `LedgerTest`, `PeriodAndReconciliationTest` |
 | 5 | Supplier invoice and payment do not double count cost | `LedgerIntegrationTest` (project cost equals work in progress plus cost of sales) |
 | 6 | Receipt, issue and transfer reconcile stock value | `LedgerIntegrationTest` (stock account equals stock records) |
-| 7 | Collection reduces the receivable once; an advance is not revenue | posting rules, reconciliation line "Money received from customers" |
-| 8 | Cancellation and refund leave a traceable settlement | `sale.cancelled` and `collection.refunded` rules; demo scenario |
+| 7 | Collection reduces the receivable once; an advance is not revenue | `RevenueRecognitionTest`, reconciliation line "Money received from customers" |
+| 8 | Cancellation and refund leave a traceable settlement | `RevenueRecognitionTest` (cancellation), demo scenario (refund) |
 | 9 | Profit approval and payout are separate events | `profit.payable_approved`, `profit.distribution_paid`; reconciliation line "Profit owed to investors" |
 | 10 | General expenses stay company-level | `expense.approved` rule; `FinancialReportsTest` (project filter) |
 | 11 | Shared cost allocations reconcile to project cost | Phase 3 `CostAllocationTest`; ledger keeps cost at project level |
