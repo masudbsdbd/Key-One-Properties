@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 abstract class BaseReport
 {
     public const GROUPS = [
-        'project' => 'Projects', 'construction' => 'Construction', 'inventory' => 'Inventory', 'purchase' => 'Purchasing',
+        'cash' => 'Cash', 'project' => 'Projects', 'construction' => 'Construction', 'inventory' => 'Inventory', 'purchase' => 'Purchasing',
         'contractor' => 'Contractors', 'expense' => 'Expenses', 'sales' => 'Sales', 'collections' => 'Collections',
         'investors' => 'Investors', 'audit' => 'Audit',
     ];

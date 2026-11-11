@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use LogicException;
 
 /**
@@ -43,6 +44,12 @@ class FinancialEvent extends Model
             }
         });
         static::deleting(fn () => throw new LogicException('Financial events cannot be deleted.'));
+    }
+
+    /** The payment, bill or other document the event was recorded for. */
+    public function source(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     public function project(): BelongsTo

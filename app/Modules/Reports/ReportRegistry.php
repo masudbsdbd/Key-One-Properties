@@ -9,9 +9,11 @@ class ReportRegistry
 {
     /** @var array<int, class-string<BaseReport>> */
     private const REPORTS = [
+        R\DailyCashBookReport::class,
         R\ProjectSummaryReport::class,
         R\ProjectBudgetReport::class,
         R\ProjectCostReport::class,
+        R\BudgetVsActualReport::class,
         R\StockValuationReport::class,
         R\SupplierAgingReport::class,
         R\ContractorDuesReport::class,
@@ -19,9 +21,11 @@ class ReportRegistry
         R\UnitStatusReport::class,
         R\SalesRegisterReport::class,
         R\CollectionReceiptsReport::class,
+        R\CustomerOutstandingReport::class,
         R\InstallmentAgingReport::class,
         R\CollectionForecastReport::class,
         R\InvestorPositionReport::class,
+        R\UnitProfitabilityReport::class,
         R\AuditActivityReport::class,
     ];
 

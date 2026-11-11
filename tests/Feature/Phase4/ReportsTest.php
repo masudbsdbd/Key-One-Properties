@@ -3,16 +3,23 @@
 namespace Tests\Feature\Phase4;
 
 use App\Jobs\GenerateReportExport;
+use App\Models\ContractorPayment;
 use App\Models\CustomerPayment;
+use App\Models\CustomerRefund;
+use App\Models\Expense;
 use App\Models\Flat;
 use App\Models\Investor;
+use App\Models\InvestorCapitalTransaction;
+use App\Models\InvestorPayout;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\ReportRun;
+use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Modules\Reports\ReportRegistry;
 use App\Support\Dashboard;
+use App\Support\Format;
 use App\Support\Money;
 use Database\Seeders\ExpenseCategorySeeder;
 use Database\Seeders\SampleDataSeeder;
@@ -41,6 +48,50 @@ class ReportsTest extends TestCase
         $csv = $this->actingAs($user)->get(route('reports.export', ['key' => $key, 'format' => 'csv'] + $filters))->assertOk()->streamedContent();
 
         return array_map('str_getcsv', array_values(array_filter(explode("\n", trim($csv)))));
+    }
+
+    public function test_cash_book_outstanding_budget_and_profit_reports_reconcile(): void
+    {
+        $run = fn (string $key) => [$report = ReportRegistry::find($key), $report->query(request(), $this->admin)];
+
+        // Cash book: money in is every posted receipt, money out every approved or posted payment.
+        [$cash, $query] = $run('daily-cash-book');
+        $totals = $cash->totals(clone $query);
+        $in = Money::add((string) CustomerPayment::query()->where('status', 'posted')->sum('amount'),
+            (string) InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'contribution')->sum('amount'),
+            (string) ContractorPayment::query()->where('status', 'approved')->where('kind', 'refund')->sum('amount'));
+        $this->assertSame(Money::amount($in), $totals[6]);
+        $out = Money::add((string) SupplierPayment::query()->where('status', 'approved')->sum('amount'),
+            (string) ContractorPayment::query()->where('status', 'approved')->where('kind', 'payment')->sum('amount'),
+            (string) Expense::query()->where('status', 'paid')->sum('amount'),
+            (string) InvestorPayout::query()->where('status', 'posted')->sum('amount'),
+            (string) InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'capital_return')->sum('amount'),
+            (string) CustomerRefund::query()->where('status', 'paid')->get()->reduce(fn ($sum, $r) => Money::add($sum, $r->payable()), '0'));
+        $this->assertSame(Money::amount($out), $totals[7]);
+
+        // Customer outstanding: the balance total is the receivable on the dashboard, the overdue total its overdue figure.
+        [$outstanding, $query] = $run('customer-outstanding');
+        $totals = $outstanding->totals(clone $query);
+        $kpis = collect((new Dashboard($this->admin))->get('kpis')['tiles'])->keyBy('label');
+        $this->assertSame(Money::amount($kpis['Receivable']['value']), $totals[6]);
+        $this->assertStringContainsString(Format::money($totals[7], false), $kpis['Receivable']['note']);
+
+        // Budget vs actual: spent is the posted cost tagged to a work package.
+        [$budget, $query] = $run('budget-vs-actual');
+        $this->assertSame(Money::amount((string) ProjectCostAllocation::query()->whereNotNull('work_package_id')->sum('amount')), $budget->totals(clone $query)[4]);
+
+        // Unit profitability: net profit is revenue less the three costs, and it is split between investors and the company.
+        [$profit, $query] = $run('unit-profitability');
+        foreach ($query->get() as $calc) {
+            $row = $profit->row($calc);
+            $this->assertSame(Money::amount(Money::sub((string) $row[2], (string) $row[3])), Money::amount((string) $row[4]));
+            $this->assertSame(Money::amount((string) $row[4]), Money::amount(Money::add((string) $row[6], (string) $row[7])));
+        }
+
+        $this->actingAs($this->admin)->get(route('reports.index'))->assertOk()->assertSee('Daily Cash Book')->assertSee('Customer Outstanding')->assertSee('Unit Profitability')->assertSee('Budget vs Actual');
+        $clerk = $this->userWith(['reports.view', 'reports.collections']);
+        $this->flushHeaders();
+        $this->actingAs($clerk)->get(route('reports.show', 'daily-cash-book'))->assertForbidden();
     }
 
     public function test_every_report_runs_and_reconciles_with_its_source(): void

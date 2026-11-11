@@ -14,7 +14,7 @@
 @forelse ($rows as $row)
     <tr>
         @foreach ($row as $i => $value)
-            <td @class(['whitespace-nowrap text-right tabular-nums' => in_array($types[$i] ?? 'text', ['money', 'qty', 'number'], true), 'whitespace-nowrap' => ($types[$i] ?? '') === 'date'])>{!! $cell($value, $types[$i] ?? 'text') !!}</td>
+            <td @class(['whitespace-nowrap text-right tabular-nums' => in_array($types[$i] ?? 'text', ['money', 'qty', 'number'], true), 'whitespace-nowrap' => ($types[$i] ?? '') === 'date' || (is_string($value) && mb_strlen($value) <= 28)])>{!! $cell($value, $types[$i] ?? 'text') !!}</td>
         @endforeach
     </tr>
 @empty
