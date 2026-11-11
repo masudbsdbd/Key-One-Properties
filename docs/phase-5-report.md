@@ -25,7 +25,12 @@ Accounting & Finance (module 16). Blueprint: `KEY_ONE_PHASE_5_BLUEPRINT.md`. Dec
 - **Financial statements:** Profit & Loss (with the investors' share shown separately and a comparison period),
   Balance Sheet, Cash Flow, Project and Unit Financials, Trial Balance and General Ledger. Every figure opens the
   entries behind it. All export to CSV, PDF and print.
+- **Receivables and Payables:** what each customer owes less advances held, and what is owed to each supplier,
+  contractor and investor, with the same "to pay" figure as the overview.
 - **Accounting overview** (`/accounting`): cash, receivables, payables and profit, with every report one click away.
+  The main dashboard shows each cash and bank balance to users allowed to see them.
+- **Exports:** account statements and the journal list export to CSV, PDF and print, like the statements.
+- **Payment forms** fill in the account when only one fits the method.
 - **Months & Years** (`/accounting/periods`): lock and unlock a month, close and reopen a fiscal year. Closing
   moves the year's profit to Retained Earnings.
 - **Reconciliation** (`/accounting/reconciliation`): seven operational totals set against the ledger, and the
@@ -58,14 +63,19 @@ The scheduler runs `keyone:post-ledger` every 15 minutes to retry anything that 
 
 ## Verification (run in this environment)
 
-- `php artisan test`: 338 tests, all passing (Phase 5 adds 44 tests in `tests/Feature/Phase5` and one in `ProfitTest`).
+- `php artisan test`: 345 tests, all passing; 51 of them are in `tests/Feature/Phase5`.
+- `LedgerIntegrationTest` runs the whole demo scenario with the books on: every event posts once, each journal
+  balances, and the statements agree with each other (profit and loss with the balance sheet, cash flow with the
+  cash and bank accounts, party lists with their control accounts, all seven reconciliation lines).
 - `RevenueRecognitionTest` follows one unit through an advance, recognition, a recalculation after completion and a
   cancellation, checking each account after every step.
-- `LedgerIntegrationTest` runs the whole demo scenario with the books on: every event posts once, each journal
-  balances, and suppliers, stock, project cost, investor capital and the balance sheet identity all agree.
-- `migrate:fresh --seed` on an empty database: 117 events posted, 0 failed, all seven reconciliation lines match,
-  balance sheet difference 0.00.
-- Browser scan of the 16 accounting pages at 1440 px: no script errors, no clipped tables, no unnamed controls.
+- `PostingRuleCoverageTest` fails if an event type has no posting rule or a rule names an account key that is
+  not in the chart; it also opens every statement as PDF, print and CSV.
+- `migrate:fresh --seed` on an empty database: every demo event posted, none failed, all seven reconciliation
+  lines match, balance sheet difference 0.00.
+- Browser scan of the accounting pages at 1440 px: no script errors, no clipped tables, no unnamed controls.
+- Tests run at a fixed midday so the result does not depend on the hour (two older tests failed between
+  midnight and 6 am Dhaka time; the application code was right, the tests compared against the server date).
 
 ## Acceptance scenarios (blueprint section 9)
 

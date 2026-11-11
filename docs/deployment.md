@@ -58,7 +58,8 @@ Scheduled jobs: nightly database backup (02:30), weekly activity log clean-up
 (older than 365 days), daily expired password-reset clean-up, failed-job pruning,
 queue worker every minute, nightly reconciliation of stock, supplier and contractor ledgers
 and project cost (03:10, output in `storage/logs/reconcile.log`), and deletion of expired report
-exports (04:10, `keyone:prune-report-exports`).
+exports (04:10, `keyone:prune-report-exports`). Every 15 minutes `keyone:post-ledger` posts any transaction
+still waiting for the accounts (it does nothing while Automatic Posting is off).
 
 Queued report exports (Reports → Queue) need the scheduler: the per-minute queue worker builds them.
 Without cron they stay "Queued". Files are kept for `REPORT_EXPORT_DAYS` days (default 7) under

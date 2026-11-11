@@ -6,11 +6,14 @@ use App\Models\FinancialEvent;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\LedgerAccount;
+use App\Models\MoneyAccount;
 use App\Models\ProjectCostAllocation;
 use App\Models\Supplier;
 use App\Modules\Accounting\Services\Balances;
 use App\Modules\Accounting\Services\CashBank;
 use App\Modules\Accounting\Services\EventPoster;
+use App\Modules\Accounting\Services\Reconciliation;
+use App\Modules\Accounting\Services\Statements;
 use App\Modules\Accounting\Support\AccountingSettings;
 use App\Support\Settings;
 use Database\Seeders\DemoDataSeeder;
@@ -72,6 +75,45 @@ class LedgerIntegrationTest extends TestCase
         $byCategory = LedgerAccount::all()->groupBy('category')->map(fn ($accounts) => $accounts->sum(fn ($a) => (float) ($net[$a->id] ?? 0)));
         $this->assertEqualsWithDelta(0, $byCategory->sum(), 0.001);
         $this->assertGreaterThan(0, $byCategory['asset']);
+    }
+
+    public function test_every_statement_tells_the_same_story_on_the_demo_scenario(): void
+    {
+        $statements = app(Statements::class);
+        $to = now(config('app.display_timezone'))->toDateString();
+        $sheet = $statements->balanceSheet($to);
+        $profit = $statements->profitAndLoss(null, $to);
+        $trial = $statements->trialBalance($to);
+        $flow = $statements->cashFlow(null, $to);
+
+        $this->assertSame('0.00', $sheet['difference'], 'Balance sheet balances.');
+        $this->assertSame($trial['debit'], $trial['credit'], 'Trial balance balances.');
+        $this->assertSame($profit['net_profit'], $sheet['earnings'], 'Profit and loss equals the unclosed profit on the balance sheet.');
+
+        // Cash flow ends at what the cash and bank accounts hold, which is what the balance sheet lists for them.
+        $money = MoneyAccount::all();
+        $held = number_format($money->sum(fn ($a) => (float) app(CashBank::class)->balance($a)), 2, '.', '');
+        $this->assertSame($held, $flow['closing']);
+        $this->assertSame($held, $flow['book_closing']);
+        $onSheet = number_format($sheet['assets']->filter(fn ($r) => $money->contains('ledger_account_id', $r['account']->id))->sum(fn ($r) => (float) $r['amount']), 2, '.', '');
+        $this->assertSame($held, $onSheet);
+
+        // Party lists add up to their control accounts.
+        $byCustomer = $statements->byParty('customer_id', ['customer_receivable', 'customer_advance'], $to);
+        $this->assertSame($this->balance('customer_receivable'), number_format($byCustomer->sum(fn ($r) => (float) $r['customer_receivable']), 2, '.', ''));
+        $this->assertSame($this->balance('customer_advance'), number_format($byCustomer->sum(fn ($r) => (float) $r['customer_advance']), 2, '.', ''));
+        $this->assertFalse($byCustomer->has(0), 'Every customer line names its customer.');
+        $bySupplier = $statements->byParty('supplier_id', ['supplier_payable'], $to);
+        $this->assertSame($this->balance('supplier_payable'), number_format($bySupplier->sum(fn ($r) => (float) $r['supplier_payable']), 2, '.', ''));
+        $this->assertFalse($bySupplier->has(0), 'Every supplier line names its supplier.');
+        $byInvestor = $statements->byParty('investor_id', ['investor_capital', 'investor_profit_payable'], $to);
+        $this->assertSame($this->balance('investor_profit_payable'), number_format($byInvestor->sum(fn ($r) => (float) $r['investor_profit_payable']), 2, '.', ''));
+        $this->assertFalse($byInvestor->has(0), 'Every investor line names its investor.');
+
+        // The reconciliation centre agrees on every line.
+        foreach (app(Reconciliation::class)->checks() as $check) {
+            $this->assertSame('0.00', $check['difference'], $check['label']);
+        }
     }
 
     public function test_posting_the_backlog_again_changes_nothing(): void

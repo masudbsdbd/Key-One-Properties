@@ -180,3 +180,35 @@ Notes:
   are shown in the portal.
 - `report_runs` keep the requester, report key, filters, status, row count and expiry; `report_files` point to
   a private file on the `local` disk. Report definitions live in code (`ReportRegistry`), not in a table.
+
+# Phase 5 ERD
+
+```mermaid
+erDiagram
+    ledger_accounts ||--o{ ledger_accounts : parent
+    ledger_accounts ||--o{ journal_lines : posted_to
+    ledger_accounts ||--o| money_accounts : ledger_side
+    fiscal_years ||--|{ accounting_periods : months
+    accounting_periods ||--o{ journal_entries : dated_in
+    journal_entries ||--|{ journal_lines : lines
+    journal_entries ||--o| journal_entries : reversal_of
+    financial_events ||--o| journal_entries : posted_as
+    money_accounts ||--o{ journal_lines : money_through
+    money_accounts ||--o{ money_transactions : from_or_to
+    money_transactions ||--o| journal_entries : journal
+    money_accounts ||--o{ bank_reconciliations : statements
+    bank_reconciliations ||--o{ journal_lines : ticked
+    customer_payments ||--o| cheques : cheque
+    money_accounts ||--o{ cheques : deposited_in
+    projects ||--o{ journal_lines : project
+    flats ||--o{ journal_lines : unit
+    customers ||--o{ journal_lines : customer
+    suppliers ||--o{ journal_lines : supplier
+    contractors ||--o{ journal_lines : contractor
+    investors ||--o{ journal_lines : investor
+    expense_categories }o--o| ledger_accounts : expense_account
+```
+
+`money_account_id` is also on `supplier_payments`, `contractor_payments`, `expenses`, `customer_payments`,
+`customer_refunds`, `investor_capital_transactions` and `investor_payouts`. A journal's source document is the
+polymorphic `source_type` / `source_id`; only `App\Modules\Accounting\Services\Ledger` writes journals.
