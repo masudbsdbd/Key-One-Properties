@@ -2,8 +2,9 @@
 
 Phase 1 adds the `financial_events` table and `FinancialEventRecorder`. It is an
 integration outbox, **not** an accounting ledger: there are no debits, credits, journals,
-general ledger, balance sheet or profit and loss in Phase 1. Phase 5 will read pending
-events and post balanced `journal_entries` / `journal_lines`.
+general ledger, balance sheet or profit and loss in Phase 1. Phase 5 reads these events and posts
+balanced `journal_entries` / `journal_lines` (`App\Modules\Accounting\Services\EventPoster`, rules in
+`PostingRules`; see `docs/decisions/phase-5.md` for the matrix).
 
 No Phase 1 action records a financial event. Project budgets and flat list prices are
 estimates, not transactions.

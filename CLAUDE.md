@@ -150,7 +150,8 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
 
 - Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md` … `KEY_ONE_PHASE_5_BLUEPRINT.md`.
   Implementation decisions live in `docs/decisions/phase-2.md` … `phase-5.md`.
-- Current phase: Phase 5 (Accounting & Finance), started 2026-11-11. Phase 4 is complete.
+- Current phase: Phase 5 (Accounting & Finance), built 2026-11-11 (`docs/phase-5-report.md`). All five phases exist;
+  new work is change requests. Accounting code lives in `app/Modules/Accounting`; only `Ledger` writes journals.
 - Phase 5 policies (client, 2026-11-11): investor capital is a liability; construction cost is work in progress
   until the unit's profit is approved; profit uses the larger of actual and budgeted cost and is settled at
   completion; optional tax deducted at source goes to Tax Payable; the books start from an opening balance;

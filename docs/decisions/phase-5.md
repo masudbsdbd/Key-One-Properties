@@ -1,6 +1,6 @@
 # Phase 5 decisions (Accounting & Finance)
 
-Blueprint: `KEY_ONE_PHASE_5_BLUEPRINT.md`. **Status: in progress** (the client said to start on 2026-11-11, after answering the questions below).
+Blueprint: `KEY_ONE_PHASE_5_BLUEPRINT.md`. **Status: built** (started 2026-11-11). Delivery report: `docs/phase-5-report.md`; UAT: `docs/uat-checklist-phase-5.md`.
 
 ## 1. Client decisions (2026-11-11)
 
@@ -176,3 +176,24 @@ real cost arrives.
 Unit tests for the ledger invariants and reversal; a feature test per rule asserting the journal and that the
 trial balance stays balanced; idempotency (same event twice, one journal); locked-period rejection at the source;
 subledger-to-control-account reconciliation on the demo data; permission and IDOR tests on every route.
+
+## 10. What changed while building
+
+- **Table names:** `ledger_accounts` (chart of accounts; groups are non-postable parents, so no `account_groups`),
+  `journal_lines`, `money_accounts` (cash, bank, mobile), `money_transactions` (transfer, money in, money out),
+  `cheques`, `bank_reconciliations`. No posting-rules, source-links, approval-actions or export-jobs tables:
+  rules are code in `Accounting\Rules\PostingRules`, links are `financial_events` and `journal_entries.source_*`,
+  approvals are on the journal with the activity log, exports use the existing framework.
+- **Supplier bills:** the debit to Goods Received Not Billed is the received value of the billed goods; anything
+  else on the bill (price difference, carriage, tax, discount) goes to Purchase Price Differences & Charges, so
+  stock and project cost in the ledger stay equal to the stock and cost records.
+- **Purchase returns** credit stock at the stock movement's value (average cost), not the supplier's price.
+- **Payment events** of suppliers and contractors now carry the cash paid; the settled amount and the tax
+  deducted are in the payload.
+- **Customer name:** `Customer::name` is an accessor for `full_name`, shared with the other parties.
+- **Old payments with no account** use the default account per kind from Accounting Settings, or the only
+  active account of that kind.
+- **Year closing** entries have journal type `closing` and are left out of Profit & Loss, so a closed year still
+  reports what it earned.
+- **Bank statement import** and suggestions are not built; reconciliation is by ticking (agreed in review).
+- **Cheques** are tracked for customer payments only.
