@@ -1,6 +1,7 @@
 @php
     $titles = ['attention' => 'Needs Attention', 'projects' => 'Project Health', 'cashflow' => 'Money In and Out', 'forecast' => 'Collections Ahead',
-        'aging' => 'Overdue by Age', 'units' => 'Unit Inventory', 'milestones' => 'Milestones', 'investors' => 'Investors'];
+        'aging' => 'Overdue by Age', 'units' => 'Unit Inventory', 'milestones' => 'Milestones', 'investors' => 'Investors',
+        'today' => 'Today', 'upcoming' => 'To Pay This Week', 'debtors' => 'Top Overdue Customers'];
     $has = fn ($p) => in_array($p, $panels, true);
     $cols = [1 => '2xl:grid-cols-1', 2 => '2xl:grid-cols-2', 3 => '2xl:grid-cols-3', 4 => '2xl:grid-cols-4'];
 @endphp
@@ -17,6 +18,15 @@
 
         @if ($has('kpis'))
             <div data-widget="kpis" aria-live="polite"><div data-widget-body><div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">@for ($i = 0; $i < 4; $i++)<div class="skeleton h-[104px]"></div>@endfor</div></div></div>
+        @endif
+
+        @php $daily = array_values(array_filter(['today', 'upcoming', 'debtors'], $has)); @endphp
+        @if ($daily)
+            <div @class(['grid items-start gap-6', 'lg:grid-cols-2' => count($daily) >= 2, 'xl:grid-cols-3' => count($daily) === 3])>
+                @foreach ($daily as $p)
+                    <x-card :title="$titles[$p]" data-widget="{{ $p }}" aria-live="polite" class="min-w-0"><div data-widget-body><div class="skeleton h-40 w-full"></div></div></x-card>
+                @endforeach
+            </div>
         @endif
 
         @php $wide = count($approvals) > 5; @endphp

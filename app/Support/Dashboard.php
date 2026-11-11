@@ -46,6 +46,9 @@ class Dashboard
         'attention' => [],
         'kpis' => ['collections.payment.view', 'sales.sale.view', 'purchases.view', 'contractors.view'],
         'projects' => ['projects.view', 'projects.view_all'],
+        'today' => ['dashboard.executive.view'],
+        'upcoming' => ['purchases.view', 'contractors.view', 'expenses.view.project', 'expenses.view.general', 'investor.view'],
+        'debtors' => ['collections.plan.view'],
         'cashflow' => ['dashboard.executive.view'],
         'forecast' => ['collections.plan.view'],
         'aging' => ['collections.plan.view'],
@@ -227,8 +230,10 @@ class Dashboard
         $sold = $u->can('sales.sale.view') ? FlatSale::query()->whereIn('project_id', $ids)->whereIn('status', FlatSale::ACTIVE)->selectRaw('project_id, SUM(net_contract_value) AS v')->groupBy('project_id')->pluck('v', 'project_id') : null;
         $paid = $u->can('collections.payment.view') ? CustomerPayment::query()->whereIn('project_id', $ids)->where('status', 'posted')->selectRaw('project_id, SUM(amount) AS v')->groupBy('project_id')->pluck('v', 'project_id') : null;
         $pct = fn ($a, $b) => (float) $b > 0 ? round((float) $a / (float) $b * 100, 1) : null;
+        // Units not sold yet, at list price: what the project can still bring in.
+        $unsold = $sold !== null ? Flat::query()->whereIn('project_id', $ids)->where('status', '!=', 'sold')->selectRaw('project_id, SUM(list_price) AS v')->groupBy('project_id')->pluck('v', 'project_id') : null;
 
-        return ['rows' => $projects->map(function (Project $p) use ($cost, $units, $sold, $paid, $pct) {
+        return ['rows' => $projects->map(function (Project $p) use ($cost, $units, $sold, $paid, $pct, $unsold) {
             $progress = $p->overallProgress();
             $spent = $cost ? (string) ($cost[$p->id] ?? 0) : null;
             $used = $spent !== null ? $pct($spent, $p->estimated_budget) : null;
@@ -240,8 +245,94 @@ class Dashboard
                 'sold_value' => $sold ? (string) ($sold[$p->id] ?? 0) : null,
                 'collected' => $paid ? (string) ($paid[$p->id] ?? 0) : null,
                 'collected_pct' => $sold && $paid ? $pct($paid[$p->id] ?? 0, $sold[$p->id] ?? 0) : null,
+                // Sold value plus unsold units at list price, less the budget: the profit the project is heading for.
+                'outlook' => $cost !== null && $unsold !== null && (float) $p->estimated_budget > 0 ? [
+                    'revenue' => $revenue = Money::add((string) ($sold[$p->id] ?? 0), (string) ($unsold[$p->id] ?? 0)),
+                    'profit' => Money::amount(Money::sub($revenue, (string) $p->estimated_budget)),
+                    'margin' => $pct(Money::sub($revenue, (string) $p->estimated_budget), $revenue),
+                ] : null,
             ];
-        })->all(), 'show_cost' => $cost !== null, 'show_sales' => $sold !== null, 'show_paid' => $paid !== null];
+        })->all(), 'show_cost' => $cost !== null, 'show_sales' => $sold !== null, 'show_paid' => $paid !== null, 'show_outlook' => $cost !== null && $unsold !== null];
+    }
+
+    /** Money received and paid out today, company wide (operational, not the books). */
+    private function today(): array
+    {
+        $day = $this->today->toDateString();
+        $range = ['from' => $day, 'to' => $day];
+        $line = function (string $label, Builder $query, string $date, string $href, string $amount = 'amount') use ($day): array {
+            $row = $query->whereDate($date, $day)->selectRaw("COUNT(*) AS n, COALESCE(SUM({$amount}), 0) AS v")->toBase()->first();
+
+            return ['label' => $label, 'count' => (int) $row->n, 'amount' => Money::amount((string) $row->v), 'href' => $href];
+        };
+        $in = [
+            $line('Customer payments', CustomerPayment::query()->where('status', 'posted'), 'payment_date', route('customer-payments.index', ['status' => 'posted'] + $range)),
+            $line('Investor capital', InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'contribution'), 'transaction_date', route('investor-capital.index', $range)),
+        ];
+        $out = [
+            $line('Supplier payments', SupplierPayment::query()->where('status', 'approved'), 'payment_date', route('supplier-payments.index', $range)),
+            $line('Contractor payments', ContractorPayment::query()->where('status', 'approved'), 'payment_date', route('contractor-payments.index', $range)),
+            $line('Expenses', Expense::query()->where('status', 'paid'), 'paid_on', route('expenses.index', ['status' => 'paid'])),
+            $line('Investor profit', InvestorPayout::query()->where('status', 'posted'), 'paid_at', route('distributions.index')),
+            $line('Capital returned', InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'capital_return'), 'transaction_date', route('investor-capital.index', $range)),
+            $line('Customer refunds', CustomerRefund::query()->where('status', 'paid'), 'paid_on', route('refunds.index'), 'COALESCE(net_amount, amount)'),
+        ];
+        $sum = fn (array $lines) => Money::amount(Money::add('0', ...array_column($lines, 'amount')));
+
+        return ['date' => $this->today, 'in' => array_values(array_filter($in, fn ($l) => $l['count'])), 'out' => array_values(array_filter($out, fn ($l) => $l['count'])),
+            'total_in' => $sum($in), 'total_out' => $sum($out), 'net' => Money::amount(Money::sub($sum($in), $sum($out)))];
+    }
+
+    /** What has to be paid now or within a week: supplier bills, contractor bills, approved expenses and approved profit payments. */
+    private function upcoming(): array
+    {
+        $u = $this->user;
+        $until = $this->today->addDays(self::SOON_DAYS);
+        $rows = collect();
+        if ($u->can('purchases.view')) {
+            SupplierBill::query()->visibleTo($u)->where('status', 'approved')->where(fn ($q) => $q->whereNull('due_date')->orWhereDate('due_date', '<=', $until))
+                ->when($this->project, fn ($q) => $q->whereHas('purchaseOrder', fn ($po) => $po->where('project_id', $this->project->id)))
+                ->with('supplier:id,name')->get()
+                ->each(fn (SupplierBill $b) => $rows->push(['who' => $b->supplier?->name, 'what' => 'Supplier bill '.$b->bill_no, 'href' => RecordLink::url($b, $u), 'due' => $b->due_date, 'amount' => $b->outstanding()]));
+        }
+        if ($u->can('contractors.view')) {
+            ContractorBill::query()->visibleTo($u)->where('status', 'approved')->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))
+                ->with('contractor:id,name')->withSum(['payments as paid' => fn ($q) => $q->where('status', 'approved')], 'amount')->get()
+                ->each(fn (ContractorBill $b) => $rows->push(['who' => $b->contractor?->name, 'what' => 'Contractor bill '.$b->bill_no, 'href' => RecordLink::url($b, $u), 'due' => null,
+                    'amount' => Money::amount(Money::sub((string) $b->net_payable, (string) ($b->paid ?? 0)))]));
+        }
+        if ($u->canAny(['expenses.view.project', 'expenses.view.general'])) {
+            Expense::query()->visibleTo($u)->where('status', 'approved')->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->get()
+                ->each(fn (Expense $e) => $rows->push(['who' => $e->payee_name ?: $e->description, 'what' => 'Expense '.$e->expense_no, 'href' => RecordLink::url($e, $u), 'due' => null, 'amount' => Money::amount((string) $e->amount)]));
+        }
+        if ($u->can('investor.view')) {
+            InvestorProfitDistribution::query()->visibleTo($u)->where('status', 'approved')->whereIn('flat_id', Flat::query()->whereIn('project_id', $this->projectIds())->select('flats.id'))
+                ->with('investor:id,name')->get()
+                ->each(fn (InvestorProfitDistribution $d) => $rows->push(['who' => $d->investor?->name, 'what' => 'Investor profit '.$d->distribution_no, 'href' => RecordLink::url($d, $u), 'due' => null, 'amount' => Money::amount((string) $d->amount)]));
+        }
+        $rows = $rows->filter(fn ($r) => Money::isPositive($r['amount']))
+            ->map(fn ($r) => [...$r, 'days' => $r['due'] ? Dates::daysUntil($r['due']) : null, 'due' => $r['due'] ? Format::date($r['due']) : null])
+            // Overdue first, then by due date; documents with no due date are payable now and follow the dated ones.
+            ->sortBy(fn ($r) => $r['days'] ?? PHP_INT_MAX)->values();
+
+        return ['rows' => $rows->take(8)->all(), 'more' => max(0, $rows->count() - 8), 'count' => $rows->count(),
+            'total' => Money::amount(Money::add('0', ...$rows->pluck('amount')->all())), 'days' => self::SOON_DAYS];
+    }
+
+    /** Customers with the most overdue money, with how late the oldest installment is. */
+    private function debtors(): array
+    {
+        $items = (clone $this->openItems())->whereDate('due_date', '<', $this->today)->get(['plan_id', 'due_date', 'principal_due', 'fee_due', 'principal_paid', 'fee_paid']);
+        $plans = InstallmentPlan::query()->whereIn('id', $items->pluck('plan_id')->unique())->with('customer:id,public_id,full_name,primary_mobile')->get(['id', 'customer_id'])->keyBy('id');
+        $rows = $items->groupBy(fn ($i) => $plans[$i->plan_id]?->customer_id)->filter(fn ($group, $customerId) => $customerId)->map(function (Collection $group) use ($plans) {
+            $customer = $plans[$group->first()->plan_id]->customer;
+
+            return ['name' => $customer->full_name, 'mobile' => $customer->primary_mobile, 'href' => RecordLink::url($customer, $this->user),
+                'amount' => Money::amount(Money::add('0', ...$group->map(fn ($i) => $i->outstanding())->all())),
+                'installments' => $group->count(), 'days' => (int) $group->sortBy('due_date')->first()->due_date->diffInDays($this->today)];
+        })->sortByDesc(fn ($r) => (float) $r['amount'])->values();
+
+        return ['rows' => $rows->take(5)->all(), 'more' => max(0, $rows->count() - 5), 'href' => route('dues.index', $this->filters(['filter' => 'overdue']))];
     }
 
     /** Money received and paid out per month, last six months, company wide (operational, not the books). */

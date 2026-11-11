@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Project;
+use App\Models\SupplierBill;
 use App\Models\User;
 use App\Support\Dashboard;
 use App\Support\Format;
@@ -59,6 +60,45 @@ class DashboardTest extends TestCase
 
         $overdue = Money::add('0', ...array_column($dashboard->get('attention')['overdue'], 'amount'));
         $this->assertSame($this->tiles('dues.table')['Overdue'], $this->money($overdue));
+    }
+
+    public function test_daily_cards_agree_with_the_figures_they_summarise(): void
+    {
+        $dashboard = new Dashboard($this->admin);
+        $kpis = collect($dashboard->get('kpis')['tiles'])->keyBy('label');
+
+        // Everything payable now is in the list: the card total equals Payables plus approved expenses and approved profit payments.
+        $upcoming = $dashboard->get('upcoming');
+        $this->assertSame($upcoming['count'], count($upcoming['rows']) + $upcoming['more']);
+        $bills = Money::add('0', ...collect($upcoming['rows'])->filter(fn ($r) => str_contains($r['what'], 'bill'))->pluck('amount')->all());
+        if ($upcoming['more'] === 0) {
+            $undated = SupplierBill::query()->where('status', 'approved')->whereDate('due_date', '>', now()->addDays(Dashboard::SOON_DAYS))->get()->map(fn ($b) => $b->outstanding())->all();
+            $this->assertSame(Money::amount($kpis['Payables']['value']), Money::amount(Money::add($bills, ...$undated)));
+        }
+
+        // The overdue customers add up to the overdue figure shown elsewhere.
+        $debtors = $dashboard->get('debtors');
+        if ($debtors['more'] === 0) {
+            $this->assertSame($this->tiles('dues.table')['Overdue'], $this->money(Money::add('0', ...array_column($debtors['rows'], 'amount'))));
+        }
+
+        // Today nets money in against money out.
+        $today = $dashboard->get('today');
+        $this->assertSame(Money::amount(Money::sub($today['total_in'], $today['total_out'])), $today['net']);
+
+        // Expected profit is sold value plus unsold units at list price, less the budget.
+        $row = collect($dashboard->get('projects')['rows'])->first(fn ($r) => $r['outlook'] !== null);
+        if ($row) {
+            $this->assertSame(Money::amount(Money::sub($row['outlook']['revenue'], (string) $row['budget'])), $row['outlook']['profit']);
+        }
+
+        $this->actingAs($this->admin)->get(route('dashboard'))->assertOk()->assertSee('data-widget="today"', false)->assertSee('To Pay This Week')->assertSee('Top Overdue Customers');
+        foreach (['today', 'upcoming', 'debtors'] as $panel) {
+            $this->actingAs($this->admin)->ajax()->get(route('dashboard.panel', $panel))->assertOk();
+        }
+        $clerk = $this->userWith(['projects.view']);
+        $this->actingAs($clerk)->ajax()->get(route('dashboard.panel', 'today'))->assertForbidden();
+        $this->actingAs($clerk)->ajax()->get(route('dashboard.panel', 'debtors'))->assertForbidden();
     }
 
     public function test_project_filter_and_permissions_shape_the_dashboard(): void
