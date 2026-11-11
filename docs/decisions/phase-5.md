@@ -46,12 +46,19 @@ nothing in this file is built yet. Do not begin Phase 5 until the client says so
 Revenue is recognised after sale approval when an admin approves the profit calculation; late fees count as unit
 revenue; refunds have no deduction by default. See `phase-3.md` and `docs/financial-events.md`.
 
-## 4. Open questions (asked 2026-11-11, not answered yet)
+## 4. Client answers (2026-11-11, second round)
 
-- **Profit approved before construction is finished:** warn only, use the budgeted cost when it is higher than the cost
-  so far (recommended, with a final adjustment at completion), or block approval until the project is complete.
-- **Tax deducted at source (VAT/AIT):** recommended an optional "Tax deducted" amount on supplier and contractor
-  payments that goes to a Tax Payable account; no returns or filings.
-- **Cheques:** whether to track a received cheque as in hand, deposited, cleared or bounced.
-- **Deposit / withdrawal:** moving money between the company's own cash and bank, the owner putting money in or
-  taking it out, or both.
+- **Profit approved before construction is finished:** the profit calculation uses the larger of the cost so far
+  and the budgeted cost of the unit, so an investor is paid a safe amount early; when the work is finished the
+  actual cost is used and the difference is settled.
+- **Tax deducted at source:** an optional "Tax deducted" amount on supplier and contractor payments, credited to a
+  Tax Payable account. No returns or filings.
+- **Deposit / withdrawal** covers both: moving money between the company's own cash, bank and mobile accounts, and
+  the owner putting money into the business or taking it out.
+- **Cheques** are tracked as In Hand → Deposited → Cleared / Bounced. The status is chosen when the cheque is
+  entered, because a cheque may already be cleared or bounced by the time it is recorded.
+- **Existing data is dummy data:** existing payments and receipts may be mapped to accounts as we see fit.
+- **Access:** the company has an accountant. Every accounting screen sits behind a permission; a seeded
+  **Accountant** role carries the permissions the job needs, and the client adjusts it later.
+
+No open questions remain. Phase 5 still waits for the client's word to start.
