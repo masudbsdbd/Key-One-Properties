@@ -1,11 +1,11 @@
 <div class="grid gap-6 xl:grid-cols-3">
     <div class="min-w-0 space-y-6 xl:col-span-2">
-        <x-card title="Updates" :padded="false">
+        <x-card title="Latest Updates" :padded="false">
             @forelse ($updates as $u)
                 <div class="border-b border-line px-5 py-4 last:border-0">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <p class="font-medium text-ink-900">{{ $u->workPackage?->name ?? 'Project' }}{{ $u->milestone ? ' · '.$u->milestone->title : '' }}</p>
-                        <p class="text-[13px] text-ink-500">{{ App\Support\Format::date($u->report_date) }} · {{ App\Support\Format::percent((float) $u->progress_percent) }}</p>
+                        <p class="text-[13px] text-ink-500">{{ App\Support\Format::date($u->report_date) }} · {{ App\Support\Format::percent((float) $u->progress_percent) }} done</p>
                     </div>
                     @if ($u->notes)<p class="mt-1 whitespace-pre-line text-sm text-ink-700">{{ $u->notes }}</p>@endif
                     @php $images = $u->attachments->filter(fn ($a) => $a->isImage()); @endphp

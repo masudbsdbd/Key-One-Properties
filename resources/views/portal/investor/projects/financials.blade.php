@@ -1,6 +1,6 @@
 @php $sum = fn ($key) => App\Support\Money::amount(App\Support\Money::add('0', ...$rows->pluck($key)->all())); @endphp
-<x-layouts.portal :title="$project->name.' · Financials'" portal="investor">
-    <x-page-header title="Project Financials" :breadcrumbs="['Home' => route('investor.dashboard'), 'Projects' => route('investor.projects.index'), $project->code => route('investor.projects.show', $project->public_id), 'Financials' => null]" />
+<x-layouts.portal :title="$project->name.' · Project Cost'" portal="investor">
+    <x-page-header title="Project Cost" :breadcrumbs="['Home' => route('investor.dashboard'), 'Project Progress' => route('investor.projects.index'), $project->name => route('investor.projects.show', $project->public_id), 'Project Cost' => null]" />
     <x-card :title="$project->name" :padded="false">
         <x-slot:actions><x-badge tone="neutral">Operational · not audited</x-badge></x-slot:actions>
         @if ($rows->isEmpty())
