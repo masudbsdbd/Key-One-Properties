@@ -2,7 +2,7 @@
     $titles = ['attention' => 'Needs Attention', 'projects' => 'Project Health', 'cashflow' => 'Money In and Out', 'forecast' => 'Collections Ahead',
         'aging' => 'Overdue by Age', 'units' => 'Unit Inventory', 'milestones' => 'Milestones', 'investors' => 'Investors',
         'today' => 'Money Today', 'incoming' => 'To Collect This Week', 'upcoming' => 'To Pay This Week', 'debtors' => 'Top Overdue Customers',
-        'salestrend' => 'Sales Trend', 'latework' => 'Late Work', 'site' => 'On Site', 'lowstock' => 'Low Stock'];
+        'salestrend' => 'Sales Trend', 'latework' => 'Late Work', 'site' => 'On Site', 'lowstock' => 'Low Stock', 'cashbank' => 'Cash & Bank'];
     $has = fn ($p) => in_array($p, $panels, true);
     $cols = [1 => '2xl:grid-cols-1', 2 => '2xl:grid-cols-2', 3 => '2xl:grid-cols-3', 4 => '2xl:grid-cols-4'];
 @endphp
@@ -70,7 +70,7 @@
             </div>
         @endif
 
-        @php $small = array_values(array_filter(['salestrend', 'aging', 'units', 'site', 'milestones', 'latework', 'lowstock', 'investors'], $has)); @endphp
+        @php $small = array_values(array_filter(['cashbank', 'salestrend', 'aging', 'units', 'site', 'milestones', 'latework', 'lowstock', 'investors'], $has)); @endphp
         @if ($small)
             <div class="grid gap-6 lg:grid-cols-2 {{ $cols[min(count($small), 4)] }}">
                 @foreach ($small as $p)

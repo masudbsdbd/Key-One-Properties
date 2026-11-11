@@ -23,6 +23,7 @@ use App\Models\InvestorProfitDistribution;
 use App\Models\LabourEntry;
 use App\Models\Material;
 use App\Models\Milestone;
+use App\Models\MoneyAccount;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\PurchaseOrder;
@@ -33,6 +34,7 @@ use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WorkPackage;
+use App\Modules\Accounting\Services\Balances;
 use App\Modules\Purchasing\Services\Unbilled;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -65,6 +67,7 @@ class Dashboard
         'site' => ['construction.view', 'materials.view'],
         'lowstock' => ['materials.view'],
         'investors' => ['investor.view'],
+        'cashbank' => ['accounting.cashbank.view'],
     ];
 
     /** Days late after which an overdue installment shows red instead of amber. */
@@ -545,6 +548,17 @@ class Dashboard
     }
 
     /** Materials that have run below their reorder level, the shortest first. */
+    /** Balance of every active cash, bank and mobile account, from the ledger. */
+    private function cashbank(): array
+    {
+        $net = Balances::byAccount();
+        $rows = MoneyAccount::query()->active()->orderBy('name')->get()->map(fn (MoneyAccount $a) => [
+            'name' => $a->name, 'kind' => MoneyAccount::KINDS[$a->kind], 'balance' => Money::amount($net[$a->ledger_account_id] ?? 0), 'href' => route('accounting.cash-bank.show', $a),
+        ]);
+
+        return ['rows' => $rows->all(), 'total' => Money::add('0', ...$rows->pluck('balance')->all()), 'href' => route('accounting.cash-bank.index')];
+    }
+
     private function lowstock(): array
     {
         $warehouses = Warehouse::query()->visibleTo($this->user)->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->select('warehouses.id');

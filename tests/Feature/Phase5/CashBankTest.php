@@ -145,6 +145,23 @@ class CashBankTest extends TestCase
         $this->actingAs($this->accountant)->get(route('accounting.journals.export', ['format' => 'csv']))->assertForbidden();
     }
 
+    public function test_the_main_dashboard_shows_each_account_balance_to_those_allowed(): void
+    {
+        $this->account('cash', 'Office Cash', '12000');
+        $this->account('bank', 'Islami Bank', '88000');
+        $viewer = $this->userWith(['dashboard.view', 'accounting.cashbank.view']);
+
+        $this->actingAs($viewer)->get(route('dashboard'))->assertOk()->assertSee('data-widget="cashbank"', false);
+        $html = $this->actingAs($viewer)->ajax()->get(route('dashboard.panel', 'cashbank'))->assertOk()->json('data.html');
+        $this->assertStringContainsString('Office Cash', $html);
+        $this->assertStringContainsString('88,000', $html);
+        $this->assertStringContainsString('1,00,000', $html);
+
+        $other = $this->userWith(['dashboard.view']);
+        $this->actingAs($other)->get(route('dashboard'))->assertOk()->assertDontSee('data-widget="cashbank"', false);
+        $this->actingAs($other)->ajax()->get(route('dashboard.panel', 'cashbank'))->assertForbidden();
+    }
+
     public function test_cash_and_bank_needs_permission(): void
     {
         $cash = $this->account('cash', 'Office Cash', '10000');
