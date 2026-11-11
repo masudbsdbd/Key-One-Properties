@@ -2,6 +2,7 @@
 
 use App\Modules\Accounting\Controllers\AccountController;
 use App\Modules\Accounting\Controllers\CashBankController;
+use App\Modules\Accounting\Controllers\ChequeController;
 use App\Modules\Accounting\Controllers\JournalController;
 use App\Modules\Accounting\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +46,13 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('{account}/edit', 'edit')->name('edit');
         Route::put('{account}', 'update')->name('update');
         Route::delete('{account}', 'destroy')->name('destroy');
+    });
+
+    Route::prefix('cheques')->name('cheques.')->controller(ChequeController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('table', 'table')->name('table');
+        Route::get('{cheque}/{action}', 'form')->whereIn('action', ['deposit', 'clear', 'bounce'])->name('form');
+        Route::post('{cheque}/{action}', 'update')->whereIn('action', ['deposit', 'clear', 'bounce'])->name('update');
     });
 
     Route::prefix('journals')->name('journals.')->controller(JournalController::class)->group(function () {

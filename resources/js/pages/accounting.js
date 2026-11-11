@@ -111,3 +111,25 @@ export function initOpeningForm() {
     form.addEventListener('input', update);
     update();
 }
+
+/** Customer payment form: cheque details appear when the method is cheque; a cheque still in hand needs no bank account. */
+export function initChequeFields() {
+    const sync = (form) => {
+        const cheque = form.querySelector('[name="method"]')?.value === 'cheque';
+        const fields = form.querySelector('[data-cheque-fields]');
+        if (!fields) return;
+        fields.hidden = !cheque;
+        const held = cheque && ['in_hand', 'bounced'].includes(form.querySelector('[name="cheque_status"]').value);
+        const account = form.querySelector('[name="money_account"]');
+        const field = account?.closest('[data-field]');
+        if (field) field.hidden = held;
+        if (account && held) $(account).val(null).trigger('change.select2');
+    };
+    document.addEventListener('remote:loaded', (event) => {
+        const form = event.target.querySelector?.('[data-collect-form]');
+        if (form) sync(form);
+    });
+    $(document).on('change', '[data-collect-form] [name="method"], [data-collect-form] [name="cheque_status"]', function () {
+        sync(this.closest('[data-collect-form]'));
+    });
+}

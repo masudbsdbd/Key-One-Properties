@@ -11,6 +11,7 @@ use App\Models\InstallmentScheduleItem;
 use App\Models\MoneyReceipt;
 use App\Models\PaymentAllocation;
 use App\Models\User;
+use App\Modules\Accounting\Services\Cheques;
 use App\Support\DocumentNumber;
 use App\Support\FinancialEvents\FinancialEventRecorder;
 use App\Support\Money;
@@ -44,13 +45,23 @@ class PaymentService
             }
             $doc = $sale ?? $booking;
 
-            return CustomerPayment::query()->create([
+            $cheque = $data['method'] === 'cheque' ? ($data['cheque'] ?? null) : null;
+            $bounced = ($cheque['status'] ?? null) === 'bounced';
+
+            $payment = CustomerPayment::query()->create([
                 'payment_no' => DocumentNumber::next('CP'), 'customer_id' => $doc->customer_id, 'project_id' => $doc->project_id,
                 'purpose' => $sale ? 'sale' : 'booking', 'booking_id' => $booking?->id, 'sale_id' => $sale?->id,
                 'payment_date' => $data['payment_date'], 'amount' => Money::amount($data['amount']), 'method' => $data['method'], 'money_account_id' => $data['money_account_id'] ?? null,
                 'reference_no' => $data['reference_no'] ?? null, 'notes' => $data['notes'] ?? null,
-                'status' => 'pending', 'received_by' => $user->id, 'idempotency_key' => $key,
+                // A cheque entered as already bounced is kept on record but never counts as money.
+                'status' => $bounced ? 'rejected' : 'pending', 'status_reason' => $bounced ? 'Cheque bounced' : null,
+                'received_by' => $user->id, 'idempotency_key' => $key,
             ]);
+            if ($cheque) {
+                app(Cheques::class)->record($payment, $cheque + ['cheque_no' => $data['reference_no'], 'money_account_id' => $data['money_account_id'] ?? null], $user);
+            }
+
+            return $payment;
         });
     }
 
@@ -133,6 +144,7 @@ class PaymentService
             MoneyReceipt::query()->where('payment_id', $payment->id)->update(['voided_at' => now()]);
             $this->statement->reverse($payment, 'payment', $reason);
             $this->events->reverse('collections', $payment, now(config('app.display_timezone')), $user);
+            app(Cheques::class)->paymentReversed($payment, $reason, $user);
         });
     }
 

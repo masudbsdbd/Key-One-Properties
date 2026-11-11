@@ -31,6 +31,9 @@
                     <div><p class="detail-label">Amount</p><p class="text-xl font-semibold text-ink-900"><x-money :value="$payment->amount" /></p><x-status-badge :status="$s" /></div>
                     <div><p class="detail-label">Date</p><p class="detail-value">{{ App\Support\Format::date($payment->payment_date) }}</p></div>
                     <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Models\CustomerPayment::METHODS[$payment->method] ?? $payment->method }}</p><p class="text-[13px] text-ink-500">{{ collect([$payment->moneyAccount?->label(), $payment->reference_no])->filter()->implode(' · ') }}</p></div>
+                    @if ($cheque)
+                        <div class="sm:col-span-2" data-partial-url="{{ route('customer-payments.cheque', $payment) }}">@include('accounting.cheques._card')</div>
+                    @endif
                     <div><p class="detail-label">Receipt</p><p class="detail-value">{{ $payment->receipt?->receipt_no ?? '—' }}@if ($payment->receipt?->voided_at) <x-badge tone="danger">Void</x-badge>@endif</p></div>
                 </div>
                 @if ($payment->notes)<p class="mt-4 border-t border-line pt-4 text-sm text-ink-700">{{ $payment->notes }}</p>@endif

@@ -110,6 +110,7 @@ class Navigation
                 'title' => 'Accounting',
                 'items' => [
                     ['label' => 'Cash & Bank', 'icon' => 'wallet', 'route' => 'accounting.cash-bank.index', 'active' => 'accounting.cash-bank.*', 'can' => 'accounting.cashbank.view'],
+                    ['label' => 'Cheques', 'icon' => 'note', 'route' => 'accounting.cheques.index', 'active' => 'accounting.cheques.*', 'can' => ['accounting.cashbank.view', 'accounting.cheque.manage']],
                     ['label' => 'Journals', 'icon' => 'file', 'route' => 'accounting.journals.index', 'active' => 'accounting.journals.*', 'can' => 'accounting.journal.view'],
                     ['label' => 'Chart of Accounts', 'icon' => 'list', 'route' => 'accounting.accounts.index', 'active' => 'accounting.accounts.*', 'can' => 'accounting.coa.view'],
                     ['label' => 'Accounting Settings', 'icon' => 'settings', 'route' => 'accounting.settings.edit', 'active' => ['accounting.settings.*', 'accounting.opening.*'], 'can' => ['accounting.settings.manage', 'accounting.openingbalance.manage']],

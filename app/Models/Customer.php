@@ -137,4 +137,10 @@ class Customer extends Model
 
         return $code;
     }
+
+    /** Same word the other parties (supplier, contractor, investor) use, so shared views need no special case. */
+    public function getNameAttribute(): ?string
+    {
+        return $this->full_name;
+    }
 }

@@ -49,6 +49,7 @@ Route::prefix('customer-payments')->name('customer-payments.')->controller(Custo
     Route::post('/', 'store')->name('store');
     Route::get('{payment}', 'show')->name('show');
     Route::get('{payment}/receipt', 'receipt')->name('receipt');
+    Route::get('{payment}/cheque', 'cheque')->name('cheque');
     Route::post('{payment}/post', 'post')->name('post');
     Route::get('{payment}/action/{action}', 'reasonForm')->whereIn('action', ['reject', 'reverse'])->name('reason');
     Route::post('{payment}/reject', 'reject')->name('reject');
