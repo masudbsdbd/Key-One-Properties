@@ -148,11 +148,15 @@ schemas and code ready for later phases (routes isolated, accounting-ready).
 
 ## Confirmed decisions (override the blueprint where they differ)
 
-- Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md` … `KEY_ONE_PHASE_4_BLUEPRINT.md`.
-  Implementation decisions live in `docs/decisions/phase-2.md`, `phase-3.md` and `phase-4.md`.
-- Current phase: Phase 4 (Investor Portal, Customer Portal, Dashboard & Reports). Phase 3 is complete.
-- Phase 5 is not started: the blueprint (`KEY_ONE_PHASE_5_BLUEPRINT.md`) and the client's early answers
-  (`docs/decisions/phase-5.md`) are saved; begin only when the user says so.
+- Spec: `KEY_ONE_PHASE_1_BLUEPRINT.md` … `KEY_ONE_PHASE_5_BLUEPRINT.md`.
+  Implementation decisions live in `docs/decisions/phase-2.md` … `phase-5.md`.
+- Current phase: Phase 5 (Accounting & Finance), started 2026-11-11. Phase 4 is complete.
+- Phase 5 policies (client, 2026-11-11): investor capital is a liability; construction cost is work in progress
+  until the unit's profit is approved; profit uses the larger of actual and budgeted cost and is settled at
+  completion; optional tax deducted at source goes to Tax Payable; the books start from an opening balance;
+  fiscal year July–June (a setting); the company enters its own cash, bank and mobile accounts, which cannot be
+  deleted once used; cheques are In Hand → Deposited → Cleared / Bounced with the status chosen at entry;
+  every accounting screen is permissioned and an Accountant role is seeded. Landowner share stays out of scope.
 - Portals live at `/investor` and `/customer`; internal pages keep their paths (the admin panel is not on `/admin`).
 - Portal visibility (client, 2026-11-09): the company decides what each investor or customer sees. Project
   financials, cost categories and customer project progress are off by default and opened by an admin per

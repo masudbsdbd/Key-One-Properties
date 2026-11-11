@@ -1,7 +1,6 @@
 # Phase 5 decisions (Accounting & Finance)
 
-Blueprint: `KEY_ONE_PHASE_5_BLUEPRINT.md`. **Status: not started.** The client asked to start later (2026-11-11);
-nothing in this file is built yet. Do not begin Phase 5 until the client says so.
+Blueprint: `KEY_ONE_PHASE_5_BLUEPRINT.md`. **Status: in progress** (the client said to start on 2026-11-11, after answering the questions below).
 
 ## 1. Client decisions (2026-11-11)
 
@@ -61,4 +60,119 @@ revenue; refunds have no deduction by default. See `phase-3.md` and `docs/financ
 - **Access:** the company has an accountant. Every accounting screen sits behind a permission; a seeded
   **Accountant** role carries the permissions the job needs, and the client adjusts it later.
 
-No open questions remain. Phase 5 still waits for the client's word to start.
+No open questions remain.
+
+## 5. Audit of Phases 1–4 (Prompt 1)
+
+- **Outbox:** every money fact is already written to `financial_events` in the same transaction as the business
+  change (`FinancialEventRecorder`), with `event_uuid`, a unique `idempotency_key`, `effective_at`, the source
+  morph, project/flat/customer, and `processing_status` (`pending`, `processed`, `failed`, attempts, last error).
+  A cancelled document records negated events linked by `reversal_of_id`. Phase 5 posts from this table and adds
+  no second source-link table.
+- **Subledgers stay the operational truth:** `supplier_ledger_entries`, `contractor_ledger_entries`,
+  `customer_statement_entries`, `investor_ledger_entries`, `stock_movements`, `project_cost_allocations`.
+  The general ledger is reconciled to them, never the other way round.
+- **Gap, money account:** supplier payments, contractor payments, expenses, customer payments, customer refunds,
+  investor capital transactions and investor payouts store only a payment method. Each gets a `money_account_id`.
+- **Gap, labour:** approved labour is a project cost with no payment record. It credits Wages Payable; wages are
+  paid from Cash & Bank as money out against that account.
+- **Reuse:** `Approval` (status and self-approval guards), `DocumentNumber`, `report_runs` (queued exports), the
+  export framework, `Settings`, activity log, `public_id` on every new table.
+
+## 6. Architecture
+
+- **One writer.** `Accounting\Ledger` is the only code that inserts journal entries and lines. It checks: at least
+  two lines, each line one positive side, debits equal credits, postable active accounts, an open period, and a
+  unique `source_key` (retries return the first journal). It runs in a transaction and locks the period row.
+- **Posted is final.** A posted journal is never edited or deleted (model guard). A reversal is a new journal with
+  the sides swapped, linked by `reversal_of_id`.
+- **Automatic posting.** After an event is recorded, `EventPoster` resolves it to lines with a rule class per event
+  type and posts it (`source_key = event:<uuid>`). The rule reads the source document for the exact parties,
+  money account and split. An event with nothing to post is marked processed with a note. A rule that cannot
+  resolve (missing mapping) marks the event `failed` with the reason; the business action is not blocked and the
+  event shows in the Reconciliation Center, where it is retried.
+- **Posting switch.** `accounting.enabled` and `accounting.start_date` (Settings). Events dated before the start
+  date are skipped (covered by the opening balance). Nothing posts while the switch is off.
+- **Locked periods reject at the source.** When posting is on, recording an event dated in a locked or closed
+  period fails the whole business action with a clear message, so no backlog builds up behind a lock.
+- **Account mapping.** Rules refer to accounts by a system key (`customer_receivable`, `supplier_payable`, …).
+  The seeded chart links each key to an account; an accountant may point a key at another account. Rules are code.
+- **Dimensions.** Lines carry optional project, flat and party (customer, supplier, contractor, investor) and the
+  money account. Project is required on work-in-progress lines.
+
+## 7. Proposed chart of accounts (seeded, editable)
+
+| Code | Account | Key |
+|---|---|---|
+| 1010 / 1020 / 1030 | Cash / Bank Accounts / Mobile Banking (one child per money account) | — |
+| 1100 | Cheques in Hand | `cheques_in_hand` |
+| 1200 | Customer Receivables | `customer_receivable` |
+| 1300 | Material Stock | `stock` |
+| 1400 | Construction Work in Progress | `wip` |
+| 1500 | Advances to Contractors | `contractor_advance` |
+| 1700 | Fixed Assets | — |
+| 2000 | Supplier Payables | `supplier_payable` |
+| 2010 | Goods Received Not Billed | `grni` |
+| 2100 | Contractor Payables | `contractor_payable` |
+| 2110 | Contractor Retention Payable | `retention_payable` |
+| 2150 | Wages Payable | `wages_payable` |
+| 2200 | Customer Advances | `customer_advance` |
+| 2300 | Investor Capital | `investor_capital` |
+| 2310 | Investor Profit Payable | `investor_profit_payable` |
+| 2400 | Tax Payable | `tax_payable` |
+| 2500 | Expenses Payable | `expense_payable` |
+| 2600 | Loans Payable | `loan_payable` |
+| 2800 | Estimated Cost to Complete | `cost_to_complete` |
+| 3000 / 3100 | Owner's Capital / Owner's Drawings | `owner_capital` / `owner_drawings` |
+| 3200 | Retained Earnings | `retained_earnings` |
+| 3900 | Opening Balance Equity | `opening_equity` |
+| 4000 | Property Sales | `sales` |
+| 4100 | Late Fee Income | `late_fee_income` |
+| 4200 | Cancellation Deductions | `cancellation_income` |
+| 4900 | Other Income | `other_income` |
+| 5000 | Cost of Units Sold | `cost_of_sales` |
+| 5100 | Investor Profit Share | `investor_profit_expense` |
+| 6000 | General Expenses (one child per expense category) | `general_expense` |
+| 6100 | Bank Charges | `bank_charges` |
+| 6200 | Stock Adjustments | `stock_adjustment` |
+| 6300 | Purchase Price Differences | `purchase_variance` |
+
+## 8. Posting matrix
+
+| Event | Debit | Credit |
+|---|---|---|
+| `purchase.received` | Material Stock | Goods Received Not Billed |
+| `purchase.returned` | Supplier Payables (credited part), GRNI (rest) | Material Stock |
+| `supplier.bill_approved` | GRNI (value of the goods billed), Purchase Price Differences (rest); a bill with no receipt debits work in progress or general expense | Supplier Payables |
+| `purchase.supplier_payment` | Supplier Payables (paid + tax deducted) | Money account, Tax Payable |
+| `material.received` | Material Stock | Opening Balance Equity (opening) or Stock Adjustments |
+| `material.consumed` | Work in Progress (project) | Material Stock |
+| `material.site_returned` | Material Stock | Work in Progress (project) |
+| `material.transferred` | Material Stock (to project) | Material Stock (from project) |
+| `stock.adjusted` | Material Stock or Stock Adjustments | the other |
+| `labour.approved` | Work in Progress (project) | Wages Payable |
+| `contractor.bill_approved` | Work in Progress (gross) | Contractor Payables (net), Retention Payable, Advances to Contractors |
+| `contractor.retention_released` | Retention Payable | Contractor Payables |
+| `contractor.payment` | Contractor Payables, or Advances to Contractors for an advance | Money account, Tax Payable |
+| `contractor.advance_refunded` | Money account | Advances to Contractors |
+| `expense.approved` | General expense category account, or Work in Progress for a project expense | Expenses Payable |
+| `expense.paid` | Expenses Payable | Money account |
+| `collection.received` | Money account or Cheques in Hand | Customer Receivables once the unit's revenue is recognised, else Customer Advances |
+| `collection.refunded` | Customer Advances / Receivables | Money account, Cancellation Deductions |
+| `late_fee.assessed` / `late_fee.waived` | Customer Receivables | Late Fee Income (waiver reverses) |
+| `profit.payable_approved` | Customer Receivables; Customer Advances; Cost of Units Sold; Investor Profit Share | Property Sales; Customer Receivables; Work in Progress and Estimated Cost to Complete; Investor Profit Payable |
+| `profit.distribution_paid` | Investor Profit Payable | Money account |
+| `investment.received` / `investment.withdrawn` | Money account / Investor Capital | Investor Capital / Money account |
+| `sale.cancelled` | reverses what was recognised for the unit | |
+| `booking.created`, `booking.cancelled`, `sale.confirmed`, `installment.due`, `cost.shared_allocated`, `profit.distribution_approved` | nothing to post (no money or recognition moves) | |
+
+`profit.payable_approved` posts only the change against what the ledger already holds for the unit, because a
+unit's profit may be approved more than once. The cost is the larger of the allocated cost and the unit's share
+of the budget (client decision); the part not yet spent sits in Estimated Cost to Complete and is released as the
+real cost arrives.
+
+## 9. Test strategy
+
+Unit tests for the ledger invariants and reversal; a feature test per rule asserting the journal and that the
+trial balance stays balanced; idempotency (same event twice, one journal); locked-period rejection at the source;
+subledger-to-control-account reconciliation on the demo data; permission and IDOR tests on every route.
