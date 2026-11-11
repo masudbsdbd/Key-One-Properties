@@ -2,13 +2,14 @@
     $s = $calc->status;
     $pct = fn ($v) => App\Modules\Investors\Controllers\AgreementController::pct($v);
     $snap = $calc->basis_snapshot;
-    $totalCost = App\Support\Money::add((string) $calc->direct_cost_amount, (string) $calc->shared_cost_amount, (string) $calc->other_approved_cost_amount);
+    $totalCost = $calc->totalCost();
     $investorTotal = App\Support\Money::add('0', ...$calc->allocations->map(fn ($a) => (string) $a->profit_amount)->all());
     $lines = [
         ['Revenue', 'revenue_amount', false],
         ['Direct Cost', 'direct_cost_amount', true],
         ['Shared Cost', 'shared_cost_amount', true],
         ['Other Cost', 'other_approved_cost_amount', true],
+        ['Cost Still to Come', 'estimated_cost_amount', true],
         ['Net Profit', 'net_profit_amount', false],
         ['Company Share', 'company_share_amount', false],
     ];

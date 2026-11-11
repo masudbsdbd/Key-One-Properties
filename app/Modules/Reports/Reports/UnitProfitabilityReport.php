@@ -74,7 +74,7 @@ class UnitProfitabilityReport extends BaseReport
     /** Unit-tagged, shared and other approved cost together. */
     private static function cost(mixed $c): string
     {
-        return Money::amount(Money::add((string) $c->direct_cost_amount, (string) $c->shared_cost_amount, (string) $c->other_approved_cost_amount));
+        return $c->totalCost();
     }
 
     public function totals(Builder $query): ?array
@@ -83,7 +83,7 @@ class UnitProfitabilityReport extends BaseReport
         $sum = fn (string $field) => Money::amount(Money::add('0', ...$rows->map(fn ($r) => (string) $r->{$field})->all()));
         $net = $sum('net_profit_amount');
 
-        return ['Total', null, $sum('revenue_amount'), Money::amount(Money::add($sum('direct_cost_amount'), $sum('shared_cost_amount'), $sum('other_approved_cost_amount'))), $net, null,
+        return ['Total', null, $sum('revenue_amount'), Money::amount(Money::add($sum('direct_cost_amount'), $sum('shared_cost_amount'), $sum('other_approved_cost_amount'), $sum('estimated_cost_amount'))), $net, null,
             $sum('investors_amount'), Money::amount(Money::sub($net, $sum('investors_amount')))];
     }
 }

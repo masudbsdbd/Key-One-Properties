@@ -35,6 +35,7 @@
                     <div class="flex justify-between gap-4 px-5 py-2 pl-9 text-[13px]"><dt class="text-ink-500">{{ $label }}</dt><dd class="text-ink-600"><x-money :value="App\Support\Money::add((string) $c['shared'], (string) $c['direct'])" /></dd></div>
                 @endforeach
                 @if ((float) $calc->other_approved_cost_amount)<div class="flex justify-between gap-4 px-5 py-2.5"><dt class="text-ink-600">Other Cost</dt><dd><x-money :value="'-'.$calc->other_approved_cost_amount" /></dd></div>@endif
+                @if ((float) $calc->estimated_cost_amount)<div class="flex justify-between gap-4 px-5 py-2.5"><dt class="text-ink-600">Budgeted Cost Still to Come</dt><dd><x-money :value="'-'.$calc->estimated_cost_amount" /></dd></div>@endif
                 <div class="flex justify-between gap-4 px-5 py-3 font-semibold"><dt>Profit on This Unit</dt><dd @class(['text-danger-600' => (float) $calc->net_profit_amount < 0])><x-money :value="$calc->net_profit_amount" /></dd></div>
                 @if ($canProfit && $mine)
                     <div class="flex justify-between gap-4 bg-accent-50/60 px-5 py-3 text-base font-semibold text-ink-900"><dt>Your Share{{ $sharePct !== null ? ' ('.App\Modules\Investors\Controllers\AgreementController::pct($sharePct).')' : '' }}</dt><dd><x-money :value="$mine->profit_amount" /></dd></div>

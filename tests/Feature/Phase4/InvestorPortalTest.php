@@ -48,7 +48,7 @@ class InvestorPortalTest extends TestCase
     {
         parent::setUp();
         [$this->maker, $this->checker] = [User::factory()->create(), User::factory()->create()];
-        $project = Project::factory()->create();
+        $project = Project::factory()->create(['estimated_budget' => null]);
         $floor = FlatFactory::floorFor($project);
         $this->flat = Flat::factory()->forFloor($floor)->create(['saleable_area' => 1000]);
         $this->other = Flat::factory()->forFloor($floor)->create(['saleable_area' => 1000]);

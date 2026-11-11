@@ -3,6 +3,7 @@
 namespace App\Modules\Investors\Services;
 
 use App\Models\Flat;
+use App\Models\FlatCostAllocationRun;
 use App\Models\FlatHandover;
 use App\Models\FlatProfitCalculation;
 use App\Models\FlatRegistration;
@@ -74,6 +75,26 @@ class ProfitService
             ->sum('amount'));
     }
 
+    /**
+     * The unit's share of the project budget (by saleable area) and how much of it is not spent yet.
+     * A unit sold before the building is finished would otherwise show a profit that later cost eats up.
+     * Once the project is complete only the real cost counts.
+     *
+     * @return array{share: string, to_come: string}
+     */
+    public static function costToCome(Flat $flat, FlatCostAllocationRun $run, string $spent): array
+    {
+        $project = $flat->project;
+        $area = (string) $run->total_saleable_area;
+        if ($project->status === 'completed' || ! Money::isPositive((string) $project->estimated_budget) || ! Money::isPositive($area) || ! Money::isPositive((string) $flat->saleable_area)) {
+            return ['share' => '0.00', 'to_come' => '0.00'];
+        }
+        $share = (string) BigDecimal::of((string) $project->estimated_budget)->multipliedBy((string) $flat->saleable_area)->dividedBy($area, 2, RoundingMode::HalfUp);
+        $toCome = Money::sub($share, $spent);
+
+        return ['share' => Money::amount($share), 'to_come' => Money::isPositive($toCome) ? Money::amount($toCome) : '0.00'];
+    }
+
     public static function investorAmount(string $net, string $share): string
     {
         if (! Money::isPositive($net)) {
@@ -97,7 +118,8 @@ class ProfitService
             $other = Money::amount($data['other_cost'] ?? '0');
             $lateFees = self::lateFeeRevenue($sale);
             $revenue = Money::amount(Money::add((string) $sale->net_contract_value, $lateFees));
-            $net = Money::amount(Money::sub(Money::sub(Money::sub($revenue, $cost['direct']), $cost['shared']), $other));
+            $budget = self::costToCome($flat, $run, Money::add($cost['direct'], $cost['shared']));
+            $net = Money::amount(Money::sub(Money::sub(Money::sub(Money::sub($revenue, $cost['direct']), $cost['shared']), $other), $budget['to_come']));
             $eligibility = $this->eligibility($sale);
             $agreements = self::agreementsOn($flat, $asOf);
             $share = Money::rate(Money::add('0', ...$agreements->map(fn ($a) => (string) $a->profit_share_percent)->all()));
@@ -107,11 +129,12 @@ class ProfitService
             $calc = FlatProfitCalculation::query()->create([
                 'calculation_no' => DocumentNumber::next('FPC'), 'project_id' => $flat->project_id, 'flat_id' => $flat->id, 'sale_id' => $sale->id, 'cost_run_id' => $run->id,
                 'revenue_amount' => $revenue, 'direct_cost_amount' => $cost['direct'], 'shared_cost_amount' => $cost['shared'], 'other_approved_cost_amount' => $other,
+                'estimated_cost_amount' => $budget['to_come'],
                 'net_profit_amount' => $net, 'investor_share_percent' => $share,
                 'company_share_amount' => Money::isPositive($net) ? Money::amount(Money::sub($net, $investorTotal)) : '0.00',
                 'recognition_basis' => $eligibility['basis'], 'revenue_eligible' => $eligibility['eligible'],
                 'basis_snapshot' => [
-                    'as_of' => $asOf->toDateString(), 'sale_no' => $sale->sale_no, 'contract_value' => Money::amount((string) $sale->net_contract_value), 'late_fees' => $lateFees, 'sale_status' => $sale->status, 'run_no' => $run->run_no, 'run_version' => $run->calculation_version,
+                    'as_of' => $asOf->toDateString(), 'sale_no' => $sale->sale_no, 'contract_value' => Money::amount((string) $sale->net_contract_value), 'late_fees' => $lateFees, 'budget_share' => $budget['share'], 'cost_to_come' => $budget['to_come'], 'sale_status' => $sale->status, 'run_no' => $run->run_no, 'run_version' => $run->calculation_version,
                     'cost_categories' => $cost['categories'], 'other_cost_note' => $data['other_cost_note'] ?? null, 'eligibility' => $eligibility['detail'],
                     'cost_policy' => $this->policy->costPolicy(), 'agreements' => $agreements->map(fn ($a) => ['id' => $a->id, 'no' => $a->agreement_no, 'share' => (string) $a->profit_share_percent])->all(),
                 ],
@@ -161,6 +184,9 @@ class ProfitService
         }
         if ($calc->costRun?->isStale()) {
             return 'Cost changed after the cost allocation run; run allocation again';
+        }
+        if ($calc->costRun && Money::cmp(self::costToCome($calc->flat, $calc->costRun, Money::add((string) $calc->direct_cost_amount, (string) $calc->shared_cost_amount))['to_come'], (string) $calc->estimated_cost_amount) !== 0) {
+            return 'The project budget or status changed after this calculation; recalculate';
         }
         $now = self::agreementsOn($calc->flat, Carbon::parse($calc->basis_snapshot['as_of']))->map(fn ($a) => $a->id.':'.$a->profit_share_percent)->all();
         $then = collect($calc->basis_snapshot['agreements'] ?? [])->map(fn ($a) => $a['id'].':'.Money::rate($a['share']))->all();

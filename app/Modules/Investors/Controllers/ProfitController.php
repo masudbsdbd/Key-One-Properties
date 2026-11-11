@@ -52,9 +52,9 @@ class ProfitController extends Controller
         abort_unless($request->user()->can('investor.ledger.export'), 403);
 
         return Report::make('Flat Profit Calculations')->sumMoney()->meta(['Status' => FlatProfitCalculation::STATUSES[(string) $request->input('status')] ?? null, 'Project' => Project::findByPublicId($request->input('project'))?->name, 'Period' => TableQuery::periodLabel($request)])
-            ->columns(['Calculation' => 'text', 'Project' => 'text', 'Unit' => 'text', 'Revenue' => 'money', 'Direct Cost' => 'money', 'Shared Cost' => 'money', 'Other Cost' => 'money', 'Net Profit' => 'money', 'Investor %' => 'text', 'Company Share' => 'money', 'Eligible' => 'text', 'Status' => 'text'])
+            ->columns(['Calculation' => 'text', 'Project' => 'text', 'Unit' => 'text', 'Revenue' => 'money', 'Direct Cost' => 'money', 'Shared Cost' => 'money', 'Other Cost' => 'money', 'Cost Still to Come' => 'money', 'Net Profit' => 'money', 'Investor %' => 'text', 'Company Share' => 'money', 'Eligible' => 'text', 'Status' => 'text'])
             ->rows(fn () => $this->listing($request)->lazy()->map(fn (FlatProfitCalculation $c) => [$c->calculation_no, $c->project->code, $c->flat->flat_no, $c->revenue_amount, $c->direct_cost_amount,
-                $c->shared_cost_amount, $c->other_approved_cost_amount, $c->net_profit_amount, AgreementController::pct($c->investor_share_percent), $c->company_share_amount, $c->revenue_eligible ? 'Yes' : 'No', FlatProfitCalculation::STATUSES[$c->status]]))
+                $c->shared_cost_amount, $c->other_approved_cost_amount, $c->estimated_cost_amount, $c->net_profit_amount, AgreementController::pct($c->investor_share_percent), $c->company_share_amount, $c->revenue_eligible ? 'Yes' : 'No', FlatProfitCalculation::STATUSES[$c->status]]))
             ->respond($request);
     }
 
@@ -161,6 +161,9 @@ class ProfitController extends Controller
         }
         if ((float) $c->other_approved_cost_amount) {
             $lines[] = ['Other cost'.($c->basis_snapshot['other_cost_note'] ? ' · '.$c->basis_snapshot['other_cost_note'] : ''), '-'.$c->other_approved_cost_amount];
+        }
+        if ((float) $c->estimated_cost_amount) {
+            $lines[] = ['Budgeted cost still to come', '-'.$c->estimated_cost_amount];
         }
         foreach ($c->allocations as $a) {
             $lines[] = ['Investor · '.$a->investor->name.' ('.AgreementController::pct($a->share_percent_snapshot).')', $a->profit_amount];

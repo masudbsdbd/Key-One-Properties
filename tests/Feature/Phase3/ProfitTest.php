@@ -56,7 +56,7 @@ class ProfitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->project = Project::factory()->create();
+        $this->project = Project::factory()->create(['estimated_budget' => null]);
         $floor = FlatFactory::floorFor($this->project);
         $this->flat = Flat::factory()->forFloor($floor)->create(['saleable_area' => 1000]);
         Flat::factory()->forFloor($floor)->create(['saleable_area' => 3000]);
@@ -396,5 +396,31 @@ class ProfitTest extends TestCase
 
         $fees->waive(LateFeeAssessment::query()->where('status', 'posted')->firstOrFail(), 'Goodwill', $this->checker);
         $this->assertSame('Late fees changed after this calculation; recalculate', $this->profit->approvalBlocker($c->fresh()));
+    }
+
+    public function test_a_unit_sold_before_the_work_is_done_counts_the_budget_still_to_come(): void
+    {
+        $this->configure();
+        // Budget 8,000,000: this unit carries 1000/4000 = 2,000,000 of it; 1,100,000 is spent, 900,000 is still to come.
+        $this->project->update(['estimated_budget' => '8000000']);
+        $c = $this->calc();
+        $this->assertSame(['900000.00', '3000000.00', '2000000.00'], [(string) $c->estimated_cost_amount, (string) $c->net_profit_amount, $c->totalCost()]);
+        $this->assertSame(['2000000.00', '900000.00'], [$c->basis_snapshot['budget_share'], $c->basis_snapshot['cost_to_come']]);
+
+        // A budget change after the calculation stops the approval.
+        $this->project->update(['estimated_budget' => '9000000']);
+        $this->assertSame('The project budget or status changed after this calculation; recalculate', $this->profit->approvalBlocker($c->fresh()));
+        $this->project->update(['estimated_budget' => '8000000']);
+        $this->profit->approve($c->fresh(), $this->checker);
+        $this->assertSame('1800000.00', InvestorLedger::balances($this->investors[0], $this->flat->id)['payable']);
+        $this->assertSame('900000.00', InvestorLedger::balances($this->investors[1], $this->flat->id)['payable']);
+
+        // When the project is complete only the real cost counts, and the investors get the rest.
+        $this->project->update(['status' => 'completed', 'actual_completion_date' => now()->toDateString()]);
+        $final = $this->calc();
+        $this->assertSame(['0.00', '3900000.00'], [(string) $final->estimated_cost_amount, (string) $final->net_profit_amount]);
+        $this->profit->approve($final->fresh(), $this->checker);
+        $this->assertSame('2340000.00', InvestorLedger::balances($this->investors[0], $this->flat->id)['payable']);
+        $this->assertSame('540000.00', (string) $final->allocations()->where('investor_id', $this->investors[0]->id)->firstOrFail()->payable_change);
     }
 }
