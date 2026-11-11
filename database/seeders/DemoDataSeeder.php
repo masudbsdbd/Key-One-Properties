@@ -18,6 +18,7 @@ use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialUnit;
 use App\Models\Milestone;
+use App\Models\MoneyAccount;
 use App\Models\PasswordResetRequest;
 use App\Models\Project;
 use App\Models\ReportRun;
@@ -25,6 +26,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WorkPackage;
+use App\Modules\Accounting\Services\CashBank;
+use App\Modules\Accounting\Support\AccountingSettings;
 use App\Modules\Collections\Services\InstallmentService;
 use App\Modules\Collections\Services\LateFeeService;
 use App\Modules\Collections\Services\PaymentService;
@@ -48,6 +51,7 @@ use App\Modules\Sales\Services\PriceRevisionService;
 use App\Modules\Sales\Services\RefundService;
 use App\Modules\Sales\Services\SalesService;
 use App\Notifications\PasswordResetRequested;
+use App\Support\Settings;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -95,6 +99,7 @@ class DemoDataSeeder extends Seeder
 
         DB::transaction(function () {
             $this->staff();
+            $this->accounting();
             $this->project();
             $this->inventory();
             $this->purchasing();
@@ -116,6 +121,24 @@ class DemoDataSeeder extends Seeder
             ]);
             GenerateReportExport::dispatchSync($run->id);
         }
+    }
+
+    /** Money accounts and the books switched on, so the demo transactions also show in the accounts. */
+    private function accounting(): void
+    {
+        if (MoneyAccount::query()->exists()) {
+            return;
+        }
+        $accounts = [
+            ['kind' => 'cash', 'name' => 'Office Cash', 'opening_balance' => '500000'],
+            ['kind' => 'bank', 'name' => 'Islami Bank', 'bank_name' => 'Islami Bank Bangladesh', 'account_number' => '20501234567890', 'branch' => 'Gulshan', 'opening_balance' => '5000000'],
+            ['kind' => 'mobile', 'name' => 'bKash', 'account_number' => '01700000000', 'opening_balance' => '0'],
+        ];
+        $start = now(config('app.display_timezone'))->subYear()->startOfMonth();
+        foreach ($accounts as $account) {
+            app(CashBank::class)->createAccount($account + ['opening_date' => $start], $this->admin);
+        }
+        app(Settings::class)->put([AccountingSettings::ENABLED => '1', AccountingSettings::START_DATE => $start->toDateString()]);
     }
 
     private function day(int $daysAgo): string

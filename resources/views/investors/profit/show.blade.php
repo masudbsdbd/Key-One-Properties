@@ -36,6 +36,8 @@
         </x-slot:actions>
     </x-page-header>
 
+    <x-journal-links :source="$calc" />
+
     @if ($blocker)
         <div class="mb-6 rounded-card border border-warning-600/30 bg-warning-50 px-5 py-3 text-sm text-warning-600">Provisional · {{ $blocker }}</div>
     @endif

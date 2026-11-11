@@ -15,6 +15,8 @@
         </x-slot:actions>
     </x-page-header>
 
+    <x-journal-links :source="$tx" />
+
     @if ($tx->status_reason)
         <div class="mb-6 rounded-card border border-danger-500/30 bg-danger-50 px-5 py-3 text-sm text-danger-600">{{ $tx->status_reason }}</div>
     @endif

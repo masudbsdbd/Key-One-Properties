@@ -31,6 +31,8 @@
         </x-slot:actions>
     </x-page-header>
 
+    <x-journal-links :source="$expense" />
+
     <div class="grid gap-6 xl:grid-cols-3">
         <div class="min-w-0 space-y-6 xl:col-span-2">
             <x-card>
