@@ -14,12 +14,12 @@ class PortalNavigation
     {
         $items = match ($portal) {
             'investor' => [
-                ['Overview', 'home', 'investor.dashboard', 'investor.dashboard', 'investor.portal.view'],
+                ['Home', 'home', 'investor.dashboard', 'investor.dashboard', 'investor.portal.view'],
                 ['My Investments', 'briefcase', 'investor.investments.index', 'investor.investments.*', 'investor.portal.investments.view'],
-                ['Projects', 'building', 'investor.projects.index', 'investor.projects.*', 'investor.portal.project.progress.view'],
-                ['Statements', 'file', 'investor.statements.index', 'investor.statements.*', 'investor.portal.investments.view'],
+                ['Project Progress', 'building', 'investor.projects.index', 'investor.projects.*', 'investor.portal.project.progress.view'],
+                ['Statement', 'file', 'investor.statements.index', 'investor.statements.*', 'investor.portal.investments.view'],
                 ['Documents', 'archive', 'investor.documents.index', 'investor.documents.*', 'investor.portal.documents.download'],
-                ['Profile', 'user', 'investor.profile', 'investor.profile', 'investor.portal.view'],
+                ['My Profile', 'user', 'investor.profile', 'investor.profile', 'investor.portal.view'],
             ],
             default => [
                 ['Overview', 'home', 'customer.dashboard', 'customer.dashboard', 'customer.portal.view'],
