@@ -23,6 +23,9 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->withoutVite();
+        // Midday in the display time zone: the server date (UTC) and the business date agree, so a test
+        // gives the same result at any hour it runs.
+        $this->travelTo(now()->startOfDay()->addHours(6));
     }
 
     /**

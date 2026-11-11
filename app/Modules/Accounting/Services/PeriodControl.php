@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Money;
 use App\Support\Workflow\Approval;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PeriodControl
@@ -71,7 +72,7 @@ class PeriodControl
                 $lines[] = ['account' => 'retained_earnings', Money::cmp($profit, 0) >= 0 ? 'credit' : 'debit' => Money::cmp($profit, 0) >= 0 ? $profit : Money::neg($profit)];
                 // The last month is opened for this one entry, then everything is closed.
                 AccountingPeriod::query()->where('fiscal_year_id', $year->id)->where('end_date', $to)->update(['status' => 'open']);
-                $journal = $this->ledger->post(['type' => 'closing', 'date' => $year->end_date, 'narration' => 'Year closing '.$year->name, 'source_key' => 'closing:'.$year->id.':'.now()->format('YmdHisv'), 'source' => $year], $lines, $user);
+                $journal = $this->ledger->post(['type' => 'closing', 'date' => $year->end_date, 'narration' => 'Year closing '.$year->name, 'source_key' => 'closing:'.$year->id.':'.Str::uuid(), 'source' => $year], $lines, $user);
             }
             AccountingPeriod::query()->where('fiscal_year_id', $year->id)->update(['status' => 'closed', 'locked_by' => $user->id, 'locked_at' => now()]);
             $year->forceFill(['status' => 'closed', 'closed_by' => $user->id, 'closed_at' => now(), 'closing_journal_id' => $journal?->id])->save();

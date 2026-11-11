@@ -116,7 +116,7 @@ class RevenueRecognitionTest extends TestCase
         $this->collect('500000');
         $this->assertSame(['0.00', '3000000.00'], [$this->balance('customer_advance'), $this->balance('customer_receivable')]);
 
-        $pl = app(Statements::class)->profitAndLoss(null, now()->toDateString(), ['project_id' => $this->project->id]);
+        $pl = app(Statements::class)->profitAndLoss(null, now(config('app.display_timezone'))->toDateString(), ['project_id' => $this->project->id]);
         $this->assertSame(['5000000.00', '3000000.00', '1500000.00'], [$pl['total_income'], $pl['gross_profit'], $pl['net_profit']]);
         $this->assertSame((string) JournalLine::query()->sum('debit'), (string) JournalLine::query()->sum('credit'));
     }

@@ -11,6 +11,7 @@ use App\Models\MoneyAccount;
 use App\Models\Project;
 use App\Modules\Accounting\Services\Balances;
 use App\Modules\Accounting\Services\EventPoster;
+use App\Modules\Accounting\Services\Ledger;
 use App\Modules\Accounting\Services\Statements;
 use App\Modules\Accounting\Support\AccountingSettings;
 use App\Support\Ajax;
@@ -45,7 +46,7 @@ class ReportController extends Controller
             'receivable' => $natural('customer_receivable'),
             'payable' => Money::add($natural('supplier_payable'), $natural('contractor_payable'), $natural('expense_payable'), $natural('wages_payable')),
             'pl' => $pl, 'plMonth' => $plMonth,
-            'sheet' => $this->statements->balanceSheet($year['to'] > now()->toDateString() ? now()->toDateString() : $year['to']),
+            'sheet' => $this->statements->balanceSheet(min($year['to'], Ledger::today()->toDateString())),
             'attention' => array_filter([
                 'backlog' => $user->can('accounting.reconciliation.view') && AccountingSettings::enabled() ? EventPoster::backlog()->count() : 0,
                 'journals' => $user->can('accounting.journal.approve') ? JournalEntry::query()->where('status', 'submitted')->count() : 0,
@@ -133,8 +134,8 @@ class ReportController extends Controller
         if ($request->filled('format')) {
             $this->exportable($request);
             $rows = collect([['Opening Cash & Bank', null, $data['opening']]]);
-            foreach (['operating' => 'Operations', 'investing' => 'Assets', 'financing' => 'Owners, Investors and Loans'] as $key => $label) {
-                $data['sections'][$key]->each(fn ($r) => $rows->push([$label, $r['account']->name, $r['amount']]));
+            foreach (['operating' => 'Day-to-Day Business', 'investing' => 'Assets Bought and Sold', 'financing' => 'Owners, Investors and Loans'] as $key => $label) {
+                $data['sections'][$key]->each(fn ($r) => $rows->push([$label, $r['label'], $r['amount']]));
             }
             $rows->push(['Change in Cash & Bank', null, $data['change']])->push(['Closing Cash & Bank', null, $data['closing']]);
 

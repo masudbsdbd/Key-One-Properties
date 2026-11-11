@@ -1,6 +1,7 @@
 @php
     $labels = ['operating' => 'Day-to-Day Business', 'investing' => 'Assets Bought and Sold', 'financing' => 'Owners, Investors and Loans'];
     $gap = App\Support\Money::sub($data['closing'], $data['book_closing']);
+    $canLedger = auth()->user()->can('accounting.ledger.view');
 @endphp
 <div class="overflow-x-auto">
     <table class="data-table">
@@ -10,7 +11,13 @@
             @foreach ($labels as $key => $label)
                 @if ($data['sections'][$key]->isNotEmpty())
                     <tr><td colspan="2" class="pt-4 text-xs font-semibold uppercase tracking-wide text-ink-500">{{ $label }}</td></tr>
-                    @foreach ($data['sections'][$key] as $row)@include('accounting.reports._line', ['row' => $row, 'from' => $range['from']])@endforeach
+                    @foreach ($data['sections'][$key] as $row)
+                        <tr>
+                            <td class="pl-9"><p class="text-ink-900">{{ $row['label'] }}</p>
+                                <p class="text-[13px] text-ink-500">@foreach ($row['accounts'] as $a)@if ($canLedger)<a href="{{ route('accounting.ledger', array_filter(['account' => $a->public_id, 'period' => 'custom', 'from' => $range['from'], 'to' => $range['to']])) }}" class="ref-link mr-2">{{ $a->name }}</a>@else<span class="mr-2">{{ $a->name }}</span>@endif @endforeach</p></td>
+                            <td @class(['text-right tabular-nums align-top', 'text-danger-600' => App\Support\Money::cmp($row['amount'], 0) < 0])><x-money :value="$row['amount']" /></td>
+                        </tr>
+                    @endforeach
                     @include('accounting.reports._total', ['label' => 'Net from '.$label, 'amount' => $data['totals'][$key]])
                 @endif
             @endforeach

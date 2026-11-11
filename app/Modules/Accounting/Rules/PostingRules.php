@@ -483,10 +483,12 @@ class PostingRules
         $lines = [];
         foreach ($targets as $key => $target) {
             $change = Money::sub($target, Money::amount($posted[LedgerAccount::forKey($key)->id] ?? 0));
+            // Only the customer's own accounts name the customer; cost lines belong to the unit.
+            $own = in_array($key, ['sales', 'customer_advance', 'customer_receivable'], true) ? $dims : array_diff_key($dims, ['customer_id' => true]);
             if (Money::cmp($change, 0) > 0) {
-                $lines[] = $this->dr($key, $change, $dims);
+                $lines[] = $this->dr($key, $change, $own);
             } elseif (Money::cmp($change, 0) < 0) {
-                $lines[] = $this->cr($key, Money::neg($change), $dims);
+                $lines[] = $this->cr($key, Money::neg($change), $own);
             }
         }
 

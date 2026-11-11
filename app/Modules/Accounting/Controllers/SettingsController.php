@@ -177,7 +177,7 @@ class SettingsController extends Controller
                 $ledger->reverse($journal, $journal->accounting_date, 'Opening balances entered again', $request->user());
             }
             if ($lines !== []) {
-                $ledger->post(['type' => 'opening', 'date' => $date, 'narration' => 'Opening balances', 'source_key' => 'opening:books:'.now()->format('YmdHisv')], $lines, $request->user());
+                $ledger->post(['type' => 'opening', 'date' => $date, 'narration' => 'Opening balances', 'source_key' => 'opening:books:'.Str::uuid()], $lines, $request->user());
             }
         });
         activity('accounting')->event('opening_balances_saved')->causedBy($request->user())->withProperties(['name' => 'Opening balances', 'attributes' => ['accounts' => count($lines)]])->log('opening_balances_saved');

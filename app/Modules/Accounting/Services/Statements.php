@@ -22,6 +22,18 @@ class Statements
 
     private const FINANCING = ['investor_capital', 'investor_profit_payable', 'owner_capital', 'owner_drawings', 'loan_payable'];
 
+    /** Cash flow lines in plain words; accounts sharing a label are added together. Other accounts keep their name. */
+    private const FLOW_LABELS = [
+        'customer_receivable' => 'Received from customers', 'customer_advance' => 'Received from customers', 'cheques_in_hand' => 'Received from customers',
+        'cancellation_income' => 'Received from customers',
+        'supplier_payable' => 'Paid to suppliers', 'grni' => 'Paid to suppliers',
+        'contractor_payable' => 'Paid to contractors', 'contractor_advance' => 'Paid to contractors', 'retention_payable' => 'Paid to contractors',
+        'expense_payable' => 'Expenses paid', 'wages_payable' => 'Labour wages paid', 'tax_payable' => 'Tax kept back and paid', 'bank_charges' => 'Bank charges',
+        'fixed_assets' => 'Assets bought and sold',
+        'investor_capital' => 'Investor capital', 'investor_profit_payable' => 'Profit paid to investors',
+        'owner_capital' => "Owner's money put in", 'owner_drawings' => "Owner's money taken out", 'loan_payable' => 'Loans',
+    ];
+
     /**
      * The period a report request asks for; fiscal-year presets follow the Accounting Settings.
      *
@@ -172,14 +184,19 @@ class Statements
                 continue;
             }
             $section = in_array($account->system_key, self::INVESTING, true) ? 'investing' : (in_array($account->system_key, self::FINANCING, true) ? 'financing' : 'operating');
-            $sections[$section]->push(['account' => $account, 'amount' => Money::amount($amount)]);
+            $label = self::FLOW_LABELS[$account->system_key] ?? $account->name;
+            $row = $sections[$section]->get($label, ['label' => $label, 'amount' => '0', 'accounts' => collect()]);
+            $row['amount'] = Money::amount(Money::add($row['amount'], $amount));
+            $row['accounts']->push($account);
+            $sections[$section]->put($label, $row);
         }
+        $sections = array_map(fn (Collection $rows) => $rows->filter(fn (array $r) => Money::cmp($r['amount'], 0) !== 0)->sortBy(fn (array $r) => $r['accounts']->min('code'))->values(), $sections);
         $totals = collect($sections)->map(fn (Collection $rows) => Money::add('0', ...$rows->pluck('amount')->all()));
         $opening = Money::add($cashOn($from, true), $openingEntered);
         $change = Money::add('0', ...$totals->values()->all());
 
         return [
-            'sections' => collect($sections)->map(fn (Collection $rows) => $rows->sortBy(fn ($r) => $r['account']->code)->values()), 'totals' => $totals,
+            'sections' => collect($sections), 'totals' => $totals,
             'opening' => Money::amount($opening), 'change' => Money::amount($change), 'closing' => Money::amount(Money::add($opening, $change)),
             'book_closing' => $cashOn($to, false),
         ];
