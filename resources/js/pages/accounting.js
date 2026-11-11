@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import { http } from '../core/http';
 import { initSelects } from '../components/select';
 import { Decimal } from './decimal';
 
@@ -131,5 +132,57 @@ export function initChequeFields() {
     });
     $(document).on('change', '[data-collect-form] [name="method"], [data-collect-form] [name="cheque_status"]', function () {
         sync(this.closest('[data-collect-form]'));
+    });
+}
+
+/** Financial statements: a filter change or a link inside the report loads only the report body. */
+export function initReportFilters() {
+    const form = document.querySelector('[data-report-filters]');
+    const body = document.querySelector('[data-report-body]');
+    if (!form || !body) return;
+
+    const load = async (url) => {
+        const target = new URL(url, window.location.origin);
+        window.history.replaceState({}, '', target);
+        target.searchParams.set('partial', '1');
+        body.setAttribute('aria-busy', 'true');
+        body.classList.add('opacity-60');
+        try {
+            const res = await http.get(target.toString(), {}, { silent: true });
+            body.innerHTML = res.data.html;
+        } finally {
+            body.removeAttribute('aria-busy');
+            body.classList.remove('opacity-60');
+        }
+    };
+    const current = () => {
+        const custom = form.querySelector('[name="period"]')?.value === 'custom';
+        const params = new URLSearchParams([...new FormData(form)].filter(([name, value]) => value !== '' && (custom || !['from', 'to'].includes(name))));
+        return `${form.action}?${params}`;
+    };
+
+    $(form).on('change', 'select, input', (event) => {
+        const period = form.querySelector('[data-report-period]');
+        const dates = form.querySelector('[data-report-dates]');
+        if (dates && period) dates.hidden = period.value !== 'custom';
+        // Choosing "Custom Dates" only reveals the date fields; the report reloads once a date is set.
+        if (event.target === period && period.value === 'custom') return;
+        load(current());
+    });
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        load(current());
+    });
+    body.addEventListener('click', (event) => {
+        const link = event.target.closest('a[data-report-link]');
+        if (!link) return;
+        event.preventDefault();
+        const url = new URL(link.href);
+        // A link that changes a filter (project drill-down) is mirrored in the form.
+        const project = form.querySelector('[name="project"]');
+        if (project && url.searchParams.has('project') && project.value !== url.searchParams.get('project')) {
+            $(project).val(url.searchParams.get('project')).trigger('change.select2');
+        }
+        load(url.toString()).then(() => body.scrollIntoView({ block: 'nearest' }));
     });
 }

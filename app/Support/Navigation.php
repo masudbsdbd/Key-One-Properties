@@ -109,9 +109,16 @@ class Navigation
             [
                 'title' => 'Accounting',
                 'items' => [
+                    ['label' => 'Overview', 'icon' => 'calculator', 'route' => 'accounting.overview', 'active' => 'accounting.overview', 'can' => 'accounting.dashboard.view'],
                     ['label' => 'Cash & Bank', 'icon' => 'wallet', 'route' => 'accounting.cash-bank.index', 'active' => 'accounting.cash-bank.*', 'can' => 'accounting.cashbank.view'],
                     ['label' => 'Cheques', 'icon' => 'note', 'route' => 'accounting.cheques.index', 'active' => 'accounting.cheques.*', 'can' => ['accounting.cashbank.view', 'accounting.cheque.manage']],
                     ['label' => 'Journals', 'icon' => 'file', 'route' => 'accounting.journals.index', 'active' => 'accounting.journals.*', 'can' => 'accounting.journal.view'],
+                    ['label' => 'Profit & Loss', 'icon' => 'bar-chart', 'route' => 'accounting.profit-loss', 'active' => 'accounting.profit-loss', 'can' => 'accounting.reports.view'],
+                    ['label' => 'Balance Sheet', 'icon' => 'layers', 'route' => 'accounting.balance-sheet', 'active' => 'accounting.balance-sheet', 'can' => 'accounting.reports.view'],
+                    ['label' => 'Cash Flow', 'icon' => 'repeat', 'route' => 'accounting.cash-flow', 'active' => 'accounting.cash-flow', 'can' => 'accounting.reports.view'],
+                    ['label' => 'Project Financials', 'icon' => 'building', 'route' => 'accounting.projects', 'active' => 'accounting.projects', 'can' => 'accounting.reports.view'],
+                    ['label' => 'Trial Balance', 'icon' => 'check-square', 'route' => 'accounting.trial-balance', 'active' => 'accounting.trial-balance', 'can' => 'accounting.reports.view'],
+                    ['label' => 'General Ledger', 'icon' => 'book', 'route' => 'accounting.ledger', 'active' => 'accounting.ledger', 'can' => 'accounting.ledger.view'],
                     ['label' => 'Chart of Accounts', 'icon' => 'list', 'route' => 'accounting.accounts.index', 'active' => 'accounting.accounts.*', 'can' => 'accounting.coa.view'],
                     ['label' => 'Accounting Settings', 'icon' => 'settings', 'route' => 'accounting.settings.edit', 'active' => ['accounting.settings.*', 'accounting.opening.*'], 'can' => ['accounting.settings.manage', 'accounting.openingbalance.manage']],
                 ],

@@ -14,7 +14,7 @@
                                 <td class="tabular-nums text-ink-600">{{ $account->code }}</td>
                                 <td>
                                     <div class="flex items-center gap-2" @if ($account->depth) style="padding-left: {{ min($account->depth, 4) * 20 }}px" @endif>
-                                        @if ($account->is_postable && $canLedger && Route::has('accounting.ledger'))
+                                        @if ($account->is_postable && $canLedger && true)
                                             <a href="{{ route('accounting.ledger', ['account' => $account->public_id]) }}" @class(['ref-link', 'font-medium' => true])>{{ $account->name }}</a>
                                         @else
                                             <span @class(['font-semibold text-ink-900' => ! $account->is_postable, 'font-medium text-ink-900' => $account->is_postable])>{{ $account->name }}</span>

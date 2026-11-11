@@ -4,6 +4,7 @@ use App\Modules\Accounting\Controllers\AccountController;
 use App\Modules\Accounting\Controllers\CashBankController;
 use App\Modules\Accounting\Controllers\ChequeController;
 use App\Modules\Accounting\Controllers\JournalController;
+use App\Modules\Accounting\Controllers\ReportController;
 use App\Modules\Accounting\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,16 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('{account}/edit', 'edit')->name('edit');
         Route::put('{account}', 'update')->name('update');
         Route::delete('{account}', 'destroy')->name('destroy');
+    });
+
+    Route::controller(ReportController::class)->group(function () {
+        Route::get('/', 'overview')->name('overview');
+        Route::get('ledger', 'ledger')->name('ledger');
+        Route::get('trial-balance', 'trialBalance')->name('trial-balance');
+        Route::get('profit-loss', 'profitLoss')->name('profit-loss');
+        Route::get('balance-sheet', 'balanceSheet')->name('balance-sheet');
+        Route::get('cash-flow', 'cashFlow')->name('cash-flow');
+        Route::get('project-financials', 'projects')->name('projects');
     });
 
     Route::controller(SettingsController::class)->group(function () {
