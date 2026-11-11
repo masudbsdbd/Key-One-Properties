@@ -220,6 +220,8 @@ browser checks for 13–14, and an empty-state check for 17.
 - **Material plan per work package (BOQ):** planned quantity per material and work package, compared with issues.
 - **Reorder level per store:** today the low-stock level is per material for every store.
 - **Mandatory work package on issues and labour:** declined for now; the work package stays optional.
+- **Landowner / developer share** (signing money, flats given to the landowner): kept out by the client again on
+  2026-11-11 when reviewing the Phase 5 blueprint; it affects the balance sheet when it is taken up.
 
 ### Rows per page (client, 2026-11-10)
 
