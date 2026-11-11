@@ -11,6 +11,7 @@
         <x-form.input name="amount" label="Amount" inputmode="decimal" required autofocus data-payment-amount />
         <x-form.input name="payment_date" type="date" label="Date" :value="$today" :max="$today" required />
         <x-form.select name="method" label="Method" :options="App\Models\CustomerPayment::METHODS" selected="cash" required />
+        <x-form.money-account label="Received Into" method="#f-method" />
         <x-form.input name="reference_no" label="Reference" />
     </div>
     @if ($sale)<div data-payment-allocation></div>@endif

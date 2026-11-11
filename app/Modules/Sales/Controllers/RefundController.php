@@ -8,6 +8,7 @@ use App\Models\CustomerRefund;
 use App\Models\FlatBooking;
 use App\Models\FlatSale;
 use App\Models\Project;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Modules\Sales\Services\RefundService;
 use App\Modules\Sales\Services\SalesService;
@@ -133,8 +134,10 @@ class RefundController extends Controller
         $data = $request->validate([
             'paid_on' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'payment_method' => ['required', Rule::in(array_keys(CustomerPayment::METHODS))],
+            ...MoneyAccounts::rules(),
             'payment_reference' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
         ], ['payment_reference.required' => 'Enter the transaction or cheque reference.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'payment_method');
         $this->service->pay($refund, $data, $request->user());
 
         return Ajax::success('Refund paid.');

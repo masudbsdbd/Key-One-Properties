@@ -84,7 +84,7 @@ class RefundService
 
             $refund->forceFill([
                 'status' => 'paid', 'paid_by' => $user->id, 'paid_at' => now(), 'paid_on' => $data['paid_on'],
-                'payment_method' => $data['payment_method'], 'payment_reference' => $data['payment_reference'] ?? null,
+                'payment_method' => $data['payment_method'], 'money_account_id' => $data['money_account_id'] ?? null, 'payment_reference' => $data['payment_reference'] ?? null,
             ])->save();
             $this->statement->post($refund->customer, 'refund', $refund, $refund->paid_on, 'Refund '.$refund->refund_no, $refund->payable(), '0', $refund->sale_id, $refund->booking_id);
             $this->events->record('sales', $refund, 'collection.refunded', Money::amount($refund->payable()), $refund->paid_on,

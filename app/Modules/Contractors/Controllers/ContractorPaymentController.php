@@ -7,6 +7,7 @@ use App\Models\Contractor;
 use App\Models\ContractorBill;
 use App\Models\ContractorPayment;
 use App\Models\ContractorWorkOrder;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Contractors\Services\ContractorService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
@@ -112,7 +113,7 @@ class ContractorPaymentController extends Controller
     public function store(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('contractors.payment.create'), 403);
-        $request->merge(['amount' => str_replace(',', '', (string) $request->input('amount'))]);
+        $request->merge(['amount' => str_replace(',', '', (string) $request->input('amount')), 'tax_deducted' => str_replace(',', '', (string) $request->input('tax_deducted')) ?: null]);
         $data = $request->validate([
             'work_order' => ['required', 'string', 'size:16'],
             'bill' => ['nullable', 'string', 'size:16'],
@@ -120,10 +121,13 @@ class ContractorPaymentController extends Controller
             'payment_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
             'payment_method' => ['required', Rule::in(array_keys(ContractorPayment::METHODS))],
+            ...MoneyAccounts::rules(),
+            'tax_deducted' => ['nullable', 'numeric', 'min:0', 'lte:amount', 'max:9999999999999', 'decimal:0,2'],
             'reference' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'idempotency_key' => ['required', 'uuid'],
-        ], ['reference.required' => 'Enter the transaction or cheque reference.']);
+        ], ['reference.required' => 'Enter the transaction or cheque reference.', 'tax_deducted.lte' => 'Tax deducted cannot be more than the amount.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'payment_method');
 
         $order = ContractorWorkOrder::query()->visibleTo($request->user())->where('public_id', $data['work_order'])->first()
             ?? throw ValidationException::withMessages(['work_order' => 'Select a work order you can access.']);

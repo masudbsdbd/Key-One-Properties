@@ -21,6 +21,8 @@
         <x-form.input name="payment_date" type="date" label="Date" :value="$today" :max="$today" required />
         <x-form.input name="amount" label="Amount" inputmode="decimal" placeholder="0.00" :value="$refund ?? $bill?->outstanding(true)" required />
         <x-form.select name="payment_method" label="Method" :options="App\Models\ContractorPayment::METHODS" selected="bank" required />
+        <x-form.money-account label="Account" />
+        <x-form.input name="tax_deducted" label="Tax Deducted (BDT)" inputmode="decimal" />
         <x-form.input name="reference" label="Reference" />
     </div>
     <x-form.textarea name="notes" label="Notes" rows="2" />

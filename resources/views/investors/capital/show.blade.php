@@ -26,7 +26,7 @@
                 <div><p class="detail-label">Agreement</p><a href="{{ route('investor-agreements.show', $tx->agreement) }}" class="detail-value text-accent-700 hover:underline">{{ $tx->agreement->agreement_no }}</a><p class="text-[13px] text-ink-500"><x-ref :to="$tx->project">{{ $tx->project->code }}</x-ref> · {{ $tx->flat->building->code }} · <x-ref :to="$tx->flat">Unit {{ $tx->flat->flat_no }}</x-ref></p></div>
                 <div><p class="detail-label">Type</p><x-badge :tone="$tx->transaction_type === 'contribution' ? 'success' : 'warning'">{{ App\Models\InvestorCapitalTransaction::TYPES[$tx->transaction_type] }}</x-badge></div>
                 <div><p class="detail-label">Date</p><p class="detail-value">{{ App\Support\Format::date($tx->transaction_date) }}</p></div>
-                <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Modules\Investors\Controllers\CapitalController::METHODS[$tx->payment_method] ?? '—' }}</p></div>
+                <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Modules\Investors\Controllers\CapitalController::METHODS[$tx->payment_method] ?? '—' }}</p>@if ($tx->moneyAccount)<p class="text-[13px] text-ink-500">{{ $tx->moneyAccount->label() }}</p>@endif</div>
                 <div><p class="detail-label">Reference</p><p class="detail-value">{{ $tx->reference_no ?: '—' }}</p></div>
                 <div><p class="detail-label">Recorded By</p><p class="detail-value">{{ $tx->creator->name }}</p></div>
                 <div><p class="detail-label">Posted By</p><p class="detail-value">{{ $tx->approver?->name ?? '—' }}</p></div>

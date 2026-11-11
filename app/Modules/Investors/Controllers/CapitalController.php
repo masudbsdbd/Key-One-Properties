@@ -7,6 +7,7 @@ use App\Models\Investor;
 use App\Models\InvestorCapitalTransaction;
 use App\Models\InvestorFlatAgreement;
 use App\Models\Project;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Investors\Services\InvestorService;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
@@ -83,10 +84,12 @@ class CapitalController extends Controller
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
             'transaction_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'payment_method' => ['required', Rule::in(array_keys(self::METHODS))],
+            ...MoneyAccounts::rules(),
             'reference_no' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'idempotency_key' => ['required', 'uuid'],
         ], ['reference_no.required' => 'Enter the transaction or cheque reference.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'payment_method');
         abort_unless($request->user()->can($data['transaction_type'] === 'contribution' ? 'investor.capital.record' : 'investor.capital.return'), 403);
         $agreement = InvestorFlatAgreement::query()->visibleTo($request->user())->where('public_id', $data['agreement'])->first()
             ?? throw ValidationException::withMessages(['agreement' => 'Select an agreement you can access.']);

@@ -33,7 +33,8 @@
                         <p class="text-[13px] text-ink-500"><a href="{{ route('work-orders.show', $payment->workOrder) }}" class="hover:text-accent-700">{{ $payment->workOrder->wo_no }}</a> · <x-ref :to="$payment->project">{{ $payment->project->code }}</x-ref></p>
                     </div>
                     <div><p class="detail-label">Date</p><p class="detail-value">{{ App\Support\Format::date($payment->payment_date) }}</p></div>
-                    <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Models\ContractorPayment::METHODS[$payment->payment_method] }}</p><p class="text-[13px] text-ink-500">{{ $payment->reference }}</p></div>
+                    <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Models\ContractorPayment::METHODS[$payment->payment_method] }}</p><p class="text-[13px] text-ink-500">{{ collect([$payment->moneyAccount?->label(), $payment->reference])->filter()->implode(' · ') }}</p></div>
+                    @if ((float) $payment->tax_deducted)<div><p class="detail-label">Tax Deducted</p><p class="detail-value"><x-money :value="$payment->tax_deducted" /></p><p class="text-[13px] text-ink-500">Paid out <x-money :value="App\Support\Money::sub((string) $payment->amount, (string) $payment->tax_deducted)" /></p></div>@endif
                 </div>
                 @if ($payment->notes)<p class="mt-4 border-t border-line pt-4 text-sm text-ink-700">{{ $payment->notes }}</p>@endif
             </x-card>

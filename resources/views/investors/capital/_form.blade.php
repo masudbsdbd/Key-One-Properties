@@ -20,6 +20,7 @@
         <x-form.input name="amount" label="Amount" inputmode="decimal" required autofocus />
         <x-form.input name="transaction_date" type="date" label="Date" :value="$today" :max="$today" required />
         <x-form.select name="payment_method" label="Method" :options="App\Modules\Investors\Controllers\CapitalController::METHODS" selected="bank" required :enhance="false" />
+        <x-form.money-account :label="$type === 'capital_return' ? 'Paid From' : 'Received Into'" />
         <x-form.input name="reference_no" label="Reference" wrapper-class="sm:col-span-2" />
     </div>
     <x-form.textarea name="notes" label="Notes" rows="2" />

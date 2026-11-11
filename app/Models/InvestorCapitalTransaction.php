@@ -54,4 +54,9 @@ class InvestorCapitalTransaction extends Model
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
+
+    public function moneyAccount(): BelongsTo
+    {
+        return $this->belongsTo(MoneyAccount::class);
+    }
 }

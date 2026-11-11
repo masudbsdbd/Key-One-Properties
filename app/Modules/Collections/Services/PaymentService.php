@@ -47,7 +47,7 @@ class PaymentService
             return CustomerPayment::query()->create([
                 'payment_no' => DocumentNumber::next('CP'), 'customer_id' => $doc->customer_id, 'project_id' => $doc->project_id,
                 'purpose' => $sale ? 'sale' : 'booking', 'booking_id' => $booking?->id, 'sale_id' => $sale?->id,
-                'payment_date' => $data['payment_date'], 'amount' => Money::amount($data['amount']), 'method' => $data['method'],
+                'payment_date' => $data['payment_date'], 'amount' => Money::amount($data['amount']), 'method' => $data['method'], 'money_account_id' => $data['money_account_id'] ?? null,
                 'reference_no' => $data['reference_no'] ?? null, 'notes' => $data['notes'] ?? null,
                 'status' => 'pending', 'received_by' => $user->id, 'idempotency_key' => $key,
             ]);

@@ -10,6 +10,7 @@ use App\Models\MoneyTransaction;
 use App\Modules\Accounting\Services\Balances;
 use App\Modules\Accounting\Services\CashBank;
 use App\Modules\Accounting\Services\Ledger;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Support\Ajax;
 use App\Support\Money;
 use App\Support\TableQuery;
@@ -98,6 +99,19 @@ class CashBankController extends Controller
             'lines' => $rows, 'single' => (bool) $account,
             'canManage' => $request->user()->can('accounting.cashbank.manage'), 'canJournal' => $request->user()->can('accounting.journal.view'),
         ])->render(), $rows);
+    }
+
+    /** Accounts for the payment and receipt forms of the other modules: names only, never balances. */
+    public function options(Request $request): JsonResponse
+    {
+        if (! $request->user()->canAny(MoneyAccounts::PAYMENT_PERMISSIONS)) {
+            return Ajax::options([]);
+        }
+        $kind = MoneyAccounts::KIND_FOR_METHOD[(string) $request->input('method')] ?? null;
+        $query = MoneyAccount::query()->active()->orderBy('name')->when($kind, fn (Builder $q) => $q->where('kind', $kind));
+        [$results, $more] = TableQuery::options($query, $request, ['name', 'account_number'], fn (MoneyAccount $a) => ['id' => $a->public_id, 'text' => $a->label()]);
+
+        return Ajax::options($results, $more);
     }
 
     public function create(Request $request): JsonResponse

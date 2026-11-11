@@ -56,4 +56,9 @@ class CustomerRefund extends Model
     {
         return (string) ($this->net_amount ?? $this->amount);
     }
+
+    public function moneyAccount(): BelongsTo
+    {
+        return $this->belongsTo(MoneyAccount::class);
+    }
 }

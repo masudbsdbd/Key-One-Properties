@@ -5,6 +5,7 @@ use App\Modules\Accounting\Controllers\CashBankController;
 use App\Modules\Accounting\Controllers\JournalController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('options/money-accounts', [CashBankController::class, 'options'])->middleware('throttle:120,1')->name('options.money-accounts');
 Route::get('options/ledger-accounts', [AccountController::class, 'options'])->middleware('throttle:120,1')->name('options.ledger-accounts');
 
 Route::prefix('accounting')->name('accounting.')->group(function () {

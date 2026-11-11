@@ -85,7 +85,7 @@ class DistributionService
             }
             $payout = InvestorPayout::query()->create([
                 'payout_no' => DocumentNumber::next('IP'), 'distribution_id' => $d->id, 'investor_id' => $d->investor_id, 'amount' => $d->amount,
-                'paid_at' => $data['paid_at'], 'payment_method' => $data['payment_method'], 'payment_reference' => $data['payment_reference'] ?? null,
+                'paid_at' => $data['paid_at'], 'payment_method' => $data['payment_method'], 'money_account_id' => $data['money_account_id'] ?? null, 'payment_reference' => $data['payment_reference'] ?? null,
                 'status' => 'posted', 'posted_by' => $user->id, 'idempotency_key' => $key,
             ]);
             $d->forceFill(['status' => 'paid'])->save();

@@ -5,6 +5,7 @@
     <div class="grid gap-5 sm:grid-cols-2">
         <x-form.input name="paid_on" type="date" label="Paid On" :value="$today" :max="$today" required />
         <x-form.select name="payment_method" label="Method" :options="App\Models\CustomerPayment::METHODS" selected="bank" required />
+        <x-form.money-account label="Paid From" />
         <x-form.input name="payment_reference" label="Reference" wrapper-class="sm:col-span-2" />
     </div>
     <x-form.actions class="mt-0"><x-button variant="secondary" data-modal-close>Cancel</x-button><x-button type="submit" icon="check">Record Payment</x-button></x-form.actions>

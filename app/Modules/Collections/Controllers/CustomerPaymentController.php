@@ -8,6 +8,7 @@ use App\Models\CustomerPayment;
 use App\Models\FlatBooking;
 use App\Models\FlatSale;
 use App\Models\Project;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Collections\Services\PaymentService;
 use App\Modules\Sales\Controllers\Concerns\AuthorizesProjectRecords;
 use App\Support\Ajax;
@@ -89,10 +90,12 @@ class CustomerPaymentController extends Controller
             'payment_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
             'method' => ['required', Rule::in(array_keys(CustomerPayment::METHODS))],
+            ...MoneyAccounts::rules(),
             'reference_no' => [Rule::requiredIf(in_array($request->input('method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'idempotency_key' => ['required', 'uuid'],
         ], ['reference_no.required' => 'Enter the transaction or cheque reference.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'method');
         $data['amount'] = (string) $data['amount'];
         $payment = $this->service->collect($sale ? null : $booking, $sale, $data, $request->user(), $data['idempotency_key']);
 

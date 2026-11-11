@@ -6,6 +6,7 @@
     <div class="grid gap-5 sm:grid-cols-2">
         <x-form.input name="paid_at" type="date" label="Paid On" :value="$today" :max="$today" required />
         <x-form.select name="payment_method" label="Method" :options="App\Modules\Investors\Controllers\CapitalController::METHODS" selected="bank" required :enhance="false" />
+        <x-form.money-account label="Paid From" />
         <x-form.input name="payment_reference" label="Reference" wrapper-class="sm:col-span-2" />
     </div>
     <x-form.actions class="mt-0">

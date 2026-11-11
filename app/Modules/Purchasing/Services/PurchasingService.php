@@ -401,7 +401,7 @@ class PurchasingService
                 'supplier_id' => $supplier->id,
                 'payment_date' => $data['payment_date'],
                 'amount' => Money::amount($amount),
-                'payment_method' => $data['payment_method'],
+                'payment_method' => $data['payment_method'], 'money_account_id' => $data['money_account_id'] ?? null, 'tax_deducted' => Money::amount($data['tax_deducted'] ?? 0),
                 'payment_reference' => $data['payment_reference'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'status' => 'pending',
@@ -437,8 +437,10 @@ class PurchasingService
                 }
             }
 
-            $this->events->record('purchasing', $payment, 'purchase.supplier_payment', $payment->amount, $payment->payment_date,
-                ['payment_no' => $payment->payment_no, 'supplier' => $payment->supplier->supplier_code, 'method' => $payment->payment_method], user: $user);
+            // The event carries the cash that left; tax kept back at source stays in the payload.
+            $this->events->record('purchasing', $payment, 'purchase.supplier_payment', Money::sub((string) $payment->amount, (string) $payment->tax_deducted), $payment->payment_date,
+                ['payment_no' => $payment->payment_no, 'supplier' => $payment->supplier->supplier_code, 'method' => $payment->payment_method,
+                    'settled' => (string) $payment->amount, 'tax_deducted' => (string) $payment->tax_deducted], user: $user);
         });
     }
 

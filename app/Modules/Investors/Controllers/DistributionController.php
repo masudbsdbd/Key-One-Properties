@@ -8,6 +8,7 @@ use App\Models\Investor;
 use App\Models\InvestorLedgerEntry;
 use App\Models\InvestorPayout;
 use App\Models\InvestorProfitDistribution;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Investors\Services\DistributionService;
 use App\Modules\Investors\Services\InvestorLedger;
 use App\Support\Ajax;
@@ -150,9 +151,11 @@ class DistributionController extends Controller
         $data = $request->validate([
             'paid_at' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'payment_method' => ['required', Rule::in(array_keys(CapitalController::METHODS))],
+            ...MoneyAccounts::rules(),
             'payment_reference' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
             'idempotency_key' => ['required', 'uuid'],
         ], ['payment_reference.required' => 'Enter the transaction or cheque reference.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'payment_method');
         $payout = $this->service->pay($distribution, $data, $request->user(), $data['idempotency_key']);
 
         return Ajax::success('Payout '.$payout->payout_no.' posted.');

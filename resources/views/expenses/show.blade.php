@@ -52,7 +52,7 @@
                     <div><dt class="detail-label">Paid To</dt><dd class="detail-value">{{ $expense->payee_name ?: '—' }}</dd></div>
                     @if ($s === 'paid' || $expense->paid_on)
                         <div><dt class="detail-label">Paid On</dt><dd class="detail-value">{{ App\Support\Format::date($expense->paid_on) }}</dd></div>
-                        <div><dt class="detail-label">Method</dt><dd class="detail-value">{{ App\Models\Expense::METHODS[$expense->payment_method] }}</dd></div>
+                        <div><dt class="detail-label">Method</dt><dd class="detail-value">{{ App\Models\Expense::METHODS[$expense->payment_method] }}@if ($expense->moneyAccount) · {{ $expense->moneyAccount->label() }}@endif</dd></div>
                         <div class="sm:col-span-2"><dt class="detail-label">Reference</dt><dd class="detail-value">{{ $expense->payment_reference ?: '—' }}</dd></div>
                     @endif
                 </dl>

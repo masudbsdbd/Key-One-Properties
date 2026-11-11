@@ -10,6 +10,8 @@
         <x-form.input name="payment_date" type="date" label="Date" :value="$today" :max="$today" required />
         <x-form.input name="amount" label="Amount" inputmode="decimal" placeholder="0.00" required data-payment-amount />
         <x-form.select name="payment_method" label="Method" :options="App\Models\SupplierPayment::METHODS" selected="bank" required />
+        <x-form.money-account label="Paid From" />
+        <x-form.input name="tax_deducted" label="Tax Deducted (BDT)" inputmode="decimal" />
         <x-form.input name="payment_reference" label="Reference" />
     </div>
 

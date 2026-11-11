@@ -89,4 +89,9 @@ class Expense extends Model
     {
         return $this->belongsTo(Flat::class);
     }
+
+    public function moneyAccount(): BelongsTo
+    {
+        return $this->belongsTo(MoneyAccount::class);
+    }
 }

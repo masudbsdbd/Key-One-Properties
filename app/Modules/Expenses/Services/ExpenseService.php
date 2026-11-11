@@ -123,7 +123,7 @@ class ExpenseService
 
             $expense->forceFill([
                 'status' => 'paid', 'paid_by' => $user->id, 'paid_at' => now(),
-                'paid_on' => $data['paid_on'], 'payment_method' => $data['payment_method'], 'payment_reference' => $data['payment_reference'] ?? null,
+                'paid_on' => $data['paid_on'], 'payment_method' => $data['payment_method'], 'money_account_id' => $data['money_account_id'] ?? null, 'payment_reference' => $data['payment_reference'] ?? null,
             ])->save();
             $this->events->record('expenses', $expense, 'expense.paid', $expense->amount, $expense->paid_on,
                 ['expense_no' => $expense->expense_no, 'scope' => $expense->scope, 'method' => $expense->payment_method, 'source_module' => 'expenses'],

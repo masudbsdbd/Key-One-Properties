@@ -8,6 +8,7 @@ use App\Models\ExpenseCategory;
 use App\Models\Flat;
 use App\Models\Project;
 use App\Models\WorkPackage;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Expenses\Services\ExpenseService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
@@ -202,8 +203,10 @@ class ExpenseController extends Controller
         $data = $request->validate([
             'paid_on' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'payment_method' => ['required', Rule::in(array_keys(Expense::METHODS))],
+            ...MoneyAccounts::rules(),
             'payment_reference' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
         ], ['payment_reference.required' => 'Enter the transaction or cheque reference.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'payment_method');
         $this->service->pay($expense, $data, $request->user());
 
         return Ajax::success('Payment recorded.');

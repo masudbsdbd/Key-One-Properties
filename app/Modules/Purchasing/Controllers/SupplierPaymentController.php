@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\SupplierBill;
 use App\Models\SupplierPayment;
+use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Modules\Purchasing\Services\PurchasingService;
 use App\Support\Ajax;
 use App\Support\Export\Documents;
@@ -125,6 +126,7 @@ class SupplierPaymentController extends Controller
         abort_unless($request->user()->can('purchases.payment.create'), 403);
         $request->merge([
             'amount' => str_replace(',', '', (string) $request->input('amount')),
+            'tax_deducted' => str_replace(',', '', (string) $request->input('tax_deducted')) ?: null,
             'allocations' => collect((array) $request->input('allocations', []))->map(fn ($v) => $v === null ? null : str_replace(',', '', (string) $v))->all(),
         ]);
         $data = $request->validate([
@@ -132,12 +134,15 @@ class SupplierPaymentController extends Controller
             'payment_date' => ['required', 'date', 'before_or_equal:'.now(config('app.display_timezone'))->toDateString()],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999', 'decimal:0,2'],
             'payment_method' => ['required', Rule::in(array_keys(SupplierPayment::METHODS))],
+            ...MoneyAccounts::rules(),
+            'tax_deducted' => ['nullable', 'numeric', 'min:0', 'lte:amount', 'max:9999999999999', 'decimal:0,2'],
             'payment_reference' => [Rule::requiredIf(in_array($request->input('payment_method'), ['bank', 'cheque', 'mobile'], true)), 'nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'allocations' => ['nullable', 'array', 'max:200'],
             'allocations.*' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'idempotency_key' => ['required', 'uuid'],
-        ], ['payment_reference.required' => 'Enter the transaction or cheque reference.']);
+        ], ['payment_reference.required' => 'Enter the transaction or cheque reference.', 'tax_deducted.lte' => 'Tax deducted cannot be more than the amount.']);
+        $data['money_account_id'] = MoneyAccounts::resolve($request, 'payment_method');
         $supplier = Supplier::findByPublicId($data['supplier']) ?? throw ValidationException::withMessages(['supplier' => 'Select a supplier.']);
 
         $wanted = collect($data['allocations'] ?? [])->filter(fn ($v) => $v !== null && Money::isPositive((string) $v));

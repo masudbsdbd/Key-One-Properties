@@ -387,7 +387,7 @@ class ContractorService
                 'project_id' => $wo->project_id,
                 'payment_date' => $data['payment_date'],
                 'amount' => Money::amount($amount),
-                'payment_method' => $data['payment_method'],
+                'payment_method' => $data['payment_method'], 'money_account_id' => $data['money_account_id'] ?? null, 'tax_deducted' => Money::amount($data['tax_deducted'] ?? 0),
                 'reference' => $data['reference'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'status' => 'pending',
@@ -424,8 +424,10 @@ class ContractorService
                 $bill->forceFill(['status' => 'paid'])->save();
             }
 
-            $this->events->record('contractors', $payment, 'contractor.payment', $payment->amount, $payment->payment_date,
-                ['payment_no' => $payment->payment_no, 'wo_no' => $wo->wo_no, 'bill_no' => $bill?->bill_no, 'advance' => ! $bill, 'method' => $payment->payment_method],
+            // The event carries the cash that left; tax kept back at source stays in the payload.
+            $this->events->record('contractors', $payment, 'contractor.payment', Money::sub((string) $payment->amount, (string) $payment->tax_deducted), $payment->payment_date,
+                ['payment_no' => $payment->payment_no, 'wo_no' => $wo->wo_no, 'bill_no' => $bill?->bill_no, 'advance' => ! $bill, 'method' => $payment->payment_method,
+                    'settled' => (string) $payment->amount, 'tax_deducted' => (string) $payment->tax_deducted],
                 project: $payment->project, user: $user);
         });
     }

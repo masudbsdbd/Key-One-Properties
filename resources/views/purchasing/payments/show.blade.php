@@ -29,7 +29,8 @@
                     <div><p class="detail-label">Amount</p><p class="detail-value text-lg font-semibold"><x-money :value="$payment->amount" /></p></div>
                     <div><p class="detail-label">Status</p><x-status-badge :status="$payment->status" /></div>
                     <div><p class="detail-label">Date</p><p class="detail-value">{{ App\Support\Format::date($payment->payment_date) }}</p></div>
-                    <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Models\SupplierPayment::METHODS[$payment->payment_method] }}</p></div>
+                    <div><p class="detail-label">Method</p><p class="detail-value">{{ App\Models\SupplierPayment::METHODS[$payment->payment_method] }}</p>@if ($payment->moneyAccount)<p class="text-[13px] text-ink-500">{{ $payment->moneyAccount->label() }}</p>@endif</div>
+                    @if ((float) $payment->tax_deducted)<div><p class="detail-label">Tax Deducted</p><p class="detail-value"><x-money :value="$payment->tax_deducted" /></p><p class="text-[13px] text-ink-500">Paid out <x-money :value="App\Support\Money::sub((string) $payment->amount, (string) $payment->tax_deducted)" /></p></div>@endif
                     <div><p class="detail-label">Reference</p><p class="detail-value">{{ $payment->payment_reference ?: '—' }}</p></div>
                     <div><p class="detail-label">Advance</p><p class="detail-value"><x-money :value="App\Support\Money::sub((string) $payment->amount, $allocated)" /></p></div>
                 </div>

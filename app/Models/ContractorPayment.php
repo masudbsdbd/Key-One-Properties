@@ -62,4 +62,9 @@ class ContractorPayment extends Model
     {
         return $this->kind === 'refund';
     }
+
+    public function moneyAccount(): BelongsTo
+    {
+        return $this->belongsTo(MoneyAccount::class);
+    }
 }

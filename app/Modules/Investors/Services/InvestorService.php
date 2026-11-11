@@ -231,7 +231,7 @@ class InvestorService
             return InvestorCapitalTransaction::query()->create([
                 'transaction_no' => DocumentNumber::next('IC'), 'investor_id' => $agreement->investor_id, 'agreement_id' => $agreement->id,
                 'flat_id' => $agreement->flat_id, 'project_id' => $agreement->project_id, 'transaction_type' => $type, 'amount' => $amount,
-                'transaction_date' => $data['transaction_date'], 'payment_method' => $data['payment_method'] ?? null, 'reference_no' => $data['reference_no'] ?? null,
+                'transaction_date' => $data['transaction_date'], 'payment_method' => $data['payment_method'] ?? null, 'money_account_id' => $data['money_account_id'] ?? null, 'reference_no' => $data['reference_no'] ?? null,
                 'notes' => $data['notes'] ?? null, 'status' => 'pending', 'created_by' => $user->id, 'idempotency_key' => $key,
             ]);
         });
