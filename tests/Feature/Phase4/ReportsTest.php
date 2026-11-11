@@ -3,14 +3,18 @@
 namespace Tests\Feature\Phase4;
 
 use App\Jobs\GenerateReportExport;
+use App\Models\ContractorBill;
 use App\Models\ContractorPayment;
 use App\Models\CustomerPayment;
 use App\Models\CustomerRefund;
 use App\Models\Expense;
 use App\Models\Flat;
+use App\Models\FlatBooking;
+use App\Models\GoodsReceiptLine;
 use App\Models\Investor;
 use App\Models\InvestorCapitalTransaction;
 use App\Models\InvestorPayout;
+use App\Models\LabourEntry;
 use App\Models\Project;
 use App\Models\ProjectCostAllocation;
 use App\Models\ReportRun;
@@ -92,6 +96,30 @@ class ReportsTest extends TestCase
         $clerk = $this->userWith(['reports.view', 'reports.collections']);
         $this->flushHeaders();
         $this->actingAs($clerk)->get(route('reports.show', 'daily-cash-book'))->assertForbidden();
+    }
+
+    public function test_operational_registers_reconcile_with_their_sources(): void
+    {
+        $totals = function (string $key): array {
+            $report = ReportRegistry::find($key);
+
+            return $report->totals($report->query(request(), $this->admin));
+        };
+
+        // Material used costs what the cost ledger says material cost.
+        $this->assertSame(Money::amount((string) ProjectCostAllocation::query()->where('cost_category', 'material')->sum('amount')), $totals('material-consumption')[6]);
+        // Labour cost is the approved labour entries.
+        $this->assertSame(Money::amount((string) LabourEntry::query()->where('status', 'approved')->sum('total_amount')), $totals('labour-summary')[4]);
+        // What is due on work orders is what approved contractor bills still owe.
+        $due = ContractorBill::query()->where('status', 'approved')->get()->reduce(fn ($sum, $b) => Money::add($sum, $b->outstanding()), '0');
+        $this->assertSame(Money::amount($due), $totals('work-order-status')[7]);
+        // Profit paid to investors is the posted payouts.
+        $this->assertSame(Money::amount((string) InvestorPayout::query()->where('status', 'posted')->sum('amount')), $totals('investor-payouts')[5]);
+        // Every booking is listed once.
+        $this->assertStringContainsString((string) FlatBooking::query()->count(), $totals('booking-register')[0]);
+        // Purchases are the accepted goods at received cost.
+        $received = GoodsReceiptLine::query()->get()->reduce(fn ($sum, $l) => Money::add($sum, Money::amount((string) round(((float) $l->accepted_qty - (float) $l->returned_qty) * (float) $l->unit_cost, 2))), '0');
+        $this->assertSame(Money::amount($received), $totals('purchase-register')[7]);
     }
 
     public function test_every_report_runs_and_reconciles_with_its_source(): void
