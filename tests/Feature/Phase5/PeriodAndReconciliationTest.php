@@ -62,6 +62,9 @@ class PeriodAndReconciliationTest extends TestCase
         $this->actingAs($this->accountant)->ajax()->post(route('accounting.periods.unlock', $august), ['reason' => 'Late supplier bill'])->assertOk();
         $this->assertSame(['open', 'Late supplier bill'], [$august->fresh()->status, $august->fresh()->status_reason]);
 
+        $december = Periods::for(Carbon::parse('2026-12-10'));
+        $this->actingAs($this->accountant)->ajax()->post(route('accounting.periods.lock', $december))->assertStatus(422)->assertJsonPath('errors.period.0', 'Dec 2026 has not started yet.');
+
         $html = $this->actingAs($this->accountant)->ajax()->get(route('accounting.periods.list'))->assertOk()->json('data.html');
         $this->assertStringContainsString('FY 2026–27', $html);
         $this->assertStringContainsString('Unlocked: Late supplier bill', $html);

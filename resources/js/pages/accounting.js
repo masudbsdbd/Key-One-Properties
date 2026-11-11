@@ -215,3 +215,49 @@ export function initBankReconciliation() {
         save(open, true);
     });
 }
+
+/**
+ * Payment and receipt forms: when only one account fits the chosen method (one cash box, one bKash wallet),
+ * it is filled in, so the user does not pick from a list of one.
+ */
+export function initSingleAccountPick() {
+    const pick = async (select) => {
+        if (select.value || select.closest('[data-field]')?.hidden) return;
+        const parent = document.querySelector(select.dataset.dependsOn || '');
+        const method = parent ? parent.value : '';
+        if (parent && !method) return;
+        try {
+            const res = await http.get(select.dataset.selectUrl, { method, page: 1 }, { silent: true });
+            const stillSame = !parent || parent.value === method;
+            if (res.results?.length === 1 && !select.value && stillSame) {
+                select.append(new Option(res.results[0].text, res.results[0].id, true, true));
+                $(select).trigger('change');
+            }
+        } catch {
+            /* the user can still choose by hand */
+        }
+    };
+    const all = (root) => root.querySelectorAll?.('select[name="money_account"][data-select-url]') || [];
+    document.addEventListener('remote:loaded', (event) => all(event.target).forEach(pick));
+    $(document).on('change', 'select', function () {
+        if (!this.id) return;
+        // The dependent select empties itself first; fill it afterwards.
+        setTimeout(() => document.querySelectorAll(`select[name="money_account"][data-depends-on="#${CSS.escape(this.id)}"]`).forEach(pick), 0);
+    });
+    all(document).forEach(pick);
+}
+
+/** New account form: bank name and branch only matter for a bank account. */
+export function initMoneyAccountForm() {
+    const sync = (form) => {
+        const bank = form.querySelector('[name="kind"]')?.value === 'bank';
+        form.querySelectorAll('[data-bank-only]').forEach((el) => { el.hidden = !bank; });
+    };
+    document.addEventListener('remote:loaded', (event) => {
+        const form = event.target.querySelector?.('[data-money-account-form]');
+        if (form) sync(form);
+    });
+    $(document).on('change', '[data-money-account-form] [name="kind"]', function () {
+        sync(this.closest('[data-money-account-form]'));
+    });
+}

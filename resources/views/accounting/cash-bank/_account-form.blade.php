@@ -1,4 +1,4 @@
-<form method="POST" action="{{ $account->exists ? route('accounting.cash-bank.update', $account) : route('accounting.cash-bank.store') }}" data-ajax-form class="grid gap-5 sm:grid-cols-2">
+<form method="POST" action="{{ $account->exists ? route('accounting.cash-bank.update', $account) : route('accounting.cash-bank.store') }}" data-ajax-form data-money-account-form class="grid gap-5 sm:grid-cols-2">
     @csrf
     @if ($account->exists) @method('PUT') @endif
 
@@ -9,8 +9,10 @@
     @endif
     <x-form.input name="name" label="Name" :value="$account->name" placeholder="Islami Bank, bKash, Office Cash" required autofocus />
     <x-form.input name="account_number" label="Account / Wallet Number" :value="$account->account_number" inputmode="numeric" />
-    <x-form.input name="bank_name" label="Bank" :value="$account->bank_name" />
-    <x-form.input name="branch" label="Branch" :value="$account->branch" />
+    @if (! $account->exists || $account->kind === 'bank')
+        <div data-bank-only><x-form.input name="bank_name" label="Bank" :value="$account->bank_name" /></div>
+        <div data-bank-only><x-form.input name="branch" label="Branch" :value="$account->branch" /></div>
+    @endif
     @if ($account->exists)
         <div class="flex items-end pb-2.5">
             <input type="hidden" name="is_active" value="0">

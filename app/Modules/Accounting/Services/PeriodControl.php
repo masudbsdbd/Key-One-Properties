@@ -22,6 +22,9 @@ class PeriodControl
         return DB::transaction(function () use ($period, $user) {
             $period = AccountingPeriod::query()->lockForUpdate()->findOrFail($period->id);
             Approval::ensureStatus($period->status, 'open', $period->name.' is already '.$period->status.'.');
+            if ($period->start_date->gt(Ledger::today())) {
+                throw ValidationException::withMessages(['period' => $period->name.' has not started yet.']);
+            }
             $this->ensureNothingOpen($period->start_date->toDateString(), $period->end_date->toDateString(), $period->name);
             $period->forceFill(['status' => 'locked', 'locked_by' => $user->id, 'locked_at' => now(), 'status_reason' => null])->save();
 

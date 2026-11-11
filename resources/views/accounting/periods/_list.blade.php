@@ -32,7 +32,8 @@
                                 </td>
                                 <td class="text-right">
                                     @if ($canLock && $period->status === 'open')
-                                        <x-button size="sm" variant="secondary" icon="lock" data-action="post" data-url="{{ route('accounting.periods.lock', $period) }}" data-confirm="Lock {{ $period->name }}?" data-confirm-message="Nothing can be dated in {{ $period->name }} while it is locked." data-confirm-text="Lock" data-tone="primary">Lock</x-button>
+                                        <x-button size="sm" variant="secondary" icon="lock" data-action="post" data-url="{{ route('accounting.periods.lock', $period) }}" data-confirm="Lock {{ $period->name }}?" data-confirm-message="Nothing can be dated in {{ $period->name }} while it is locked." data-confirm-text="Lock" data-tone="primary"
+                                            :disabled="$period->start_date->gt($today)" :data-disabled-reason="$period->start_date->gt($today) ? 'Has not started yet' : null">Lock</x-button>
                                     @elseif ($canLock && $period->status === 'locked')
                                         <x-button size="sm" variant="ghost" data-remote-modal="{{ route('accounting.periods.reason', ['period', $period->public_id]) }}" data-size="max-w-md">Unlock</x-button>
                                     @endif
