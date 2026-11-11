@@ -94,9 +94,22 @@ class DashboardTest extends TestCase
         }
 
         $this->actingAs($this->admin)->get(route('dashboard'))->assertOk()->assertSee('data-widget="today"', false)->assertSee('To Pay This Week')->assertSee('Top Overdue Customers');
-        foreach (['today', 'upcoming', 'debtors', 'salestrend', 'latework', 'site', 'investors'] as $panel) {
+        foreach (['today', 'incoming', 'upcoming', 'debtors', 'salestrend', 'latework', 'site', 'lowstock', 'investors'] as $panel) {
             $this->actingAs($this->admin)->ajax()->get(route('dashboard.panel', $panel))->assertOk();
         }
+        // Today, this week and this month each net money in against money out, and a longer period never shows less.
+        [$day, $week, $month] = $today['periods'];
+        foreach ($today['periods'] as $period) {
+            $this->assertSame(Money::amount(Money::sub($period['in'], $period['out'])), $period['net']);
+        }
+        $this->assertTrue((float) $month['in'] >= (float) $week['in'] && (float) $week['in'] >= (float) $day['in']);
+        // What is due this week is the installments falling due in the next seven days.
+        $incoming = $dashboard->get('incoming');
+        $this->assertSame($incoming['count'], count($incoming['rows']) + $incoming['more']);
+        // Low stock lists what the attention count counts.
+        $low = collect($dashboard->get('attention')['items'])->firstWhere('label', 'Materials below reorder level');
+        $this->assertSame($low['count'] ?? 0, $dashboard->get('lowstock')['total']);
+
         // Twelve months of sales add up to the sales made in that window.
         $trend = $dashboard->get('salestrend');
         $this->assertCount(12, $trend['months']);

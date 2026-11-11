@@ -1,8 +1,8 @@
 @php
     $titles = ['attention' => 'Needs Attention', 'projects' => 'Project Health', 'cashflow' => 'Money In and Out', 'forecast' => 'Collections Ahead',
         'aging' => 'Overdue by Age', 'units' => 'Unit Inventory', 'milestones' => 'Milestones', 'investors' => 'Investors',
-        'today' => 'Today', 'upcoming' => 'To Pay This Week', 'debtors' => 'Top Overdue Customers',
-        'salestrend' => 'Sales Trend', 'latework' => 'Late Work', 'site' => 'On Site'];
+        'today' => 'Money Today', 'incoming' => 'To Collect This Week', 'upcoming' => 'To Pay This Week', 'debtors' => 'Top Overdue Customers',
+        'salestrend' => 'Sales Trend', 'latework' => 'Late Work', 'site' => 'On Site', 'lowstock' => 'Low Stock'];
     $has = fn ($p) => in_array($p, $panels, true);
     $cols = [1 => '2xl:grid-cols-1', 2 => '2xl:grid-cols-2', 3 => '2xl:grid-cols-3', 4 => '2xl:grid-cols-4'];
 @endphp
@@ -21,11 +21,11 @@
             <div data-widget="kpis" aria-live="polite"><div data-widget-body><div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">@for ($i = 0; $i < 4; $i++)<div class="skeleton h-[104px]"></div>@endfor</div></div></div>
         @endif
 
-        @php $daily = array_values(array_filter(['today', 'upcoming', 'debtors'], $has)); @endphp
+        @php $daily = array_values(array_filter(['today', 'incoming', 'upcoming', 'debtors'], $has)); @endphp
         @if ($daily)
-            <div @class(['grid items-start gap-6', 'lg:grid-cols-2' => count($daily) >= 2, 'xl:grid-cols-3' => count($daily) === 3])>
+            <div @class(['grid gap-6', 'md:grid-cols-2' => count($daily) >= 2, 'xl:grid-cols-3' => count($daily) === 3, '2xl:grid-cols-4' => count($daily) === 4])>
                 @foreach ($daily as $p)
-                    <x-card :title="$titles[$p]" data-widget="{{ $p }}" aria-live="polite" class="min-w-0"><div data-widget-body><div class="skeleton h-40 w-full"></div></div></x-card>
+                    <x-card :title="$titles[$p]" data-widget="{{ $p }}" aria-live="polite" class="min-w-0"><div data-widget-body><div class="skeleton h-48 w-full"></div></div></x-card>
                 @endforeach
             </div>
         @endif
@@ -37,7 +37,7 @@
             </x-card>
             @if ($approvals)
                 <x-card title="Awaiting You" :padded="$wide" class="min-w-0">
-                    <ul @class(['divide-y divide-line' => ! $wide, 'grid gap-2 sm:grid-cols-2 xl:grid-cols-3' => $wide])>
+                    <ul @class(['divide-y divide-line' => ! $wide, 'grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' => $wide])>
                         @foreach ($approvals as $item)
                             <li>
                                 <a href="{{ $item['href'] }}" @class(['flex items-center gap-3 hover:bg-surface-muted', 'px-5 py-3' => ! $wide, 'rounded-control border border-line px-3 py-2' => $wide])>
@@ -70,7 +70,7 @@
             </div>
         @endif
 
-        @php $small = array_values(array_filter(['salestrend', 'aging', 'units', 'site', 'milestones', 'latework', 'investors'], $has)); @endphp
+        @php $small = array_values(array_filter(['salestrend', 'aging', 'units', 'site', 'milestones', 'latework', 'lowstock', 'investors'], $has)); @endphp
         @if ($small)
             <div class="grid gap-6 lg:grid-cols-2 {{ $cols[min(count($small), 4)] }}">
                 @foreach ($small as $p)

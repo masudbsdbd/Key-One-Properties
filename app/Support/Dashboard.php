@@ -52,6 +52,7 @@ class Dashboard
         'kpis' => ['collections.payment.view', 'sales.sale.view', 'purchases.view', 'contractors.view'],
         'projects' => ['projects.view', 'projects.view_all'],
         'today' => ['dashboard.executive.view'],
+        'incoming' => ['collections.plan.view'],
         'upcoming' => ['purchases.view', 'contractors.view', 'expenses.view.project', 'expenses.view.general', 'investor.view'],
         'debtors' => ['collections.plan.view'],
         'cashflow' => ['dashboard.executive.view'],
@@ -62,6 +63,7 @@ class Dashboard
         'salestrend' => ['sales.sale.view'],
         'latework' => ['construction.view'],
         'site' => ['construction.view', 'materials.view'],
+        'lowstock' => ['materials.view'],
         'investors' => ['investor.view'],
     ];
 
@@ -267,28 +269,52 @@ class Dashboard
     private function today(): array
     {
         $day = $this->today->toDateString();
-        $range = ['from' => $day, 'to' => $day];
-        $line = function (string $label, Builder $query, string $date, string $href, string $amount = 'amount') use ($day): array {
-            $row = $query->whereDate($date, $day)->selectRaw("COUNT(*) AS n, COALESCE(SUM({$amount}), 0) AS v")->toBase()->first();
-
-            return ['label' => $label, 'count' => (int) $row->n, 'amount' => Money::amount((string) $row->v), 'href' => $href];
+        // [label, query, date column, list link, amount expression]
+        $sources = [
+            'in' => [
+                ['Customer payments', fn () => CustomerPayment::query()->where('status', 'posted'), 'payment_date', route('customer-payments.index', ['status' => 'posted', 'from' => $day, 'to' => $day]), 'amount'],
+                ['Investor capital', fn () => InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'contribution'), 'transaction_date', route('investor-capital.index', ['from' => $day, 'to' => $day]), 'amount'],
+            ],
+            'out' => [
+                ['Supplier payments', fn () => SupplierPayment::query()->where('status', 'approved'), 'payment_date', route('supplier-payments.index', ['from' => $day, 'to' => $day]), 'amount'],
+                ['Contractor payments', fn () => ContractorPayment::query()->where('status', 'approved'), 'payment_date', route('contractor-payments.index', ['from' => $day, 'to' => $day]), 'amount'],
+                ['Expenses', fn () => Expense::query()->where('status', 'paid'), 'paid_on', route('expenses.index', ['status' => 'paid']), 'amount'],
+                ['Investor profit', fn () => InvestorPayout::query()->where('status', 'posted'), 'paid_at', route('distributions.index'), 'amount'],
+                ['Capital returned', fn () => InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'capital_return'), 'transaction_date', route('investor-capital.index', ['from' => $day, 'to' => $day]), 'amount'],
+                ['Customer refunds', fn () => CustomerRefund::query()->where('status', 'paid'), 'paid_on', route('refunds.index'), 'COALESCE(net_amount, amount)'],
+            ],
+        ];
+        $total = function (string $side, string $from) use ($sources, $day): string {
+            return Money::amount(Money::add('0', ...array_map(fn (array $s) => (string) ($s[1]()->whereDate($s[2], '>=', $from)->whereDate($s[2], '<=', $day)
+                ->selectRaw("COALESCE(SUM({$s[4]}), 0) AS v")->value('v') ?? 0), $sources[$side])));
         };
-        $in = [
-            $line('Customer payments', CustomerPayment::query()->where('status', 'posted'), 'payment_date', route('customer-payments.index', ['status' => 'posted'] + $range)),
-            $line('Investor capital', InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'contribution'), 'transaction_date', route('investor-capital.index', $range)),
-        ];
-        $out = [
-            $line('Supplier payments', SupplierPayment::query()->where('status', 'approved'), 'payment_date', route('supplier-payments.index', $range)),
-            $line('Contractor payments', ContractorPayment::query()->where('status', 'approved'), 'payment_date', route('contractor-payments.index', $range)),
-            $line('Expenses', Expense::query()->where('status', 'paid'), 'paid_on', route('expenses.index', ['status' => 'paid'])),
-            $line('Investor profit', InvestorPayout::query()->where('status', 'posted'), 'paid_at', route('distributions.index')),
-            $line('Capital returned', InvestorCapitalTransaction::query()->where('status', 'posted')->where('transaction_type', 'capital_return'), 'transaction_date', route('investor-capital.index', $range)),
-            $line('Customer refunds', CustomerRefund::query()->where('status', 'paid'), 'paid_on', route('refunds.index'), 'COALESCE(net_amount, amount)'),
-        ];
-        $sum = fn (array $lines) => Money::amount(Money::add('0', ...array_column($lines, 'amount')));
+        $period = fn (string $label, string $from) => ['label' => $label, 'in' => $in = $total('in', $from), 'out' => $out = $total('out', $from), 'net' => Money::amount(Money::sub($in, $out))];
+        $lines = fn (string $side) => array_values(array_filter(array_map(function (array $s) use ($day) {
+            $row = $s[1]()->whereDate($s[2], $day)->selectRaw("COUNT(*) AS n, COALESCE(SUM({$s[4]}), 0) AS v")->toBase()->first();
 
-        return ['date' => $this->today, 'in' => array_values(array_filter($in, fn ($l) => $l['count'])), 'out' => array_values(array_filter($out, fn ($l) => $l['count'])),
-            'total_in' => $sum($in), 'total_out' => $sum($out), 'net' => Money::amount(Money::sub($sum($in), $sum($out)))];
+            return ['label' => $s[0], 'count' => (int) $row->n, 'amount' => Money::amount((string) $row->v), 'href' => $s[3]];
+        }, $sources[$side]), fn (array $l) => $l['count']));
+        $today = $period('Today', $day);
+
+        return ['date' => $this->today, 'in' => $lines('in'), 'out' => $lines('out'), 'total_in' => $today['in'], 'total_out' => $today['out'], 'net' => $today['net'],
+            'periods' => [$today, $period('This Week', $this->today->startOfWeek()->toDateString()), $period('This Month', $this->today->startOfMonth()->toDateString())]];
+    }
+
+    /** Installments falling due in the next week, soonest first: who to expect money from. */
+    private function incoming(): array
+    {
+        $until = $this->today->addDays(self::SOON_DAYS);
+        $items = (clone $this->openItems())->whereDate('due_date', '>=', $this->today)->whereDate('due_date', '<=', $until)
+            ->with(['plan:id,sale_id,customer_id', 'plan.customer:id,public_id,full_name,primary_mobile', 'plan.sale:id,flat_id,project_id', 'plan.sale.flat:id,flat_no', 'plan.sale.project:id,code'])
+            ->orderBy('due_date')->get();
+        $rows = $items->map(fn (InstallmentScheduleItem $i) => [
+            'name' => $i->plan->customer?->full_name, 'mobile' => $i->plan->customer?->primary_mobile, 'href' => RecordLink::url($i->plan->customer, $this->user),
+            'unit' => trim(($i->plan->sale?->project?->code ?? '').' · Unit '.($i->plan->sale?->flat?->flat_no ?? ''), ' ·'),
+            'days' => Dates::daysUntil($i->due_date), 'due' => Format::date($i->due_date), 'amount' => $i->outstanding(),
+        ]);
+
+        return ['rows' => $rows->take(5)->all(), 'more' => max(0, $rows->count() - 5), 'count' => $rows->count(),
+            'total' => Money::amount(Money::add('0', ...$rows->pluck('amount')->all())), 'href' => route('dues.index', $this->filters(['filter' => 'week']))];
     }
 
     /** What has to be paid now or within a week: supplier bills, contractor bills, approved expenses and approved profit payments. */
@@ -323,7 +349,7 @@ class Dashboard
             // Overdue first, then by due date; documents with no due date are payable now and follow the dated ones.
             ->sortBy(fn ($r) => $r['days'] ?? PHP_INT_MAX)->values();
 
-        return ['rows' => $rows->take(8)->all(), 'more' => max(0, $rows->count() - 8), 'count' => $rows->count(),
+        return ['rows' => $rows->take(5)->all(), 'more' => max(0, $rows->count() - 5), 'count' => $rows->count(),
             'total' => Money::amount(Money::add('0', ...$rows->pluck('amount')->all())), 'days' => self::SOON_DAYS];
     }
 
@@ -516,5 +542,21 @@ class Dashboard
                 'value' => $u->can('materials.valuation.view') ? Money::amount((string) $m->value) : null])->all(),
             'show_materials' => $u->can('materials.view'),
         ];
+    }
+
+    /** Materials that have run below their reorder level, the shortest first. */
+    private function lowstock(): array
+    {
+        $warehouses = Warehouse::query()->visibleTo($this->user)->when($this->project, fn ($q) => $q->where('project_id', $this->project->id))->select('warehouses.id');
+        $low = StockBalance::query()->whereIn('warehouse_id', $warehouses)
+            ->whereHas('material', fn ($q) => $q->where('reorder_level', '>', 0)->whereColumn('materials.reorder_level', '>', 'stock_balances.owned_qty'))
+            ->with(['material:id,public_id,name,reorder_level,unit_id', 'material.unit:id,code', 'warehouse:id,public_id,name,project_id', 'warehouse.project:id,public_id'])->get()
+            ->sortBy(fn (StockBalance $b) => (float) $b->owned_qty / max(0.001, (float) $b->material->reorder_level))->values();
+        $canBuy = $this->user->can('purchases.create');
+
+        return ['total' => $low->count(), 'href' => route('stock.index', ['filter' => 'low']), 'rows' => $low->take(5)->map(fn (StockBalance $b) => [
+            'name' => $b->material->name, 'store' => $b->warehouse->name, 'qty' => Format::qty($b->owned_qty).' '.$b->material->unit?->code, 'level' => Format::qty($b->material->reorder_level),
+            'order' => $canBuy ? route('purchase-orders.create', array_filter(['project' => $b->warehouse->project?->public_id, 'warehouse' => $b->warehouse->public_id, 'material' => $b->material->public_id])) : null,
+        ])->all()];
     }
 }
