@@ -12,3 +12,4 @@ Schedule::command('keyone:reconcile')->dailyAt('03:10')->withoutOverlapping()->o
     ->appendOutputTo(storage_path('logs/reconcile.log'));
 Schedule::command('keyone:prune-report-exports')->dailyAt('04:10')->withoutOverlapping();
 Schedule::command('keyone:collections-daily')->dailyAt('01:20')->withoutOverlapping()->onOneServer();
+Schedule::command('keyone:post-ledger')->everyFifteenMinutes()->withoutOverlapping();

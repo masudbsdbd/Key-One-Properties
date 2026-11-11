@@ -2,17 +2,22 @@
 
 namespace App\Support\FinancialEvents;
 
+use App\Models\AccountingPeriod;
 use App\Models\Customer;
 use App\Models\FinancialEvent;
 use App\Models\Flat;
 use App\Models\Project;
 use App\Models\User;
+use App\Modules\Accounting\Services\EventPoster;
+use App\Modules\Accounting\Services\Periods;
+use App\Modules\Accounting\Support\AccountingSettings;
 use App\Support\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
  * Records financial facts into the outbox exactly once.
@@ -55,9 +60,13 @@ class FinancialEventRecorder
         if ($existing = FinancialEvent::query()->where('idempotency_key', $key)->first()) {
             return $existing;
         }
+        // Once the books are on, nothing is recorded into a locked month; the whole business action stops here.
+        if (AccountingSettings::covers($effectiveAt) && ! ($period = Periods::for($effectiveAt))->isOpen()) {
+            throw new ConflictHttpException($period->name.' is '.strtolower(AccountingPeriod::STATUSES[$period->status]).' in the accounts. Use a date in an open month.');
+        }
 
         try {
-            return FinancialEvent::query()->create([
+            $event = FinancialEvent::query()->create([
                 'event_uuid' => (string) Str::uuid(),
                 'idempotency_key' => $key,
                 'source_module' => $module,
@@ -76,6 +85,9 @@ class FinancialEventRecorder
                 'recorded_by' => $user?->id,
                 'reversal_of_id' => $reversalOf?->id,
             ]);
+            app(EventPoster::class)->attempt($event);
+
+            return $event;
         } catch (UniqueConstraintViolationException) {
             // A concurrent request recorded the same event first.
             return FinancialEvent::query()->where('idempotency_key', $key)->firstOrFail();

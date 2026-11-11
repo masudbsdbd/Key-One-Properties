@@ -59,7 +59,7 @@ class ChartOfAccounts
         '6090' => ['Other General Expenses', 'expense', '6000', 'general_expense_other', true],
         '6100' => ['Bank Charges', 'expense', null, 'bank_charges', true],
         '6200' => ['Stock Adjustments', 'expense', null, 'stock_adjustment', true],
-        '6300' => ['Purchase Price Differences', 'expense', null, 'purchase_variance', true],
+        '6300' => ['Purchase Price Differences & Charges', 'expense', null, 'purchase_variance', true],
     ];
 
     /** Insert accounts that are missing. Safe to run again; existing rows are left as they are. */

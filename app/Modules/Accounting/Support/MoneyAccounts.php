@@ -3,6 +3,7 @@
 namespace App\Modules\Accounting\Support;
 
 use App\Models\MoneyAccount;
+use App\Support\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -40,14 +41,26 @@ class MoneyAccounts
         return $account->id;
     }
 
-    /** The account a payment went through: the one recorded, or the only active account of that kind. */
+    /**
+     * The account a payment went through: the one recorded on it, else the default chosen in Accounting
+     * Settings for that kind (used for payments entered before accounts existed), else the only active one.
+     */
     public static function for(?MoneyAccount $recorded, ?string $method): ?MoneyAccount
     {
         if ($recorded) {
             return $recorded;
         }
-        $accounts = MoneyAccount::query()->active()->where('kind', self::KIND_FOR_METHOD[(string) $method] ?? 'cash')->limit(2)->get();
+        $kind = self::KIND_FOR_METHOD[(string) $method] ?? 'cash';
+        if ($default = MoneyAccount::query()->where('public_id', (string) app(Settings::class)->get(self::defaultKey($kind)))->first()) {
+            return $default;
+        }
+        $accounts = MoneyAccount::query()->active()->where('kind', $kind)->limit(2)->get();
 
         return $accounts->count() === 1 ? $accounts->first() : null;
+    }
+
+    public static function defaultKey(string $kind): string
+    {
+        return 'accounting.default_account.'.$kind;
     }
 }

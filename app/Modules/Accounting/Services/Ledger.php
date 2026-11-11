@@ -144,9 +144,9 @@ class Ledger
     }
 
     /** Post the opposite of a posted journal, dated $date, and link the two. */
-    public function reverse(JournalEntry $entry, CarbonInterface $date, string $reason, ?User $user = null): JournalEntry
+    public function reverse(JournalEntry $entry, CarbonInterface $date, string $reason, ?User $user = null, ?FinancialEvent $event = null): JournalEntry
     {
-        return DB::transaction(function () use ($entry, $date, $reason, $user) {
+        return DB::transaction(function () use ($entry, $date, $reason, $user, $event) {
             $entry = JournalEntry::query()->lockForUpdate()->findOrFail($entry->id);
             Approval::ensureStatus($entry->status, 'posted', 'Only a posted journal can be reversed.');
             if ($entry->isReversed() || $entry->reversal_of_id) {
@@ -155,7 +155,7 @@ class Ledger
             $lines = $entry->lines()->get()->map(fn (JournalLine $l) => ['account' => $l->account_id, 'debit' => $l->credit, 'credit' => $l->debit, 'description' => $l->description] + $l->only(self::DIMENSIONS))->all();
             $reversal = $this->post([
                 'type' => 'reversal', 'date' => $date, 'narration' => 'Reversal of '.$entry->journal_no.': '.$reason, 'reference' => $entry->reference,
-                'source_key' => 'reversal:'.$entry->id, 'source' => $entry->source, 'project_id' => $entry->project_id, 'reversal_of_id' => $entry->id,
+                'source_key' => 'reversal:'.$entry->id, 'source' => $entry->source, 'project_id' => $entry->project_id, 'reversal_of_id' => $entry->id, 'event' => $event,
             ], $lines, $user);
             $entry->forceFill(['reversed_by_id' => $reversal->id])->save();
 
