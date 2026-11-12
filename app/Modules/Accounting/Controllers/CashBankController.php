@@ -13,6 +13,7 @@ use App\Modules\Accounting\Services\Ledger;
 use App\Modules\Accounting\Support\MoneyAccounts;
 use App\Support\Ajax;
 use App\Support\Export\Report;
+use App\Support\Format;
 use App\Support\Money;
 use App\Support\TableQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -241,7 +242,13 @@ class CashBankController extends Controller
         }
         $this->audit($request, $txn, 'money_'.$txn->type, ['amount' => (string) $txn->amount, 'name' => $txn->txn_no]);
 
-        return Ajax::success($txn->txn_no.' recorded.');
+        $amount = Format::money($txn->amount);
+
+        return Ajax::success(match ($txn->type) {
+            'transfer' => $amount.' moved from '.$txn->from->name.' to '.$txn->to->name.'.',
+            'money_in' => $amount.' received into '.$txn->to->name.'.',
+            default => $amount.' paid from '.$txn->from->name.'.',
+        });
     }
 
     public function cancelForm(Request $request, MoneyTransaction $transaction): JsonResponse

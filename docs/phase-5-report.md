@@ -63,7 +63,7 @@ The scheduler runs `keyone:post-ledger` every 15 minutes to retry anything that 
 
 ## Verification (run in this environment)
 
-- `php artisan test`: 345 tests, all passing; 51 of them are in `tests/Feature/Phase5`.
+- `php artisan test`: 349 tests, all passing; 55 of them are in `tests/Feature/Phase5`.
 - `LedgerIntegrationTest` runs the whole demo scenario with the books on: every event posts once, each journal
   balances, and the statements agree with each other (profit and loss with the balance sheet, cash flow with the
   cash and bank accounts, party lists with their control accounts, all seven reconciliation lines).
@@ -76,6 +76,31 @@ The scheduler runs `keyone:post-ledger` every 15 minutes to retry anything that 
 - Browser scan of the accounting pages at 1440 px: no script errors, no clipped tables, no unnamed controls.
 - Tests run at a fixed midday so the result does not depend on the hour (two older tests failed between
   midnight and 6 am Dhaka time; the application code was right, the tests compared against the server date).
+
+## Audit after delivery (2026-11-12)
+
+Checked by running every test of Phases 2–4 with the accounts switched on (575 journals from real flows: retention
+release, advance refund, waivers, cancellations and every kind of reversal), reading one journal of each kind
+against its document, walking the general ledger page by page, and using the screens as an Accountant.
+
+Found and fixed:
+
+- **A refused action said nothing.** A button whose action the server refused for a business reason (approving
+  your own document, locking a month with unposted journals) showed no message anywhere in the application.
+  Buttons, row actions and forms now always show the reason.
+- **General ledger page two** failed for an account with more entries than one page.
+- **Opening balances** saved twice in the same instant lost the second save; the year closing had the same risk.
+- **Profit & Loss comparison** left out an account that only moved in the earlier period, so the column did not add up.
+- **Cash flow** named ledger accounts; it now reads "Received from customers", "Paid to contractors" and so on.
+- **A payment waiting for its account** could only be fixed through a default in Settings; the waiting row now
+  offers Choose Account and posts at once.
+- **A rejected customer payment** left its cheque open in the cheque list.
+- **Wording:** "Automatic Posting" is now "Keep the Accounts"; deposit, withdraw and transfer confirm in words
+  ("৳ 10,000 moved from Office Cash to Nagad.").
+- Two older tests depended on the hour they ran; tests now run at a fixed midday.
+
+Added: Receivables and Payables by party, exports of account statements and journals, a Cash & Bank card on the
+main dashboard, the only matching account filled in on payment forms, accounts below zero under Needs Attention.
 
 ## Acceptance scenarios (blueprint section 9)
 

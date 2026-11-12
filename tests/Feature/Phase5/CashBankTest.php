@@ -82,13 +82,13 @@ class CashBankTest extends TestCase
         $this->assertSame('100.00', Balances::of(LedgerAccount::forKey('bank_charges')));
 
         // Deposit cash into the bank (own account), then the owner puts money in.
-        $this->move('in', $bank, 'account:'.$cash->public_id, '30000')->assertOk();
-        $this->move('in', $bank, 'purpose:owner_capital', '500000', ['party_name' => 'Managing Director'])->assertOk();
+        $this->move('in', $bank, 'account:'.$cash->public_id, '30000')->assertOk()->assertJsonPath('message', '৳ 30,000 moved from Office Cash to Islami Bank.');
+        $this->move('in', $bank, 'purpose:owner_capital', '500000', ['party_name' => 'Managing Director'])->assertOk()->assertJsonPath('message', '৳ 5,00,000 received into Islami Bank.');
         $this->assertSame(['20000.00', '709900.00'], [$this->balance($cash), $this->balance($bank)]);
         $this->assertSame('500000.00', Balances::of(LedgerAccount::forKey('owner_capital')));
 
         // Withdraw: bank charge and owner's drawings; cash and wallets cannot go below zero.
-        $this->move('out', $bank, 'purpose:bank_charge', '250')->assertOk();
+        $this->move('out', $bank, 'purpose:bank_charge', '250')->assertOk()->assertJsonPath('message', '৳ 250 paid from Islami Bank.');
         $this->move('out', $cash, 'purpose:owner_drawings', '25000')->assertStatus(422)->assertJsonValidationErrors('amount');
         $this->move('out', $cash, 'purpose:owner_drawings', '5000')->assertOk();
         $this->move('transfer', $cash, 'account:'.$cash->public_id, '10')->assertStatus(422)->assertJsonValidationErrors('other');
