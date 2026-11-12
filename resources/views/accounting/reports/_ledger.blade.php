@@ -36,8 +36,8 @@
         <div class="flex items-center justify-between gap-3 border-t border-line px-5 py-3 text-sm text-ink-600">
             <span>{{ $data['lines']->firstItem() }}–{{ $data['lines']->lastItem() }} of {{ $data['lines']->total() }}</span>
             <span class="flex gap-2">
-                @if ($data['lines']->onFirstPage())<x-button size="sm" variant="secondary" disabled data-disabled-reason="First page">Previous</x-button>@else<x-button size="sm" variant="secondary" :href="$data['lines']->appends(request()->except(['partial', 'page']))->previousPageUrl()" data-report-link>Previous</x-button>@endif
-                @if ($data['lines']->hasMorePages())<x-button size="sm" variant="secondary" :href="$data['lines']->appends(request()->except(['partial', 'page']))->nextPageUrl()" data-report-link>Next</x-button>@else<x-button size="sm" variant="secondary" disabled data-disabled-reason="Last page">Next</x-button>@endif
+                @if ($data['lines']->onFirstPage())<x-button size="sm" variant="secondary" disabled data-disabled-reason="First page">Previous</x-button>@else<x-button size="sm" variant="secondary" :href="$data['lines']->previousPageUrl()" data-report-link>Previous</x-button>@endif
+                @if ($data['lines']->hasMorePages())<x-button size="sm" variant="secondary" :href="$data['lines']->nextPageUrl()" data-report-link>Next</x-button>@else<x-button size="sm" variant="secondary" disabled data-disabled-reason="Last page">Next</x-button>@endif
             </span>
         </div>
     @endif

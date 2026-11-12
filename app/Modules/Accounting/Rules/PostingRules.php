@@ -29,7 +29,9 @@ use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
+use TypeError;
 
 /**
  * Turns a financial event into journal lines. One method per event type; an event that moves no
@@ -53,7 +55,11 @@ class PostingRules
             throw new RuntimeException("No posting rule for [{$event->event_type}].");
         }
         $source = $event->source ?? throw new RuntimeException('The source document no longer exists.');
-        $posting = $this->{$method}($event, $source);
+        try {
+            $posting = $this->{$method}($event, $source);
+        } catch (TypeError) {
+            throw new RuntimeException('This transaction was recorded against a '.Str::lower(Str::headline(class_basename($source))).', which this kind of entry does not use.');
+        }
         if ($posting === null) {
             return null;
         }
@@ -408,7 +414,7 @@ class PostingRules
     private function money(Model $document, ?string $method, string $side, string $amount, array $dims = [], ?MoneyAccount $override = null): array
     {
         $account = $override ?? MoneyAccounts::for($document->moneyAccount, $method)
-            ?? throw new RuntimeException('Choose the cash or bank account of this '.strtolower(class_basename($document)).' first.');
+            ?? throw new RuntimeException('Choose the cash or bank account of this '.Str::lower(Str::headline(class_basename($document))).' first.');
 
         return ['account' => $account->ledgerAccount, $side => Money::amount($amount)] + $dims;
     }

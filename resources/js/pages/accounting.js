@@ -143,6 +143,7 @@ export function initReportFilters() {
 
     const load = async (url) => {
         const target = new URL(url, window.location.origin);
+        target.searchParams.delete('partial');
         window.history.replaceState({}, '', target);
         target.searchParams.set('partial', '1');
         body.setAttribute('aria-busy', 'true');

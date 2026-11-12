@@ -4,13 +4,18 @@ namespace Tests\Feature\Phase5;
 
 use App\Models\Customer;
 use App\Models\LedgerAccount;
+use App\Models\MoneyAccount;
 use App\Models\Project;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Modules\Accounting\Services\CashBank;
 use App\Modules\Accounting\Services\Ledger;
 use App\Modules\Accounting\Services\Statements;
+use App\Modules\Accounting\Support\AccountingSettings;
+use App\Support\Money;
+use App\Support\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
@@ -129,6 +134,77 @@ class FinancialReportsTest extends TestCase
         $csv = $this->actingAs($this->viewer)->get(route('accounting.payables', ['format' => 'csv']))->assertOk()->streamedContent();
         $this->assertStringContainsString('Shah Cement', $csv);
         $this->actingAs($this->userWith(['accounting.journal.view']))->get(route('accounting.receivables'))->assertForbidden();
+    }
+
+    public function test_the_ledger_and_an_account_statement_keep_their_running_balance_across_pages(): void
+    {
+        $admin = $this->superAdmin();
+        $bank = MoneyAccount::query()->firstOrFail();
+        $ledger = app(Ledger::class);
+        // Fourteen more entries on the bank: 1,000, 2,000 … 14,000 paid as bank charges.
+        foreach (range(1, 14) as $i) {
+            $ledger->post(['type' => 'manual', 'date' => Carbon::parse('2026-11-09'), 'narration' => 'Charge '.$i], [
+                ['account' => 'bank_charges', 'debit' => (string) ($i * 1000)], ['account' => $bank->ledgerAccount, 'credit' => (string) ($i * 1000)],
+            ], $admin);
+        }
+        $closing = app(CashBank::class)->balance($bank);
+        $this->assertSame('1590000.00', $closing); // 1,695,000 before, less 105,000 of charges
+
+        // General ledger, oldest first: the last page ends on the closing balance and its links open the full page.
+        $query = ['account' => $bank->ledgerAccount->public_id, 'period' => 'all', 'per_page' => 10];
+        $first = $this->actingAs($this->viewer)->get(route('accounting.ledger', $query))->assertOk()->assertSee('Balance at the Start');
+        $this->assertStringContainsString('page=2', $first->getContent());
+        $second = $this->actingAs($this->viewer)->get(route('accounting.ledger', $query + ['page' => 2]))->assertOk()->assertDontSee('Balance at the Start');
+        $second->assertSee('Charge 14')->assertSee('15,90,000')->assertSee('16,04,000');
+        $partial = $this->actingAs($this->viewer)->ajax()->get(route('accounting.ledger', $query + ['page' => 2, 'partial' => 1]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('15,90,000', $partial);
+        $this->assertStringNotContainsString('partial=1', $partial);
+
+        // Account statement, newest first: page two carries on from where page one stopped.
+        $cash = $this->userWith(['accounting.cashbank.view']);
+        $one = $this->actingAs($cash)->ajax()->get(route('accounting.cash-bank.table', ['account' => $bank->public_id, 'per_page' => 10]))->assertOk()->json('data.html');
+        $two = $this->actingAs($cash)->ajax()->get(route('accounting.cash-bank.table', ['account' => $bank->public_id, 'per_page' => 10, 'page' => 2]))->assertOk()->json('data.html');
+        $this->assertStringContainsString('15,90,000', $one);          // after Charge 14
+        $this->assertStringContainsString('16,80,000', $one);          // after Charge 5, last row of page one
+        $this->assertStringContainsString('16,85,000', $two);          // after Charge 4, first row of page two
+        $this->assertStringContainsString('10,00,000', $two);          // the opening balance, oldest row
+        $this->assertStringNotContainsString('16,85,000', $one);
+    }
+
+    public function test_period_presets_follow_the_fiscal_year_and_the_comparison_is_the_period_just_before(): void
+    {
+        $range = fn (string $period, array $extra = []) => Statements::range(new Request(['period' => $period] + $extra));
+        $this->assertSame(['2026-07-01', '2027-06-30'], [$range('this-year')['from'], $range('this-year')['to']]);
+        $this->assertSame(['2025-07-01', '2026-06-30'], [$range('last-year')['from'], $range('last-year')['to']]);
+        $this->assertSame(['2026-11-01', '2026-11-30'], [$range('this-month')['from'], $range('this-month')['to']]);
+        $this->assertSame(['2026-10-01', '2026-10-31'], [$range('last-month')['from'], $range('last-month')['to']]);
+        $this->assertSame([null, '2026-11-11'], [$range('all')['from'], $range('all')['to']]);
+        $this->assertSame(['2026-08-01', '2026-08-20'], [$range('custom', ['from' => '2026-08-20', 'to' => '2026-08-01'])['from'], $range('custom', ['from' => '2026-08-20', 'to' => '2026-08-01'])['to']]);
+        $this->assertSame('this-year', $range('nonsense')['preset']);
+
+        $this->assertSame(['2025-07-01', '2026-06-30'], array_values(array_intersect_key(Statements::previous($range('this-year')), ['from' => 1, 'to' => 1])));
+        $this->assertSame(['2026-09-01', '2026-09-30'], array_values(array_intersect_key(Statements::previous($range('last-month')), ['from' => 1, 'to' => 1])));
+        $this->assertSame(['2026-07-12', '2026-07-31'], array_values(array_intersect_key(Statements::previous($range('custom', ['from' => '2026-08-01', 'to' => '2026-08-20'])), ['from' => 1, 'to' => 1])));
+        $this->assertNull(Statements::previous($range('all')));
+
+        // A calendar-year company: January is the first month.
+        app(Settings::class)->put([AccountingSettings::FISCAL_START_MONTH => '1']);
+        $this->assertSame(['2026-01-01', '2026-12-31'], [$range('this-year')['from'], $range('this-year')['to']]);
+    }
+
+    public function test_projects_and_the_rest_add_up_to_the_whole_and_the_comparison_lists_every_account(): void
+    {
+        $statements = app(Statements::class);
+        $whole = $statements->profitAndLoss('2026-07-01', '2027-06-30');
+        $project = $statements->profitAndLoss('2026-07-01', '2027-06-30', ['project_id' => $this->project->id]);
+        // 25,000 of general expense carries no project: 490,000 for the project less 25,000 is the company's 465,000.
+        $this->assertSame($whole['net_profit'], Money::amount(Money::sub($project['net_profit'], '25000')));
+
+        // Last fiscal year only had Other General Expenses; comparing this year with it must still list that account's 40,000.
+        $page = $this->actingAs($this->viewer)->get(route('accounting.profit-loss', ['period' => 'last-year', 'compare' => 1]))->assertOk();
+        $page->assertSee('1 Jul 2024 – 30 Jun 2025')->assertSee('40,000');
+        $now = $this->actingAs($this->viewer)->get(route('accounting.profit-loss', ['period' => 'this-month', 'compare' => 1]))->assertOk();
+        $now->assertSee('Property Sales')->assertSee('12,00,000')->assertSee('Cost of Units Sold');
     }
 
     public function test_reports_are_permissioned_and_projects_stay_in_scope(): void

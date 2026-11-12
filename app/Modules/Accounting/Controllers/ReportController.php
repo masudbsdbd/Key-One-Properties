@@ -89,6 +89,14 @@ class ReportController extends Controller
         $data = $this->statements->profitAndLoss($range['from'], $range['to'], $where);
         $before = $request->boolean('compare') ? Statements::previous($range) : null;
         $previous = $before ? $this->statements->profitAndLoss($before['from'], $before['to'], $where) : null;
+        if ($previous) {
+            // An account that only moved in the earlier period still gets a line, so both columns add up.
+            foreach (['income', 'cost_of_sales', 'expenses', 'investors'] as $section) {
+                $missing = $previous[$section]->reject(fn ($r) => $data[$section]->contains(fn ($c) => $c['account']->id === $r['account']->id))
+                    ->map(fn ($r) => ['account' => $r['account'], 'amount' => '0.00']);
+                $data[$section] = $data[$section]->concat($missing)->sortBy(fn ($r) => $r['account']->code)->values();
+            }
+        }
 
         if ($request->filled('format')) {
             $this->exportable($request);
@@ -289,7 +297,9 @@ class ReportController extends Controller
                     ->columns(['Date' => 'date', 'Journal' => 'text', 'Details' => 'text', 'Debit' => 'money', 'Credit' => 'money'])->sumMoney()
                     ->rows(fn () => $query->with('entry')->lazy()->map(fn ($l) => [$l->entry->accounting_date, $l->entry->journal_no, $l->description ?: $l->entry->narration, $l->debit, $l->credit]))->respond($request);
             }
-            $lines = TableQuery::paginate($query->with(['entry.source', 'project', 'flat', 'customer', 'supplier', 'contractor', 'investor']), $request);
+            // Paginating changes the query it is given, so the totals below work on their own copies.
+            $lines = TableQuery::paginate((clone $query)->with(['entry.source', 'project', 'flat', 'customer', 'supplier', 'contractor', 'investor']), $request);
+            $lines->appends(['partial' => null]); // page links open the full page, not the fragment
             // Balance carried into the page: opening plus everything on the earlier pages.
             $before = $lines->isEmpty() ? '0' : Money::amount((clone $query)->reorder()
                 ->where(fn ($q) => $q->where('journal_entries.accounting_date', '<', $lines->first()->accounting_date)
