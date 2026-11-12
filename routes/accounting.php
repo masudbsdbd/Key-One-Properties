@@ -53,6 +53,8 @@ Route::prefix('accounting')->name('accounting.')->group(function () {
         Route::get('table', 'table')->name('table');
         Route::post('post-all', 'postAll')->name('post-all');
         Route::post('events/{event}/retry', 'retry')->name('retry');
+        Route::get('events/{event}/account', 'accountForm')->name('account');
+        Route::post('events/{event}/account', 'setAccount')->name('account.store');
     });
 
     Route::controller(SettingsController::class)->group(function () {

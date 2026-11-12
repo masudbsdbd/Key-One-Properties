@@ -17,7 +17,7 @@
 
     <h2 class="mb-3 mt-8 text-[15px] font-semibold text-ink-900">Waiting to Be Posted</h2>
     <x-data-table :url="route('accounting.reconciliation.table')" sort="date" dir="asc" search="Search type or reason" :columns="[
-        ['label' => 'Date', 'sort' => 'date'], ['label' => 'Transaction'], ['label' => 'Amount', 'class' => 'text-right'], ['label' => 'Why It Waits'], ['label' => '', 'class' => 'w-28'],
+        ['label' => 'Date', 'sort' => 'date'], ['label' => 'Transaction'], ['label' => 'Amount', 'class' => 'text-right'], ['label' => 'Why It Waits'], ['label' => '', 'class' => 'w-44'],
     ]">
         <x-slot:filters>
             <select name="status" class="form-control w-44" data-table-filter aria-label="Status"><option value="">Waiting and failed</option><option value="pending">Waiting</option><option value="failed">Failed</option></select>

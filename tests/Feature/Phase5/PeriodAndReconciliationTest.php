@@ -142,8 +142,20 @@ class PeriodAndReconciliationTest extends TestCase
         $this->assertStringContainsString('Choose the cash or bank account of this expense first.', $rows);
         $this->assertStringContainsString('Expense paid', $rows);
 
-        app(CashBank::class)->createAccount(['kind' => 'cash', 'name' => 'Office Cash'], $admin);
-        $this->actingAs($this->accountant)->ajax()->post(route('accounting.reconciliation.post-all'))->assertOk()->assertJsonPath('message', '1 posted.');
+        // Two cash accounts: the system cannot guess, so the accountant chooses on the waiting row itself.
+        $cash = app(CashBank::class)->createAccount(['kind' => 'cash', 'name' => 'Office Cash'], $admin);
+        app(CashBank::class)->createAccount(['kind' => 'cash', 'name' => 'Site Cash'], $admin);
+        $bank = app(CashBank::class)->createAccount(['kind' => 'bank', 'name' => 'Islami Bank'], $admin);
+        $this->actingAs($this->accountant)->ajax()->post(route('accounting.reconciliation.post-all'))->assertOk()->assertJsonPath('message', '0 posted, 1 still need attention.');
+        $this->assertStringContainsString('Choose Account', $this->actingAs($this->accountant)->ajax()->get(route('accounting.reconciliation.table'))->json('data.html'));
+        $form = $this->actingAs($this->accountant)->ajax()->get(route('accounting.reconciliation.account', $event->event_uuid))->assertOk()->json('data.html');
+        $this->assertStringContainsString('Site Cash', $form);
+        $this->assertStringNotContainsString('Islami Bank', $form);
+        $this->actingAs($this->accountant)->ajax()->post(route('accounting.reconciliation.account.store', $event->event_uuid), ['money_account' => $bank->public_id])->assertStatus(422);
+        $this->actingAs($this->userWith(['accounting.reconciliation.view']))->ajax()->post(route('accounting.reconciliation.account.store', $event->event_uuid), ['money_account' => $cash->public_id])->assertForbidden();
+        $this->actingAs($this->accountant)->ajax()->post(route('accounting.reconciliation.account.store', $event->event_uuid), ['money_account' => $cash->public_id])->assertOk()->assertJsonPath('message', 'Posted to Office Cash.');
+        $this->assertSame([$cash->id, 'processed'], [$expense->fresh()->money_account_id, $event->fresh()->processing_status]);
+        $this->assertSame('-900.00', app(CashBank::class)->balance($cash));
         $this->assertSame(0, FinancialEvent::query()->whereIn('processing_status', ['pending', 'failed'])->count());
         $this->assertStringContainsString('Nothing is waiting', $this->actingAs($this->accountant)->ajax()->get(route('accounting.reconciliation.table'))->json('data.html'));
 
