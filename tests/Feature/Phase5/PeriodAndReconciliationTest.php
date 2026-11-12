@@ -48,7 +48,7 @@ class PeriodAndReconciliationTest extends TestCase
         $august = Periods::for(Carbon::parse('2026-08-10'));
         $draft = app(Ledger::class)->saveDraft(null, ['date' => Carbon::parse('2026-08-20'), 'narration' => 'Draft'], [['account' => 'bank_charges', 'debit' => '5'], ['account' => 'owner_capital', 'credit' => '5']], $this->superAdmin());
 
-        $this->actingAs($this->accountant)->ajax()->post(route('accounting.periods.lock', $august))->assertStatus(422)->assertJsonPath('errors.period.0', '1 journals of Aug 2026 are not posted yet.');
+        $this->actingAs($this->accountant)->ajax()->post(route('accounting.periods.lock', $august))->assertStatus(422)->assertJsonPath('errors.period.0', '1 journal of Aug 2026 is not posted yet.');
         $draft->delete();
         $this->actingAs($this->accountant)->ajax()->post(route('accounting.periods.lock', $august))->assertOk();
         $this->assertSame('locked', $august->fresh()->status);

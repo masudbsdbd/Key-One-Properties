@@ -43,8 +43,9 @@ export function initActions() {
             if (dialog && !button.hasAttribute('data-keep-open')) modal.close(dialog);
             document.querySelectorAll('[data-ajax-table]').forEach((t) => t.reload?.());
             button.dispatchEvent(new CustomEvent('action:success', { bubbles: true, detail: res }));
-        } catch {
-            /* error toast already shown */
+        } catch (error) {
+            // Other errors are shown by the request layer; a refusal for a business reason (422) is shown here.
+            if (error?.status === 422) toast.error(error.message);
         } finally {
             button.disabled = false;
             button.setAttribute('aria-busy', 'false');

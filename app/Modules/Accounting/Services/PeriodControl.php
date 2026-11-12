@@ -110,11 +110,11 @@ class PeriodControl
     {
         $journals = JournalEntry::query()->whereIn('status', ['draft', 'submitted', 'approved'])->whereBetween('accounting_date', [$from, $to])->count();
         if ($journals) {
-            throw ValidationException::withMessages(['period' => $journals.' journals of '.$name.' are not posted yet.']);
+            throw ValidationException::withMessages(['period' => $journals.' '.Str::plural('journal', $journals).' of '.$name.($journals === 1 ? ' is' : ' are').' not posted yet.']);
         }
         $events = EventPoster::backlog()->whereBetween('effective_at', [$from, $to])->count();
         if ($events) {
-            throw ValidationException::withMessages(['period' => $events.' transactions of '.$name.' are waiting to be posted.']);
+            throw ValidationException::withMessages(['period' => $events.' '.Str::plural('transaction', $events).' of '.$name.($events === 1 ? ' is' : ' are').' waiting to be posted.']);
         }
     }
 }

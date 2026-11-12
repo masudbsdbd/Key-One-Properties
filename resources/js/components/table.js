@@ -289,7 +289,8 @@ function setup(table) {
             }
             load();
             table.dispatchEvent(new CustomEvent('table:action', { bubbles: true, detail: res }));
-        } catch {
+        } catch (error) {
+            if (error?.status === 422) toast.error(error.message);
             action.disabled = false;
         }
     });

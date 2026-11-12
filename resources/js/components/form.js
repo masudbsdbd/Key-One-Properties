@@ -29,6 +29,9 @@ export function showErrors(form, errors) {
             if (box) {
                 box.textContent = message;
                 box.hidden = false;
+            } else {
+                // No place on the form for this message: it must still reach the user.
+                toast.error(message);
             }
             return;
         }
@@ -37,6 +40,8 @@ export function showErrors(form, errors) {
         if (holder) {
             holder.textContent = message;
             holder.hidden = false;
+        } else {
+            toast.error(message);
         }
         first ??= field;
     });
