@@ -133,6 +133,9 @@ class ContractorPaymentController extends Controller
             ?? throw ValidationException::withMessages(['work_order' => 'Select a work order you can access.']);
         Gate::authorize('wo:pay', $order);
         $refund = ($data['kind'] ?? 'payment') === 'refund';
+        if ($refund) {
+            $data['tax_deducted'] = null; // money coming back from the contractor carries no tax deduction
+        }
         $bill = null;
         if (! $refund && ! empty($data['bill'])) {
             $bill = ContractorBill::query()->where('work_order_id', $order->id)->where('public_id', $data['bill'])->first()

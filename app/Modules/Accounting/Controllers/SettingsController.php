@@ -51,7 +51,7 @@ class SettingsController extends Controller
             'enabled' => ['required', 'boolean'],
             'start_date' => [Rule::requiredIf($request->boolean('enabled')), 'nullable', 'date'],
             'fiscal_start_month' => ['required', 'integer', 'between:1,12'],
-        ], ['start_date.required' => 'Choose the first day of the books.']);
+        ], ['start_date.required' => 'Choose the day the accounts start from.']);
 
         $start = $data['start_date'] ? Carbon::parse($data['start_date'])->toDateString() : null;
         $earliest = JournalEntry::query()->posted()->where('journal_type', 'system')->min('accounting_date');
@@ -74,7 +74,7 @@ class SettingsController extends Controller
 
         $result = $data['enabled'] ? $poster->postBacklog(2000) : ['posted' => 0, 'failed' => 0];
 
-        return Ajax::success($data['enabled'] ? 'Books are on. '.$result['posted'].' posted'.($result['failed'] ? ', '.$result['failed'].' need attention' : '').'.' : 'Books are off.',
+        return Ajax::success($data['enabled'] ? 'Accounts are on. '.$result['posted'].' posted'.($result['failed'] ? ', '.$result['failed'].' need attention' : '').'.' : 'Accounts are off.',
             ['redirect' => route('accounting.settings.edit')]);
     }
 

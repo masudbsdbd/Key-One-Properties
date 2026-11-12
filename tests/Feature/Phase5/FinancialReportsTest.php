@@ -107,7 +107,7 @@ class FinancialReportsTest extends TestCase
         $projects->assertSee('LAKE · Lake View')->assertSee('12,00,000')->assertSee('4,90,000');
         $this->actingAs($this->viewer)->get(route('accounting.projects', ['project' => $this->project->public_id]))->assertOk()->assertSee('Unit Financials');
 
-        $this->actingAs($this->viewer)->get(route('accounting.overview'))->assertOk()->assertSee('Profit &amp; Loss', false)->assertSee('Balance Sheet')->assertSee('16,95,000')->assertSee('Automatic posting is off');
+        $this->actingAs($this->viewer)->get(route('accounting.overview'))->assertOk()->assertSee('Profit &amp; Loss', false)->assertSee('Balance Sheet')->assertSee('16,95,000')->assertSee('The accounts are switched off');
     }
 
     public function test_receivables_and_payables_list_each_party_and_agree_with_the_overview(): void

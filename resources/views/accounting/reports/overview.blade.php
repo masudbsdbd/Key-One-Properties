@@ -28,7 +28,7 @@
 
     @unless ($enabled)
         <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-warning-500/30 bg-warning-50 px-5 py-4 text-sm text-warning-600">
-            <span class="font-medium">Automatic posting is off</span>
+            <span class="font-medium">The accounts are switched off</span>
             @can('accounting.settings.manage')<x-button size="sm" variant="secondary" :href="route('accounting.settings.edit')">Accounting Settings</x-button>@endcan
         </div>
     @endunless

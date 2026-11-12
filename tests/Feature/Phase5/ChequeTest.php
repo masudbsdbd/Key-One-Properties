@@ -133,6 +133,16 @@ class ChequeTest extends TestCase
         $this->assertSame(['100000.00', '0.00', 'bounced'], [app(CashBank::class)->balance($this->bank), $this->balance('cheques_in_hand'), Cheque::query()->where('cheque_no', 'CHQ-5')->firstOrFail()->status]);
     }
 
+    public function test_rejecting_the_payment_closes_its_cheque(): void
+    {
+        $payment = $this->receive('in_hand', 'CHQ-7');
+        $this->actingAs($this->manager)->ajax()->post(route('customer-payments.reject', $payment), ['reason' => 'Cheque was not signed'])->assertOk();
+
+        $cheque = Cheque::query()->firstOrFail();
+        $this->assertSame(['rejected', 'bounced', 'Cheque was not signed'], [$payment->fresh()->status, $cheque->status, $cheque->status_note]);
+        $this->assertStringNotContainsString('CHQ-7', $this->actingAs($this->manager)->ajax()->get(route('accounting.cheques.table'))->json('data.html'));
+    }
+
     public function test_cheque_actions_need_permission(): void
     {
         $this->receive('in_hand', 'CHQ-6');

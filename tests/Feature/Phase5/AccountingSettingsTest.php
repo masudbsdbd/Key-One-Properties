@@ -18,7 +18,7 @@ class AccountingSettingsTest extends TestCase
     public function test_the_books_are_switched_on_with_a_start_date_and_fiscal_month(): void
     {
         $admin = $this->userWith(['accounting.settings.manage']);
-        $this->actingAs($admin)->get(route('accounting.settings.edit'))->assertOk()->assertSee('Automatic Posting')->assertSee('Customer Receivable');
+        $this->actingAs($admin)->get(route('accounting.settings.edit'))->assertOk()->assertSee('Keep the Accounts')->assertSee('Customer Receivable');
         $this->assertFalse(AccountingSettings::enabled());
 
         $this->actingAs($admin)->ajax()->put(route('accounting.settings.update'), ['enabled' => '1', 'fiscal_start_month' => 7])->assertStatus(422)->assertJsonValidationErrors('start_date');

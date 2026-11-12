@@ -8,7 +8,7 @@ Tick each line on staging. Sign in as a user with the Accountant role unless a l
 - [ ] Each account card shows its balance; the four tiles add up to the total.
 - [ ] Accounting Settings → Opening Balances: enter a fixed asset and a loan; the page shows the amount that goes
       to Opening Balance Equity; the Balance Sheet still balances.
-- [ ] Accounting Settings → switch Automatic Posting on with a start date; the message says how many were posted.
+- [ ] Accounting Settings → switch Keep the Accounts on with a start date; the message says how many were posted.
 - [ ] Reconciliation → every line reads "Matches" and nothing is waiting.
 
 ## Cash and bank

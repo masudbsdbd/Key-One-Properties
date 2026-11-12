@@ -109,6 +109,7 @@ class PaymentService
             $payment = CustomerPayment::query()->lockForUpdate()->findOrFail($payment->id);
             Approval::ensureStatus($payment->status, 'pending', 'This payment is no longer pending.');
             $payment->forceFill(['status' => 'rejected', 'status_reason' => $reason, 'approved_by' => $user->id])->save();
+            app(Cheques::class)->paymentReversed($payment, $reason, $user);
         });
     }
 

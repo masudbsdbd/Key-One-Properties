@@ -52,11 +52,11 @@ Accounting & Finance (module 16). Blueprint: `KEY_ONE_PHASE_5_BLUEPRINT.md`. Dec
 4. Cash & Bank → add every cash, bank and mobile account with its balance on the start date.
 5. Accounting Settings → Opening Balances for anything else the company owns or owes that is not in the system
    (assets, loans, owner's capital).
-6. Accounting Settings → Automatic Posting **On**, with the first day of the books. Transactions dated on or
+6. Accounting Settings → Keep the Accounts **On**, with the day the accounts start from. Transactions dated on or
    after that day are posted at once; earlier ones are left to the opening balances.
 7. Reconciliation → every line should read "Matches" and nothing should be waiting.
 
-Rollback: switch Automatic Posting off. Nothing in Phases 1–4 depends on the ledger; the tables added by
+Rollback: switch Keep the Accounts off. Nothing in Phases 1–4 depends on the ledger; the tables added by
 `2026_11_11_100000`, `2026_11_11_110000` and `2026_11_11_120000` can be rolled back with `php artisan migrate:rollback --step=3`.
 
 The scheduler runs `keyone:post-ledger` every 15 minutes to retry anything that is waiting.

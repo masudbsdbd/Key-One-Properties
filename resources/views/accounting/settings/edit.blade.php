@@ -13,11 +13,11 @@
         <form method="POST" action="{{ route('accounting.settings.update') }}" data-ajax-form>
             @csrf
             @method('PUT')
-            <x-card title="Books">
+            <x-card title="Accounts">
                 <x-slot:actions>@if ($enabled)<x-badge tone="success">On</x-badge>@else<x-badge tone="neutral">Off</x-badge>@endif</x-slot:actions>
                 <div class="grid gap-5 sm:grid-cols-2">
-                    <x-form.select name="enabled" label="Automatic Posting" :options="['1' => 'On', '0' => 'Off']" :selected="$enabled ? '1' : '0'" required :enhance="false" />
-                    <x-form.input name="start_date" type="date" label="First Day of the Books" :value="$startDate?->toDateString() ?? $firstRecord" />
+                    <x-form.select name="enabled" label="Keep the Accounts" :options="['1' => 'On', '0' => 'Off']" :selected="$enabled ? '1' : '0'" required :enhance="false" />
+                    <x-form.input name="start_date" type="date" label="Accounts Start From" :value="$startDate?->toDateString() ?? $firstRecord" />
                     <x-form.select name="fiscal_start_month" label="Fiscal Year Starts" :options="$months" :selected="$fiscalMonth" required />
                     <div>
                         <p class="form-label">First Transaction on Record</p>
@@ -47,7 +47,7 @@
         </form>
     </div>
 
-    <x-card title="Accounts Used by Automatic Posting" :padded="false" class="mt-6">
+    <x-card title="Which Account Each Transaction Goes To" :padded="false" class="mt-6">
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>Used For</th><th>Account</th><th class="w-28"></th></tr></thead>
